@@ -1,0 +1,12 @@
+[
+ {
+  "n": 0,
+  "date": "2026-07-13",
+  "desc": "baseline (session-1 weights)",
+  "train_loss": 0.022853,
+  "val_loss": 0.019686,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.4
+ }
+]
