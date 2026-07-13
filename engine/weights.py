@@ -11,11 +11,11 @@ heuristics don't have to track eval weights.
 
 W = {
     # material
-    "material.pawn": 100,
-    "material.knight": 320,
-    "material.bishop": 330,
-    "material.rook": 500,
-    "material.queen": 900,
+    "material.pawn": 86.593,
+    "material.knight": 381.994,
+    "material.bishop": 357.06,
+    "material.rook": 498.568,
+    "material.queen": 1073.136,
     # piece-square tables: multiplier per piece type on the (tapered) table value
     "pst.pawn": 0.502,
     "pst.knight": 0.594,

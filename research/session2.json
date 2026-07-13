@@ -249,5 +249,15 @@
   "kept": true,
   "seconds": 380.0,
   "note": "Override of the val-loss rule: 10-game match showed the val-optimal unbounded weights are ~190 Elo WEAKER than chess-prior-bounded weights. Proxy metric diverges from strength outside the interpretable region."
+ },
+ {
+  "n": 25,
+  "date": "2026-07-13",
+  "desc": "bounded material tune (0.85-1.2x)",
+  "train_loss": 0.018512,
+  "val_loss": 0.01732,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.5
  }
 ]
