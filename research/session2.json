@@ -148,5 +148,15 @@
   "guard_ok": true,
   "kept": true,
   "seconds": 0.4
+ },
+ {
+  "n": 15,
+  "date": "2026-07-13",
+  "desc": "tune king safety + attack weights (fine)",
+  "train_loss": 0.022394,
+  "val_loss": 0.018981,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.4
  }
 ]

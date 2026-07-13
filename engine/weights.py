@@ -30,9 +30,9 @@ W = {
     "pawn.passed_eg_scale": 1.753,
     "pawn.blocked_passer": 0.424,  # multiplier when the square in front is occupied  # passed pawns matter more in the endgame
     # king safety
-    "king.shield_gap": 12,
-    "king.open_file": 15,
-    "kattack.scale": 2.5,   # cp per weighted attack unit on the enemy king zone
+    "king.shield_gap": 10.183,
+    "king.open_file": 17.535,
+    "kattack.scale": 2.703,   # cp per weighted attack unit on the enemy king zone
     # mobility (cp per square above/below typical)
     "mob.knight": 3.394,
     "mob.bishop": 3.507,
