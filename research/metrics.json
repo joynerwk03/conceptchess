@@ -113,5 +113,22 @@
       "nodes_to_depth6": 253000
     },
     "explanation": "Margins 150cp (depth 1) / 300cp (depth 2), at least one move always searched. 411k -> 253k nodes to depth 6 (-38%), -16% wall time to fixed depth; tactics 24/24. NPS reads lower because pruned subtrees were the cheapest nodes; time-to-depth is what improved."
+  },
+  {
+    "experiment": 8,
+    "date": "2026-07-13",
+    "rev": null,
+    "title": "Strength gate: match vs v0 baseline",
+    "hypothesis": "The accepted search/speed changes (exps 1-5, 7) translate into real playing strength, measured by a 20-game match vs the v0 engine at 0.3s/move.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "avg_depth_2s": 8.17,
+      "avg_nps": 46274,
+      "tactics_pct_1s": 100.0,
+      "nodes_to_depth6": 253000,
+      "elo_vs_v0": 168,
+      "elo_abs_est": 1435
+    },
+    "explanation": "+11 =7 -2 (72.5%) over 20 games across 10 openings, both colors: about +168 Elo over v0 (95% CI roughly +20..+425). Also surfaced and fixed a real bug: search could return no move when depth 1 didn't complete in time, sending an illegal null move in games. Absolute anchor: +5 =1 -4 (55%) over 10 games vs strength-limited Stockfish 1400 at 0.3s/move -> roughly 1435 Elo absolute (wide CI at 10 games)."
   }
 ]

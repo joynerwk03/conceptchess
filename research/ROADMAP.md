@@ -5,14 +5,14 @@ entry reference; add new ideas as they come up.
 
 ## Speed (deeper search = biggest strength lever in pure Python)
 
-- [ ] Profile eval + search (`cProfile`); find the top 3 hot spots before optimizing anything
+- [x] Profile eval + search (`cProfile`); find the top 3 hot spots before optimizing anything
 - [ ] Replace `board._transposition_key()` with incremental zobrist hashing
-- [ ] Cache pawn-structure/king-safety by pawn hash (pawn config changes rarely)
+- [x] Cache pawn-structure/king-safety by pawn hash (pawn config changes rarely)
 - [ ] Faster mobility: reuse attack masks between eval and move ordering, or approximate
-- [ ] Aspiration windows at the root
-- [ ] Principal variation search (PVS / zero-window re-search)
-- [ ] Late move reductions (LMR) — likely the single biggest depth win
-- [ ] Futility pruning at shallow depths
+- [x] ~~Aspiration windows at the root~~ (tried, REJECTED — see LOG 2026-07-13)
+- [x] Principal variation search (PVS / zero-window re-search)
+- [x] Late move reductions (LMR) — likely the single biggest depth win
+- [x] Futility pruning at shallow depths
 - [ ] Static exchange evaluation (SEE) for qsearch pruning + ordering (replaces MVV-LVA blunders)
 - [ ] Evaluate porting the hot loop to a compiled extension **only if** the concept
       design has stabilized (keep concept semantics defined in Python/spec)

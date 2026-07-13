@@ -28,8 +28,14 @@ Notes:
   regularly exceed ±100cp with this eval; revisit only after eval tuning
   stabilizes scores.
 - End state: avg depth 8.17 @2s (middlegames 5–6, was 4), 24/24 tactics.
-- Strength gate: 20-game match vs v0 (93489ca) at 0.4s/move — see metrics.json
-  experiment 8 for the result.
+- **Strength gate (exp 8): +11 =7 −2 (72.5%) vs v0 over 20 games ≈ +168 Elo**
+  (95% CI ~ +20..+425), 10 openings, both colors, 0.3s/move. GATE PASSED.
+- **Absolute anchor: +5 =1 −4 (55%) vs Stockfish-1400 over 10 games at
+  0.3s/move → engine ≈ 1435 Elo** (wide CI; re-anchor with 30+ games later).
+- The match surfaced a real bug (fixed, committed): when depth 1 didn't finish
+  inside the budget, search returned no move and UCI sent an illegal null move.
+  Lesson: matches are also integration tests — run them even for "pure speed"
+  sessions.
 
 ---
 
