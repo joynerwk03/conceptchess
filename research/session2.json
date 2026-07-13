@@ -68,5 +68,15 @@
   "guard_ok": true,
   "kept": true,
   "seconds": 0.4
+ },
+ {
+  "n": 7,
+  "date": "2026-07-13",
+  "desc": "king attack: scale sweep",
+  "train_loss": 0.022802,
+  "val_loss": 0.01951,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.4
  }
 ]

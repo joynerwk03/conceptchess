@@ -17,21 +17,21 @@ W = {
     "material.rook": 500,
     "material.queen": 900,
     # piece-square tables: multiplier per piece type on the (tapered) table value
-    "pst.pawn": 1.0,
-    "pst.knight": 1.0,
-    "pst.bishop": 1.0,
-    "pst.rook": 1.0,
-    "pst.queen": 1.0,
-    "pst.king": 1.0,
+    "pst.pawn": 1,
+    "pst.knight": 1,
+    "pst.bishop": 1,
+    "pst.rook": 1,
+    "pst.queen": 1,
+    "pst.king": 1,
     # pawn structure
     "pawn.doubled": 15,
     "pawn.isolated": 12,
-    "pawn.passed_scale": 1.0,     # multiplier on the per-rank passed bonus
+    "pawn.passed_scale": 1,     # multiplier on the per-rank passed bonus
     "pawn.passed_eg_scale": 1.5,  # passed pawns matter more in the endgame
     # king safety
     "king.shield_gap": 12,
     "king.open_file": 15,
-    "kattack.scale": 2.0,   # cp per weighted attack unit on the enemy king zone
+    "kattack.scale": 3,   # cp per weighted attack unit on the enemy king zone
     # mobility (cp per square above/below typical)
     "mob.knight": 4,
     "mob.bishop": 3,
