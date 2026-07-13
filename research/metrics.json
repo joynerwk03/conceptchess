@@ -1,0 +1,16 @@
+[
+  {
+    "experiment": 0,
+    "date": "2026-07-13",
+    "rev": "93489ca",
+    "title": "v0 baseline",
+    "hypothesis": "Initial concept-based engine (see LOG.md v0 entry)",
+    "verdict": "BASELINE",
+    "metrics": {
+      "avg_depth_2s": 6.83,
+      "avg_nps": 38047,
+      "tactics_pct_1s": 95.8
+    },
+    "explanation": "Concept-sum eval with faithfulness invariant; negamax + TT + quiescence + null move; no LMR/PVS yet. Numbers from research/baselines.json."
+  }
+]

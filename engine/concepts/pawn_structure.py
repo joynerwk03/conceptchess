@@ -14,7 +14,28 @@ class PawnStructure:
     display_name = "Pawn structure"
 
     def score(self, ctx):
-        return sum(v for _, v in self.details(ctx))
+        # Same arithmetic as details(), without building labels (hot path).
+        s = 0.0
+        phase = ctx.phase
+        passed_scale = phase + (1 - phase) * PASSED_EG_SCALE
+        is_passed = self._is_passed
+        for color, sign in ((chess.WHITE, 1), (chess.BLACK, -1)):
+            own = ctx.pawn_files[color]
+            enemy = ctx.pawn_files[not color]
+            for f in range(8):
+                ranks = own[f]
+                if not ranks:
+                    continue
+                n = len(ranks)
+                if n > 1:
+                    s -= sign * DOUBLED_PENALTY * (n - 1)
+                if not ((f > 0 and own[f - 1]) or (f < 7 and own[f + 1])):
+                    s -= sign * ISOLATED_PENALTY * n
+                for r in ranks:
+                    if is_passed(color, f, r, enemy):
+                        rel_rank = r if color == chess.WHITE else 7 - r
+                        s += sign * PASSED_BONUS[rel_rank] * passed_scale
+        return s
 
     def details(self, ctx):
         items = []

@@ -137,18 +137,18 @@ class PiecePlacement:
     def details(self, ctx):
         phase = ctx.phase
         items = []
-        board = ctx.board
-        for sq, piece in sorted(ctx.piece_map.items()):
-            color, pt = piece.color, piece.piece_type
-            sign = 1 if color == chess.WHITE else -1
-            i = sq if color == chess.WHITE else sq ^ 56
-            if pt == chess.PAWN:
-                v = phase * PAWN_MG[i] + (1 - phase) * PAWN_EG[i]
-            elif pt == chess.KING:
-                v = phase * KING_MG[i] + (1 - phase) * KING_EG[i]
-            else:
-                v = _FLAT[pt][i]
-            if v:
-                label = f"{'White' if color else 'Black'} {chess.piece_name(pt)} on {chess.square_name(sq)}"
-                items.append((label, sign * v))
+        for color, sign, cname in ((chess.WHITE, 1, "White"), (chess.BLACK, -1, "Black")):
+            flip = 0 if color == chess.WHITE else 56
+            for pt in chess.PIECE_TYPES:
+                for sq in ctx.pieces[color][pt]:
+                    i = sq ^ flip
+                    if pt == chess.PAWN:
+                        v = phase * PAWN_MG[i] + (1 - phase) * PAWN_EG[i]
+                    elif pt == chess.KING:
+                        v = phase * KING_MG[i] + (1 - phase) * KING_EG[i]
+                    else:
+                        v = _FLAT[pt][i]
+                    if v:
+                        label = f"{cname} {chess.piece_name(pt)} on {chess.square_name(sq)}"
+                        items.append((label, sign * v))
         return items

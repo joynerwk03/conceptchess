@@ -13,7 +13,21 @@ class PieceActivity:
     display_name = "Piece activity"
 
     def score(self, ctx):
-        return sum(v for _, v in self.details(ctx))
+        # Same arithmetic as details(), without building labels (hot path).
+        s = 0
+        for color, sign in ((chess.WHITE, 1), (chess.BLACK, -1)):
+            if len(ctx.pieces[color][chess.BISHOP]) >= 2:
+                s += sign * BISHOP_PAIR
+            own = ctx.pawn_files[color]
+            enemy = ctx.pawn_files[not color]
+            seventh = 6 if color == chess.WHITE else 1
+            for sq in ctx.pieces[color][chess.ROOK]:
+                f = sq & 7
+                if not own[f]:
+                    s += sign * (ROOK_OPEN_FILE if not enemy[f] else ROOK_SEMI_OPEN)
+                if sq >> 3 == seventh:
+                    s += sign * ROOK_ON_SEVENTH
+        return s
 
     def details(self, ctx):
         items = []
