@@ -269,5 +269,25 @@
   "guard_ok": true,
   "kept": true,
   "seconds": 0.4
+ },
+ {
+  "n": 27,
+  "date": "2026-07-13",
+  "desc": "protected passers 1.3x",
+  "train_loss": 0.018396,
+  "val_loss": 0.017173,
+  "guard_ok": true,
+  "kept": false,
+  "seconds": 0.4
+ },
+ {
+  "n": 28,
+  "date": "2026-07-13",
+  "desc": "bad bishop penalty (6cp per excess same-color pawn)",
+  "train_loss": 0.018177,
+  "val_loss": 0.017034,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.4
  }
 ]

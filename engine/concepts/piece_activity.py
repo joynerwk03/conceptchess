@@ -1,4 +1,8 @@
-"""Piece activity: bishop pair, rooks on open/semi-open files, rook on 7th."""
+"""Piece activity: bishop pair, bad bishops, rooks on open/semi-open files,
+rook on 7th."""
+
+import chess as _c
+_LIGHT = _c.BB_LIGHT_SQUARES
 
 import chess
 
@@ -15,6 +19,12 @@ class PieceActivity:
         for color, sign in ((chess.WHITE, 1), (chess.BLACK, -1)):
             if len(ctx.pieces[color][chess.BISHOP]) >= 2:
                 s += sign * W["act.bishop_pair"]
+            pawns_bb = ctx.board.pawns & ctx.occupied_co[color]
+            for sq in ctx.pieces[color][chess.BISHOP]:
+                same = pawns_bb & (_LIGHT if (1 << sq) & _LIGHT else ~_LIGHT)
+                excess = chess.popcount(same) - 2
+                if excess > 0:
+                    s -= sign * W["act.bad_bishop"] * excess
             own = ctx.pawn_files[color]
             enemy = ctx.pawn_files[not color]
             seventh = 6 if color == chess.WHITE else 1
@@ -31,6 +41,14 @@ class PieceActivity:
         for color, sign, cname in ((chess.WHITE, 1, "White"), (chess.BLACK, -1, "Black")):
             if len(ctx.pieces[color][chess.BISHOP]) >= 2:
                 items.append((f"{cname} bishop pair", sign * W["act.bishop_pair"]))
+            pawns_bb = ctx.board.pawns & ctx.occupied_co[color]
+            for sq in ctx.pieces[color][chess.BISHOP]:
+                same = pawns_bb & (_LIGHT if (1 << sq) & _LIGHT else ~_LIGHT)
+                excess = chess.popcount(same) - 2
+                if excess > 0:
+                    items.append((f"{cname} bad bishop on {chess.square_name(sq)} "
+                                  f"({excess + 2} own pawns on its color)",
+                                  -sign * W["act.bad_bishop"] * excess))
             own = ctx.pawn_files[color]
             enemy = ctx.pawn_files[not color]
             seventh = 6 if color == chess.WHITE else 1

@@ -39,6 +39,7 @@ W = {
     "mob.rook": 3.997,
     "mob.queen": 1.058,
     # piece activity
+    "act.bad_bishop": 6,  # per own pawn (beyond 2) on the bishop's color
     "act.bishop_pair": 17.589,
     "act.rook_open": 39.319,
     "act.rook_semi": 19.986,
