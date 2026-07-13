@@ -17,12 +17,12 @@ W = {
     "material.rook": 500,
     "material.queen": 900,
     # piece-square tables: multiplier per piece type on the (tapered) table value
-    "pst.pawn": 1,
-    "pst.knight": 1,
-    "pst.bishop": 1,
-    "pst.rook": 1,
-    "pst.queen": 1,
-    "pst.king": 1,
+    "pst.pawn": 0.849,
+    "pst.knight": 0.849,
+    "pst.bishop": 0.849,
+    "pst.rook": 0.849,
+    "pst.queen": 1.169,
+    "pst.king": 1.169,
     # pawn structure
     "pawn.doubled": 12.729,
     "pawn.isolated": 10.183,
