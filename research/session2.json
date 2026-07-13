@@ -198,5 +198,15 @@
   "guard_ok": true,
   "kept": true,
   "seconds": 0.4
+ },
+ {
+  "n": 20,
+  "date": "2026-07-13",
+  "desc": "third joint fine pass",
+  "train_loss": 0.019361,
+  "val_loss": 0.017164,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.4
  }
 ]
