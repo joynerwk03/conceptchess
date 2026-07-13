@@ -7,12 +7,14 @@ pieces and a penalty for cramped ones.
 
 import chess
 
-# (weight cp per square, typical square count) per piece type
+from engine.weights import W
+
+# piece type -> (weight key, typical square count)
 MOBILITY_PARAMS = {
-    chess.KNIGHT: (4, 4),
-    chess.BISHOP: (3, 6),
-    chess.ROOK: (2, 7),
-    chess.QUEEN: (1, 13),
+    chess.KNIGHT: ("mob.knight", 4),
+    chess.BISHOP: ("mob.bishop", 6),
+    chess.ROOK: ("mob.rook", 7),
+    chess.QUEEN: ("mob.queen", 13),
 }
 
 
@@ -26,7 +28,8 @@ class Mobility:
         occ = ctx.occupied_co
         for color, sign in ((chess.WHITE, 1), (chess.BLACK, -1)):
             own = occ[color]
-            for pt, (w, typical) in MOBILITY_PARAMS.items():
+            for pt, (key, typical) in MOBILITY_PARAMS.items():
+                w = W[key]
                 for sq in ctx.pieces[color][pt]:
                     n = chess.popcount(board.attacks_mask(sq) & ~own)
                     s += sign * w * (n - typical)
@@ -38,7 +41,8 @@ class Mobility:
         occ = ctx.occupied_co
         for color, sign, cname in ((chess.WHITE, 1, "White"), (chess.BLACK, -1, "Black")):
             own = occ[color]
-            for pt, (w, typical) in MOBILITY_PARAMS.items():
+            for pt, (key, typical) in MOBILITY_PARAMS.items():
+                w = W[key]
                 for sq in ctx.pieces[color][pt]:
                     n = chess.popcount(board.attacks_mask(sq) & ~own)
                     v = sign * w * (n - typical)

@@ -19,6 +19,14 @@ def evaluate(board):
     return sum(c.score(ctx) for c in CONCEPTS)
 
 
+def clear_caches():
+    """Invalidate concept-level caches. MUST be called after mutating
+    engine.weights.W at runtime (the pawn/king caches bake weights in)."""
+    for c in CONCEPTS:
+        if hasattr(c, "_cache"):
+            c._cache.clear()
+
+
 @dataclass
 class ConceptBreakdown:
     name: str

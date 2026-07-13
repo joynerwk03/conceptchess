@@ -1,20 +1,23 @@
-"""Material: raw piece values."""
+"""Material: raw piece values (tunable via engine.weights)."""
 
 import chess
 
-PIECE_VALUES = {
-    chess.PAWN: 100,
-    chess.KNIGHT: 320,
-    chess.BISHOP: 330,
-    chess.ROOK: 500,
-    chess.QUEEN: 900,
-    chess.KING: 0,
-}
+from engine.weights import W
 
-_PIECE_NAMES = {
-    chess.PAWN: "pawns", chess.KNIGHT: "knights", chess.BISHOP: "bishops",
-    chess.ROOK: "rooks", chess.QUEEN: "queens",
-}
+_TYPES = (
+    (chess.PAWN, "material.pawn", "pawns"),
+    (chess.KNIGHT, "material.knight", "knights"),
+    (chess.BISHOP, "material.bishop", "bishops"),
+    (chess.ROOK, "material.rook", "rooks"),
+    (chess.QUEEN, "material.queen", "queens"),
+)
+
+
+def piece_value(piece_type):
+    for pt, key, _ in _TYPES:
+        if pt == piece_type:
+            return W[key]
+    return 0
 
 
 class Material:
@@ -24,15 +27,14 @@ class Material:
     def score(self, ctx):
         s = 0
         pieces = ctx.pieces
-        for pt, val in PIECE_VALUES.items():
-            if val:
-                s += val * (len(pieces[chess.WHITE][pt]) - len(pieces[chess.BLACK][pt]))
+        for pt, key, _ in _TYPES:
+            s += W[key] * (len(pieces[chess.WHITE][pt]) - len(pieces[chess.BLACK][pt]))
         return s
 
     def details(self, ctx):
         items = []
-        for pt, label in _PIECE_NAMES.items():
+        for pt, key, label in _TYPES:
             diff = len(ctx.pieces[chess.WHITE][pt]) - len(ctx.pieces[chess.BLACK][pt])
             if diff:
-                items.append((f"{label} ({diff:+d})", PIECE_VALUES[pt] * diff))
+                items.append((f"{label} ({diff:+d})", W[key] * diff))
         return items

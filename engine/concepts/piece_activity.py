@@ -2,10 +2,7 @@
 
 import chess
 
-BISHOP_PAIR = 30
-ROOK_OPEN_FILE = 20
-ROOK_SEMI_OPEN = 10
-ROOK_ON_SEVENTH = 20
+from engine.weights import W
 
 
 class PieceActivity:
@@ -17,23 +14,23 @@ class PieceActivity:
         s = 0
         for color, sign in ((chess.WHITE, 1), (chess.BLACK, -1)):
             if len(ctx.pieces[color][chess.BISHOP]) >= 2:
-                s += sign * BISHOP_PAIR
+                s += sign * W["act.bishop_pair"]
             own = ctx.pawn_files[color]
             enemy = ctx.pawn_files[not color]
             seventh = 6 if color == chess.WHITE else 1
             for sq in ctx.pieces[color][chess.ROOK]:
                 f = sq & 7
                 if not own[f]:
-                    s += sign * (ROOK_OPEN_FILE if not enemy[f] else ROOK_SEMI_OPEN)
+                    s += sign * (W["act.rook_open"] if not enemy[f] else W["act.rook_semi"])
                 if sq >> 3 == seventh:
-                    s += sign * ROOK_ON_SEVENTH
+                    s += sign * W["act.rook_seventh"]
         return s
 
     def details(self, ctx):
         items = []
         for color, sign, cname in ((chess.WHITE, 1, "White"), (chess.BLACK, -1, "Black")):
             if len(ctx.pieces[color][chess.BISHOP]) >= 2:
-                items.append((f"{cname} bishop pair", sign * BISHOP_PAIR))
+                items.append((f"{cname} bishop pair", sign * W["act.bishop_pair"]))
             own = ctx.pawn_files[color]
             enemy = ctx.pawn_files[not color]
             seventh = 6 if color == chess.WHITE else 1
@@ -42,11 +39,11 @@ class PieceActivity:
                 name = chess.square_name(sq)
                 if not own[f] and not enemy[f]:
                     items.append((f"{cname} rook on open {chr(97 + f)}-file",
-                                  sign * ROOK_OPEN_FILE))
+                                  sign * W["act.rook_open"]))
                 elif not own[f]:
                     items.append((f"{cname} rook on semi-open {chr(97 + f)}-file",
-                                  sign * ROOK_SEMI_OPEN))
+                                  sign * W["act.rook_semi"]))
                 if chess.square_rank(sq) == seventh:
                     items.append((f"{cname} rook on {name} (7th rank)",
-                                  sign * ROOK_ON_SEVENTH))
+                                  sign * W["act.rook_seventh"]))
         return items

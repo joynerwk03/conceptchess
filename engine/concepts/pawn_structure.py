@@ -2,11 +2,11 @@
 
 import chess
 
-DOUBLED_PENALTY = 15       # per extra pawn on a file
-ISOLATED_PENALTY = 12      # per isolated pawn
-# Passed pawn bonus by rank (from the pawn's own side; rank index 0-7).
+from engine.weights import W
+
+# Passed pawn base bonus by rank (from the pawn's own side; rank index 0-7),
+# scaled by W["pawn.passed_scale"].
 PASSED_BONUS = [0, 10, 15, 20, 35, 60, 100, 0]
-PASSED_EG_SCALE = 1.5      # passed pawns matter more in the endgame
 
 
 class PawnStructure:
@@ -30,7 +30,7 @@ class PawnStructure:
             self._cache[key] = cached
         base, passed_raw = cached
         phase = ctx.phase
-        return base + passed_raw * (phase + (1 - phase) * PASSED_EG_SCALE)
+        return base + passed_raw * (phase + (1 - phase) * W["pawn.passed_eg_scale"])
 
     def _compute(self, ctx):
         """Same arithmetic as details(), split into phase-free parts."""
@@ -46,19 +46,19 @@ class PawnStructure:
                     continue
                 n = len(ranks)
                 if n > 1:
-                    base -= sign * DOUBLED_PENALTY * (n - 1)
+                    base -= sign * W["pawn.doubled"] * (n - 1)
                 if not ((f > 0 and own[f - 1]) or (f < 7 and own[f + 1])):
-                    base -= sign * ISOLATED_PENALTY * n
+                    base -= sign * W["pawn.isolated"] * n
                 for r in ranks:
                     if is_passed(color, f, r, enemy):
                         rel_rank = r if color == chess.WHITE else 7 - r
-                        passed_raw += sign * PASSED_BONUS[rel_rank]
+                        passed_raw += sign * PASSED_BONUS[rel_rank] * W["pawn.passed_scale"]
         return base, passed_raw
 
     def details(self, ctx):
         items = []
         phase = ctx.phase
-        passed_scale = phase + (1 - phase) * PASSED_EG_SCALE
+        passed_scale = phase + (1 - phase) * W["pawn.passed_eg_scale"]
         for color, sign, cname in ((chess.WHITE, 1, "White"), (chess.BLACK, -1, "Black")):
             own = ctx.pawn_files[color]
             enemy = ctx.pawn_files[not color]
@@ -68,17 +68,18 @@ class PawnStructure:
                     continue
                 if len(ranks) > 1:
                     items.append((f"{cname} doubled pawns on {chr(97 + f)}-file",
-                                  -sign * DOUBLED_PENALTY * (len(ranks) - 1)))
+                                  -sign * W["pawn.doubled"] * (len(ranks) - 1)))
                 neighbors = (own[f - 1] if f > 0 else []) + (own[f + 1] if f < 7 else [])
                 if not neighbors:
                     items.append((f"{cname} isolated pawn(s) on {chr(97 + f)}-file",
-                                  -sign * ISOLATED_PENALTY * len(ranks)))
+                                  -sign * W["pawn.isolated"] * len(ranks)))
                 for r in ranks:
                     if self._is_passed(color, f, r, enemy):
                         rel_rank = r if color == chess.WHITE else 7 - r
                         sq = chess.square_name(chess.square(f, r))
                         items.append((f"{cname} passed pawn on {sq}",
-                                      sign * PASSED_BONUS[rel_rank] * passed_scale))
+                                      sign * PASSED_BONUS[rel_rank]
+                                      * W["pawn.passed_scale"] * passed_scale))
         return items
 
     @staticmethod

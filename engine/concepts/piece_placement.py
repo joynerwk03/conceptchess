@@ -110,6 +110,11 @@ KING_MG = _from_visual(_KING_MG_VIS)
 KING_EG = _from_visual(_KING_EG_VIS)
 
 _FLAT = {chess.KNIGHT: KNIGHT, chess.BISHOP: BISHOP, chess.ROOK: ROOK, chess.QUEEN: QUEEN}
+_SCALE_KEY = {chess.PAWN: "pst.pawn", chess.KNIGHT: "pst.knight",
+              chess.BISHOP: "pst.bishop", chess.ROOK: "pst.rook",
+              chess.QUEEN: "pst.queen", chess.KING: "pst.king"}
+
+from engine.weights import W
 
 
 class PiecePlacement:
@@ -123,15 +128,17 @@ class PiecePlacement:
         for color, sign in ((chess.WHITE, 1), (chess.BLACK, -1)):
             flip = 0 if color == chess.WHITE else 56
             for pt, table in _FLAT.items():
+                w = W[_SCALE_KEY[pt]]
                 for sq in pieces[color][pt]:
-                    s += sign * table[sq ^ flip]
+                    s += sign * w * table[sq ^ flip]
+            w = W["pst.pawn"]
             for sq in pieces[color][chess.PAWN]:
                 i = sq ^ flip
-                s += sign * (phase * PAWN_MG[i] + (1 - phase) * PAWN_EG[i])
+                s += sign * w * (phase * PAWN_MG[i] + (1 - phase) * PAWN_EG[i])
             ksq = ctx.king_sq[color]
             if ksq is not None:
                 i = ksq ^ flip
-                s += sign * (phase * KING_MG[i] + (1 - phase) * KING_EG[i])
+                s += sign * W["pst.king"] * (phase * KING_MG[i] + (1 - phase) * KING_EG[i])
         return s
 
     def details(self, ctx):
@@ -148,6 +155,7 @@ class PiecePlacement:
                         v = phase * KING_MG[i] + (1 - phase) * KING_EG[i]
                     else:
                         v = _FLAT[pt][i]
+                    v *= W[_SCALE_KEY[pt]]
                     if v:
                         label = f"{cname} {chess.piece_name(pt)} on {chess.square_name(sq)}"
                         items.append((label, sign * v))

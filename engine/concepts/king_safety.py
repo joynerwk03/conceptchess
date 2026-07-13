@@ -6,8 +6,7 @@ not in a pawn endgame.
 
 import chess
 
-MISSING_SHIELD_PENALTY = 12   # per shield file with no friendly pawn nearby
-OPEN_FILE_PENALTY = 15        # per fully open file adjacent to / on the king's file
+from engine.weights import W
 
 
 class KingSafety:
@@ -56,7 +55,7 @@ class KingSafety:
                     missing += 1
                 if not own[f] and not enemy[f]:
                     open_files += 1
-            raw -= sign * (MISSING_SHIELD_PENALTY * missing + OPEN_FILE_PENALTY * open_files)
+            raw -= sign * (W["king.shield_gap"] * missing + W["king.open_file"] * open_files)
         return raw
 
     def details(self, ctx):
@@ -87,8 +86,8 @@ class KingSafety:
                     open_files += 1
             if missing:
                 items.append((f"{cname} king shield gaps ({missing})",
-                              -sign * MISSING_SHIELD_PENALTY * missing * phase))
+                              -sign * W["king.shield_gap"] * missing * phase))
             if open_files:
                 items.append((f"Open file(s) near {cname} king ({open_files})",
-                              -sign * OPEN_FILE_PENALTY * open_files * phase))
+                              -sign * W["king.open_file"] * open_files * phase))
         return items

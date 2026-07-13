@@ -13,7 +13,8 @@ from dataclasses import dataclass, field
 import chess
 
 from engine.evaluation import evaluate
-from engine.concepts.material import PIECE_VALUES
+# Move-ordering piece values (fixed; deliberately decoupled from eval weights)
+ORDER_VALUES = {1: 100, 2: 320, 3: 330, 4: 500, 5: 900, 6: 0}
 
 MATE_SCORE = 100_000
 MATE_THRESHOLD = 90_000
@@ -273,16 +274,16 @@ class Searcher:
     def _mvv_lva(self, board, move):
         victim = self._victim_value(board, move)
         attacker = board.piece_type_at(move.from_square)
-        return victim * 10 - PIECE_VALUES.get(attacker, 0)
+        return victim * 10 - ORDER_VALUES.get(attacker, 0)
 
     @staticmethod
     def _victim_value(board, move):
         if move.promotion:
-            return PIECE_VALUES[chess.QUEEN]
+            return ORDER_VALUES[chess.QUEEN]
         if board.is_en_passant(move):
-            return PIECE_VALUES[chess.PAWN]
+            return ORDER_VALUES[chess.PAWN]
         vt = board.piece_type_at(move.to_square)
-        return PIECE_VALUES.get(vt, 0)
+        return ORDER_VALUES.get(vt, 0)
 
     @staticmethod
     def _has_non_pawn_material(board):

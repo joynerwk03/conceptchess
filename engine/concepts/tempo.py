@@ -2,7 +2,7 @@
 
 import chess
 
-TEMPO_BONUS = 10
+from engine.weights import W
 
 
 class Tempo:
@@ -10,7 +10,7 @@ class Tempo:
     display_name = "Tempo"
 
     def score(self, ctx):
-        return TEMPO_BONUS if ctx.board.turn == chess.WHITE else -TEMPO_BONUS
+        return W["tempo"] if ctx.board.turn == chess.WHITE else -W["tempo"]
 
     def details(self, ctx):
         side = "White" if ctx.board.turn == chess.WHITE else "Black"
