@@ -192,8 +192,14 @@ class Searcher:
         if stand_pat > alpha:
             alpha = stand_pat
 
-        captures = [m for m in board.legal_moves
-                    if board.is_capture(m) or m.promotion == chess.QUEEN]
+        captures = list(board.generate_legal_captures())
+        # Non-capturing queen promotions are tactically loud too.
+        promo_rank = chess.BB_RANK_7 if board.turn == chess.WHITE else chess.BB_RANK_2
+        if board.pawns & board.occupied_co[board.turn] & promo_rank:
+            captures.extend(
+                m for m in board.generate_legal_moves(
+                    board.pawns & promo_rank, ~board.occupied)
+                if m.promotion == chess.QUEEN)
         captures.sort(key=lambda m: self._mvv_lva(board, m), reverse=True)
         for move in captures:
             # Delta pruning: even winning the victim can't raise alpha.
