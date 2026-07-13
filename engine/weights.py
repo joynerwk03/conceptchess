@@ -24,11 +24,11 @@ W = {
     "pst.queen": 1,
     "pst.king": 1,
     # pawn structure
-    "pawn.doubled": 15,
-    "pawn.isolated": 12,
-    "pawn.passed_scale": 1,     # multiplier on the per-rank passed bonus
-    "pawn.passed_eg_scale": 1.5,
-    "pawn.blocked_passer": 0.5,  # multiplier when the square in front is occupied  # passed pawns matter more in the endgame
+    "pawn.doubled": 12.729,
+    "pawn.isolated": 10.183,
+    "pawn.passed_scale": 1.103,     # multiplier on the per-rank passed bonus
+    "pawn.passed_eg_scale": 1.753,
+    "pawn.blocked_passer": 0.424,  # multiplier when the square in front is occupied  # passed pawns matter more in the endgame
     # king safety
     "king.shield_gap": 12,
     "king.open_file": 15,

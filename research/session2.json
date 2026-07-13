@@ -138,5 +138,15 @@
   "guard_ok": true,
   "kept": true,
   "seconds": 0.4
+ },
+ {
+  "n": 14,
+  "date": "2026-07-13",
+  "desc": "tune pawn weights (fine)",
+  "train_loss": 0.022415,
+  "val_loss": 0.019008,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.4
  }
 ]
