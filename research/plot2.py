@@ -31,16 +31,12 @@ def build_graph():
     kept = [e["kept"] for e in ENTRIES]
 
     fig, ax = plt.subplots(figsize=(12, 6), dpi=110)
-    # running best (only kept experiments lower it)
-    bx, by = [], []
-    best = float("inf")
-    for e in ENTRIES:
-        if e["kept"] and e["val_loss"] < best:
-            best = e["val_loss"]
-            bx.append(e["n"])
-            by.append(best)
+    # adopted-state line: every kept experiment moves it (the strength-gated
+    # override at exp 24 legitimately steps it UP)
+    bx = [e["n"] for e in ENTRIES if e["kept"]]
+    by = [e["val_loss"] for e in ENTRIES if e["kept"]]
     ax.step(bx + [xs[-1]], by + [by[-1]], where="post", color=GREEN,
-            lw=1.8, alpha=0.85, label="Running best", zorder=2)
+            lw=1.8, alpha=0.85, label="Adopted state", zorder=2)
 
     dx = [x for x, k in zip(xs, kept) if not k]
     dy = [y for y, k in zip(ys, kept) if not k]
@@ -87,7 +83,8 @@ def build_html():
                  f'<td class="num">{e["train_loss"]:.6f}</td>'
                  f'<td><span class="badge {badge[0]}">{badge[1]}</span></td></tr>')
     n_kept = sum(e["kept"] for e in ENTRIES)
-    first, last = ENTRIES[0]["val_loss"], min(e["val_loss"] for e in ENTRIES if e["kept"])
+    first = ENTRIES[0]["val_loss"]
+    last = [e["val_loss"] for e in ENTRIES if e["kept"]][-1]
     HTML_OUT.write_text(TEMPLATE
                         .replace("{{SVG}}", svg)
                         .replace("{{ROWS}}", rows)
