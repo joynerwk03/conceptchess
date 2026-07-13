@@ -178,5 +178,15 @@
   "guard_ok": true,
   "kept": true,
   "seconds": 0.4
+ },
+ {
+  "n": 18,
+  "date": "2026-07-13",
+  "desc": "joint fine pass over all non-material weights",
+  "train_loss": 0.021241,
+  "val_loss": 0.018039,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.4
  }
 ]
