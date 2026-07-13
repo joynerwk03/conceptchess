@@ -92,9 +92,14 @@ class Searcher:
         best_move = None
         tt_move = self._tt_move(board)
         ordered = self._order_moves(board, root_moves, tt_move, 0)
-        for move in ordered:
+        for i, move in enumerate(ordered):
             board.push(move)
-            score = -self._negamax(board, depth - 1, -beta, -alpha, 1)
+            if i == 0:
+                score = -self._negamax(board, depth - 1, -beta, -alpha, 1)
+            else:
+                score = -self._negamax(board, depth - 1, -alpha - 1, -alpha, 1)
+                if score > alpha:
+                    score = -self._negamax(board, depth - 1, -beta, -alpha, 1)
             board.pop()
             if score > alpha:
                 alpha = score
@@ -154,15 +159,19 @@ class Searcher:
         for i, move in enumerate(ordered):
             is_quiet = not board.is_capture(move) and move.promotion is None
             board.push(move)
-            # Late move reductions: well-ordered quiet moves late in the list
-            # rarely matter — search them shallower, re-search on surprise.
-            # (Checks are safe: the in-check extension restores depth below.)
-            if (depth >= 3 and i >= 4 and is_quiet and not in_check):
-                score = -self._negamax(board, depth - 2, -alpha - 1, -alpha, ply + 1)
-                if score > alpha:
-                    score = -self._negamax(board, depth - 1, -beta, -alpha, ply + 1)
-            else:
+            if i == 0:
+                # Principal variation: full window.
                 score = -self._negamax(board, depth - 1, -beta, -alpha, ply + 1)
+            else:
+                # PVS: scout later moves with a null window. Late move
+                # reductions: quiet moves late in a well-ordered list are also
+                # searched two plies shallower. Anything that beats alpha gets
+                # a full re-search. (Checking moves are safe: the in-check
+                # extension restores their depth in the child.)
+                red = 2 if (depth >= 3 and i >= 4 and is_quiet and not in_check) else 1
+                score = -self._negamax(board, depth - red, -alpha - 1, -alpha, ply + 1)
+                if score > alpha and (red > 1 or beta > alpha + 1):
+                    score = -self._negamax(board, depth - 1, -beta, -alpha, ply + 1)
             board.pop()
             if score > best_score:
                 best_score = score
