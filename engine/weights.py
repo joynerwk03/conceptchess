@@ -39,10 +39,10 @@ W = {
     "mob.rook": 2.338,
     "mob.queen": 1.169,
     # piece activity
-    "act.bishop_pair": 30,
-    "act.rook_open": 20,
-    "act.rook_semi": 10,
-    "act.rook_seventh": 20,
+    "act.bishop_pair": 25.458,
+    "act.rook_open": 23.38,
+    "act.rook_semi": 11.69,
+    "act.rook_seventh": 16.972,
     # tempo
-    "tempo": 10,
+    "tempo": 11.69,
 }
