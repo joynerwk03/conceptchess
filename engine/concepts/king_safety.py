@@ -14,12 +14,28 @@ class KingSafety:
     name = "king_safety"
     display_name = "King safety"
 
+    def __init__(self):
+        # (wp_bb, bp_bb, wk_sq, bk_sq) -> phase-free raw penalty.
+        self._cache = {}
+
     def score(self, ctx):
-        # Same arithmetic as details(), without building labels (hot path).
         phase = ctx.phase
         if phase < 0.05:
             return 0.0
-        s = 0.0
+        board = ctx.board
+        key = (board.pawns & ctx.occupied_co[1], board.pawns & ctx.occupied_co[0],
+               ctx.king_sq[chess.WHITE], ctx.king_sq[chess.BLACK])
+        raw = self._cache.get(key)
+        if raw is None:
+            raw = self._compute(ctx)
+            if len(self._cache) > 200_000:
+                self._cache.clear()
+            self._cache[key] = raw
+        return raw * phase
+
+    def _compute(self, ctx):
+        """Same arithmetic as details(), with the phase factor left out."""
+        raw = 0.0
         for color, sign in ((chess.WHITE, 1), (chess.BLACK, -1)):
             ksq = ctx.king_sq[color]
             if ksq is None:
@@ -40,11 +56,8 @@ class KingSafety:
                     missing += 1
                 if not own[f] and not enemy[f]:
                     open_files += 1
-            if missing:
-                s -= sign * MISSING_SHIELD_PENALTY * missing * phase
-            if open_files:
-                s -= sign * OPEN_FILE_PENALTY * open_files * phase
-        return s
+            raw -= sign * (MISSING_SHIELD_PENALTY * missing + OPEN_FILE_PENALTY * open_files)
+        return raw
 
     def details(self, ctx):
         items = []

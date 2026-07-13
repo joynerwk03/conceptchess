@@ -13,11 +13,29 @@ class PawnStructure:
     name = "pawn_structure"
     display_name = "Pawn structure"
 
+    def __init__(self):
+        # (white_pawn_bb, black_pawn_bb) -> (base_score, raw_passed_bonus).
+        # Pawn structure only changes on pawn moves/captures, so this hits
+        # nearly always. Phase scaling is applied outside the cache.
+        self._cache = {}
+
     def score(self, ctx):
-        # Same arithmetic as details(), without building labels (hot path).
-        s = 0.0
+        board = ctx.board
+        key = (board.pawns & ctx.occupied_co[1], board.pawns & ctx.occupied_co[0])
+        cached = self._cache.get(key)
+        if cached is None:
+            cached = self._compute(ctx)
+            if len(self._cache) > 200_000:
+                self._cache.clear()
+            self._cache[key] = cached
+        base, passed_raw = cached
         phase = ctx.phase
-        passed_scale = phase + (1 - phase) * PASSED_EG_SCALE
+        return base + passed_raw * (phase + (1 - phase) * PASSED_EG_SCALE)
+
+    def _compute(self, ctx):
+        """Same arithmetic as details(), split into phase-free parts."""
+        base = 0.0
+        passed_raw = 0.0
         is_passed = self._is_passed
         for color, sign in ((chess.WHITE, 1), (chess.BLACK, -1)):
             own = ctx.pawn_files[color]
@@ -28,14 +46,14 @@ class PawnStructure:
                     continue
                 n = len(ranks)
                 if n > 1:
-                    s -= sign * DOUBLED_PENALTY * (n - 1)
+                    base -= sign * DOUBLED_PENALTY * (n - 1)
                 if not ((f > 0 and own[f - 1]) or (f < 7 and own[f + 1])):
-                    s -= sign * ISOLATED_PENALTY * n
+                    base -= sign * ISOLATED_PENALTY * n
                 for r in ranks:
                     if is_passed(color, f, r, enemy):
                         rel_rank = r if color == chess.WHITE else 7 - r
-                        s += sign * PASSED_BONUS[rel_rank] * passed_scale
-        return s
+                        passed_raw += sign * PASSED_BONUS[rel_rank]
+        return base, passed_raw
 
     def details(self, ctx):
         items = []
