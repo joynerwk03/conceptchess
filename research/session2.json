@@ -228,5 +228,26 @@
   "guard_ok": true,
   "kept": true,
   "seconds": 0.4
+ },
+ {
+  "n": 23,
+  "date": "2026-07-13",
+  "desc": "bounded retune from chess priors (0.5-2x clamps)",
+  "train_loss": 0.019905,
+  "val_loss": 0.017465,
+  "guard_ok": true,
+  "kept": false,
+  "seconds": 0.4
+ },
+ {
+  "n": 24,
+  "date": "2026-07-13",
+  "desc": "adopt bounded weights (beat val-optimal +7=1-2 in match)",
+  "train_loss": 0.019905,
+  "val_loss": 0.017465,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 380.0,
+  "note": "Override of the val-loss rule: 10-game match showed the val-optimal unbounded weights are ~190 Elo WEAKER than chess-prior-bounded weights. Proxy metric diverges from strength outside the interpretable region."
  }
 ]

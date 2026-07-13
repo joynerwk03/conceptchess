@@ -35,8 +35,11 @@ def main():
     val = loss("val")
 
     entries = json.loads(LOG.read_text()) if LOG.exists() else []
+    # Compare against the currently ADOPTED state (last kept experiment),
+    # not the historical minimum — overrides (e.g. strength-gated reverts)
+    # can legitimately move the adopted val loss up.
     kept_vals = [e["val_loss"] for e in entries if e["kept"]]
-    best = min(kept_vals) if kept_vals else float("inf")
+    best = kept_vals[-1] if kept_vals else float("inf")
 
     kept = guard_ok and val < best - EPS
     entries.append({
