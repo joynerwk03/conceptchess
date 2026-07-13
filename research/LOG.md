@@ -5,6 +5,20 @@ ones — negative results are data.
 
 ---
 
+## 2026-07-13 — Neutral analytical explanations
+
+**What:** Removed personification from the explanation layer. Output is now:
+verdict ("White is clearly better (+1.45)" / "Forced mate in 2 for Black"),
+main factors at the end of the expected line, biggest concept shifts over the
+line (tempo excluded as uninstructive), and an explicit residual note when
+quiescence tactics beyond the PV make the search score differ from the static
+breakdown by >0.60. GUI: breakdown chart labeled with its scope (current
+position vs end of expected line), concept items sorted by magnitude.
+
+**Verdict:** ACCEPTED (product change; no strength impact, tests green).
+
+---
+
 ## 2026-07-13 — v0 baseline (initial build)
 
 **What:** Full rewrite from scratch. Concept-sum evaluation (material,

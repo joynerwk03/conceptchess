@@ -115,13 +115,14 @@
   </div>
 
   <div class="panel">
-    <h2>Engine's assessment</h2>
+    <h2>Analysis</h2>
     <div class="bigscore" id="score">+0.00</div>
-    <div class="meta" id="meta">Play a move to see the engine think.</div>
+    <div class="meta" id="meta">Play a move to see the analysis.</div>
     <div class="why" id="why" style="display:none"></div>
     <h3>Expected line</h3>
     <div class="pv" id="pv">—</div>
-    <h3>Position concepts <span style="text-transform:none">(click a row for details; green favors White)</span></h3>
+    <h3>Evaluation breakdown — <span id="cScope" style="text-transform:none">current position</span></h3>
+    <div class="meta" style="margin:0 0 6px">Positive favors White. Click a row for the individual contributions.</div>
     <div id="concepts"></div>
   </div>
 </div>
@@ -224,7 +225,7 @@ async function refreshState() {
   updateStatusLine();
   api("/api/eval", payload()).then(e => {
     setEvalBar(e.breakdown.total);
-    renderConcepts(e.breakdown, null);
+    renderConcepts(e.breakdown, null, "current position");
   });
 }
 
@@ -236,7 +237,7 @@ function updateStatusLine() {
       : `Draw (${state.status.replace(/_/g," ")})`;
     el.innerHTML = "Game over: " + msg;
   } else if (state.thinking) {
-    el.innerHTML = `<span class="thinking">Engine is thinking…</span>`;
+    el.innerHTML = `<span class="thinking">Analyzing…</span>`;
   } else {
     el.innerHTML = `<b>${state.turn === state.playerColor ? "Your move" : "Engine's move"}</b>` +
                    (state.inCheck ? " — check!" : "");
@@ -287,10 +288,11 @@ function showExplanation(ex) {
   why.innerHTML = ex.explanation.map(s => "• " + s).join("<br>");
   $("pv").textContent = ex.pv.join("  ") || "—";
   setEvalBar(ex.score_white);
-  renderConcepts(ex.breakdown_after, ex.concept_deltas);
+  renderConcepts(ex.breakdown_after, ex.concept_deltas, "end of expected line");
 }
 
-function renderConcepts(breakdown, deltas) {
+function renderConcepts(breakdown, deltas, scope) {
+  if (scope) $("cScope").textContent = scope;
   const wrap = $("concepts");
   wrap.innerHTML = "";
   const maxAbs = Math.max(80, ...breakdown.concepts.map(c => Math.abs(c.score)));
@@ -312,8 +314,9 @@ function renderConcepts(breakdown, deltas) {
     wrap.appendChild(row);
     const items = document.createElement("div");
     items.className = "items";
-    items.innerHTML = c.items.length
-      ? c.items.map(([label, v]) =>
+    const sorted = [...c.items].sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+    items.innerHTML = sorted.length
+      ? sorted.map(([label, v]) =>
           `<div><span>${label}</span><span>${(v/100).toFixed(2)}</span></div>`).join("")
       : "<div><span>No contributions</span><span></span></div>";
     wrap.appendChild(items);

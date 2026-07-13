@@ -59,9 +59,10 @@ def explain_move(board, result):
             "delta": round(d, 1),
         })
 
-    sentences = _sentences(board, result, deltas, mover_white)
-
     white_score = result.score if mover_white else -result.score
+    sentences = _sentences(white_score, result.score, deltas, mover_white,
+                           after.total)
+
     return {
         "move": board.san(result.move) if result.move else None,
         "uci": result.move.uci() if result.move else None,
@@ -80,54 +81,60 @@ def explain_move(board, result):
     }
 
 
-def _sentences(board, result, deltas, mover_white):
-    """Short natural-language summary of why the move was chosen."""
+def _sentences(white_score, stm_score, deltas, mover_white, static_after_total):
+    """Neutral analytical summary. All values are from White's perspective."""
     out = []
-    md = mate_distance(result.score)
+    md = mate_distance(stm_score)
     if md is not None:
-        if md > 0:
-            out.append(f"I found a forced mate in {(md + 1) // 2}.")
-        else:
-            out.append(f"I'm getting mated in {(abs(md) + 1) // 2} moves; "
-                       "this line holds out longest.")
+        winner_is_mover = md > 0
+        winner = "White" if (winner_is_mover == mover_white) else "Black"
+        out.append(f"Forced mate in {(abs(md) + 1) // 2} for {winner}.")
         return out
 
-    sign = 1 if mover_white else -1
-    gains, losses = [], []
-    for d in deltas:
-        my_delta = sign * d["delta"]
-        if my_delta >= 8:
-            gains.append((d["display_name"], my_delta))
-        elif my_delta <= -8:
-            losses.append((d["display_name"], my_delta))
-    gains.sort(key=lambda x: -x[1])
-    losses.sort(key=lambda x: x[1])
+    out.append(_verdict(white_score))
 
-    if gains:
-        parts = ", ".join(f"{name.lower()} ({v / 100:+.2f})" for name, v in gains[:3])
-        out.append(f"In the line I expect, I gain in {parts}.")
-    if losses:
-        parts = ", ".join(f"{name.lower()} ({v / 100:+.2f})" for name, v in losses[:3])
-        out.append(f"I concede some {parts}.")
-    if not gains and not losses:
-        out.append("No concept changes much in the expected line; "
-                   "this move keeps the position balanced.")
+    # Main factors: largest concept scores at the end of the expected line.
+    mains = sorted((d for d in deltas if abs(d["after"]) >= 25),
+                   key=lambda d: -abs(d["after"]))[:3]
+    if mains:
+        parts = ", ".join(
+            f"{d['display_name'].lower()} {d['after'] / 100:+.2f}" for d in mains)
+        out.append(f"Main factors (end of expected line): {parts}.")
 
-    white_score = result.score if mover_white else -result.score
-    verdict = _verdict(white_score, mover_white)
-    if verdict:
-        out.append(verdict)
+    # Largest shifts caused by the expected line. Tempo is excluded: it just
+    # flips with the side to move and carries no instructive signal here.
+    shifts = sorted((d for d in deltas
+                     if d["name"] != "tempo" and abs(d["delta"]) >= 15),
+                    key=lambda d: -abs(d["delta"]))[:3]
+    if shifts:
+        parts = ", ".join(
+            f"{d['display_name'].lower()} {d['delta'] / 100:+.2f}" for d in shifts)
+        out.append(f"Biggest changes over this line: {parts} "
+                   "(positive favors White).")
+
+    # Honesty check: the search score comes from quiescence beyond the PV, so
+    # it can differ from the static breakdown at the PV's end. Flag it when
+    # the gap is material, instead of letting the chart silently disagree.
+    residual = white_score - static_after_total
+    if abs(residual) > 60:
+        out.append(f"Note: unresolved captures/checks beyond the shown line "
+                   f"account for a further {residual / 100:+.2f}.")
     return out
 
 
-def _verdict(white_score, mover_white):
-    my_score = white_score if mover_white else -white_score
-    if my_score > 150:
-        return "Overall I think I'm clearly better here."
-    if my_score > 50:
-        return "Overall I think I'm somewhat better."
-    if my_score > -50:
-        return "I consider the position roughly balanced."
-    if my_score > -150:
-        return "I think I'm somewhat worse, so I'm defending."
-    return "I'm clearly worse and looking for counterplay."
+def _verdict(white_score):
+    ws = white_score
+    s = f"{ws / 100:+.2f}"
+    if ws > 300:
+        return f"White has a winning advantage ({s})."
+    if ws > 120:
+        return f"White is clearly better ({s})."
+    if ws > 40:
+        return f"White is slightly better ({s})."
+    if ws >= -40:
+        return f"The position is roughly equal ({s})."
+    if ws >= -120:
+        return f"Black is slightly better ({s})."
+    if ws >= -300:
+        return f"Black is clearly better ({s})."
+    return f"Black has a winning advantage ({s})."

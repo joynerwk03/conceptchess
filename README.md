@@ -21,8 +21,9 @@ python3 -m venv .venv
 Click a piece, click a destination (promotions auto-queen). After each engine
 move the right panel shows:
 
-- the engine's score and the line it expects (PV)
-- a plain-English summary of *why* it chose the move
+- the evaluation and the line the engine expects (PV)
+- a neutral summary of the main factors behind the score and how they change
+  over the expected line
 - every concept's contribution, with per-item detail (click a row)
 
 The engine also speaks UCI (`python -m engine.uci`) if you prefer your own GUI.
