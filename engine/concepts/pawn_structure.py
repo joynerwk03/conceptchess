@@ -14,9 +14,10 @@ class PawnStructure:
     display_name = "Pawn structure"
 
     def __init__(self):
-        # (white_pawn_bb, black_pawn_bb) -> (base_score, raw_passed_bonus).
+        # (white_pawn_bb, black_pawn_bb) -> (base_score, [(sign, sq, raw_bonus)]).
         # Pawn structure only changes on pawn moves/captures, so this hits
-        # nearly always. Phase scaling is applied outside the cache.
+        # nearly always. Phase scaling and blockade checks (which depend on
+        # piece occupancy, not just pawns) are applied outside the cache.
         self._cache = {}
 
     def score(self, ctx):
@@ -28,14 +29,22 @@ class PawnStructure:
             if len(self._cache) > 200_000:
                 self._cache.clear()
             self._cache[key] = cached
-        base, passed_raw = cached
+        base, passers = cached
         phase = ctx.phase
-        return base + passed_raw * (phase + (1 - phase) * W["pawn.passed_eg_scale"])
+        scale = phase + (1 - phase) * W["pawn.passed_eg_scale"]
+        occupied = ctx.board.occupied
+        blocked_mult = W["pawn.blocked_passer"]
+        s = base
+        for sign, sq, raw in passers:
+            front = sq + 8 if sign > 0 else sq - 8
+            mult = blocked_mult if (0 <= front <= 63 and (occupied >> front) & 1) else 1.0
+            s += raw * mult * scale
+        return s
 
     def _compute(self, ctx):
         """Same arithmetic as details(), split into phase-free parts."""
         base = 0.0
-        passed_raw = 0.0
+        passers = []
         is_passed = self._is_passed
         for color, sign in ((chess.WHITE, 1), (chess.BLACK, -1)):
             own = ctx.pawn_files[color]
@@ -52,8 +61,9 @@ class PawnStructure:
                 for r in ranks:
                     if is_passed(color, f, r, enemy):
                         rel_rank = r if color == chess.WHITE else 7 - r
-                        passed_raw += sign * PASSED_BONUS[rel_rank] * W["pawn.passed_scale"]
-        return base, passed_raw
+                        passers.append((sign, chess.square(f, r),
+                                        sign * PASSED_BONUS[rel_rank] * W["pawn.passed_scale"]))
+        return base, passers
 
     def details(self, ctx):
         items = []
@@ -76,9 +86,13 @@ class PawnStructure:
                 for r in ranks:
                     if self._is_passed(color, f, r, enemy):
                         rel_rank = r if color == chess.WHITE else 7 - r
-                        sq = chess.square_name(chess.square(f, r))
-                        items.append((f"{cname} passed pawn on {sq}",
-                                      sign * PASSED_BONUS[rel_rank]
+                        sq = chess.square(f, r)
+                        front = sq + 8 if color == chess.WHITE else sq - 8
+                        blocked = 0 <= front <= 63 and (ctx.board.occupied >> front) & 1
+                        mult = W["pawn.blocked_passer"] if blocked else 1.0
+                        tag = " (blockaded)" if blocked else ""
+                        items.append((f"{cname} passed pawn on {chess.square_name(sq)}{tag}",
+                                      sign * PASSED_BONUS[rel_rank] * mult
                                       * W["pawn.passed_scale"] * passed_scale))
         return items
 

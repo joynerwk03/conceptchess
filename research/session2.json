@@ -108,5 +108,35 @@
   "guard_ok": true,
   "kept": true,
   "seconds": 0.4
+ },
+ {
+  "n": 11,
+  "date": "2026-07-13",
+  "desc": "knight outposts (+20)",
+  "train_loss": 0.022404,
+  "val_loss": 0.01916,
+  "guard_ok": true,
+  "kept": false,
+  "seconds": 0.4
+ },
+ {
+  "n": 12,
+  "date": "2026-07-13",
+  "desc": "knight outposts: weight sweep",
+  "train_loss": 0.022354,
+  "val_loss": 0.019169,
+  "guard_ok": true,
+  "kept": false,
+  "seconds": 0.4
+ },
+ {
+  "n": 13,
+  "date": "2026-07-13",
+  "desc": "blockaded passed pawns worth 0.5x",
+  "train_loss": 0.02254,
+  "val_loss": 0.019119,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.4
  }
 ]
