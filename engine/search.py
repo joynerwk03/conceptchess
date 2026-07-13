@@ -151,10 +151,18 @@ class Searcher:
         best_score = -MATE_SCORE - 1
         best_move = None
         orig_alpha = alpha
-        for move in ordered:
+        for i, move in enumerate(ordered):
             is_quiet = not board.is_capture(move) and move.promotion is None
             board.push(move)
-            score = -self._negamax(board, depth - 1, -beta, -alpha, ply + 1)
+            # Late move reductions: well-ordered quiet moves late in the list
+            # rarely matter — search them shallower, re-search on surprise.
+            # (Checks are safe: the in-check extension restores depth below.)
+            if (depth >= 3 and i >= 4 and is_quiet and not in_check):
+                score = -self._negamax(board, depth - 2, -alpha - 1, -alpha, ply + 1)
+                if score > alpha:
+                    score = -self._negamax(board, depth - 1, -beta, -alpha, ply + 1)
+            else:
+                score = -self._negamax(board, depth - 1, -beta, -alpha, ply + 1)
             board.pop()
             if score > best_score:
                 best_score = score
