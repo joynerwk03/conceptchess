@@ -48,11 +48,13 @@ class KingSafety:
                 if not 0 <= f <= 7:
                     continue
                 if color == chess.WHITE:
-                    shielded = any(kr < r <= kr + 2 for r in own[f])
+                    near = any(r == kr + 1 for r in own[f])
+                    far = any(r == kr + 2 for r in own[f])
                 else:
-                    shielded = any(kr - 2 <= r < kr for r in own[f])
-                if not shielded:
-                    missing += 1
+                    near = any(r == kr - 1 for r in own[f])
+                    far = any(r == kr - 2 for r in own[f])
+                if not near:
+                    missing += 0.5 if far else 1.0
                 if not own[f] and not enemy[f]:
                     open_files += 1
             raw -= sign * (W["king.shield_gap"] * missing + W["king.open_file"] * open_files)
@@ -77,15 +79,17 @@ class KingSafety:
                     continue
                 # Shield: a friendly pawn within 2 ranks in front of the king.
                 if color == chess.WHITE:
-                    shielded = any(kr < r <= kr + 2 for r in own[f])
+                    near = any(r == kr + 1 for r in own[f])
+                    far = any(r == kr + 2 for r in own[f])
                 else:
-                    shielded = any(kr - 2 <= r < kr for r in own[f])
-                if not shielded:
-                    missing += 1
+                    near = any(r == kr - 1 for r in own[f])
+                    far = any(r == kr - 2 for r in own[f])
+                if not near:
+                    missing += 0.5 if far else 1.0
                 if not own[f] and not enemy[f]:
                     open_files += 1
             if missing:
-                items.append((f"{cname} king shield gaps ({missing})",
+                items.append((f"{cname} king shield gaps ({missing:g})",
                               -sign * W["king.shield_gap"] * missing * phase))
             if open_files:
                 items.append((f"Open file(s) near {cname} king ({open_files})",
