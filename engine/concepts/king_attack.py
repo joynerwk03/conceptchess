@@ -43,7 +43,7 @@ class KingAttack:
                         units += w * hits
                         attackers += 1
             if attackers >= 2:
-                v = sign * scale * units * phase
+                v = sign * scale * units * units / 10 * phase
                 if labels:
                     items.append((f"{cname} attack on enemy king "
                                   f"({attackers} attackers, {units} units)", v))
