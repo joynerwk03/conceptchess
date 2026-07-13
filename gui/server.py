@@ -1,0 +1,119 @@
+"""Local web GUI server.
+
+Run with: python -m gui.server  (then open http://localhost:8000)
+
+Stateless API: the client sends the starting FEN + move list each request, so
+the server can rebuild the full board history (needed for repetition detection).
+"""
+
+import json
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+
+import chess
+
+from engine.engine import Engine
+from engine.explain import explain_move, score_string
+
+STATIC = Path(__file__).parent / "static"
+_engine = Engine()
+_engine_lock = threading.Lock()
+
+
+def build_board(payload):
+    board = chess.Board(payload.get("start_fen") or chess.STARTING_FEN)
+    for uci in payload.get("moves", []):
+        board.push(chess.Move.from_uci(uci))
+    return board
+
+
+def state_dict(board):
+    outcome = board.outcome(claim_draw=True)
+    if outcome is None:
+        status = "ongoing"
+        winner = None
+    else:
+        status = outcome.termination.name.lower()
+        winner = {True: "white", False: "black", None: None}[outcome.winner]
+    return {
+        "fen": board.fen(),
+        "turn": "white" if board.turn else "black",
+        "in_check": board.is_check(),
+        "legal_moves": [m.uci() for m in board.legal_moves],
+        "status": status,
+        "winner": winner,
+    }
+
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, *args):
+        pass  # keep the terminal quiet
+
+    def _json(self, obj, code=200):
+        body = json.dumps(obj).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        if self.path in ("/", "/index.html"):
+            body = (STATIC / "index.html").read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        else:
+            self.send_error(404)
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", 0))
+        try:
+            payload = json.loads(self.rfile.read(length) or b"{}")
+        except json.JSONDecodeError:
+            self._json({"error": "bad json"}, 400)
+            return
+
+        try:
+            if self.path == "/api/state":
+                board = build_board(payload)
+                self._json(state_dict(board))
+            elif self.path == "/api/eval":
+                board = build_board(payload)
+                breakdown = Engine.static_eval_detailed(board)
+                self._json({
+                    "breakdown": breakdown.as_dict(),
+                    "score_display": score_string(breakdown.total),
+                })
+            elif self.path == "/api/engine":
+                board = build_board(payload)
+                movetime = float(payload.get("movetime", 1.0))
+                with _engine_lock:
+                    result, explanation = _engine.best_move_explained(
+                        board, movetime=movetime)
+                if result.move is None:
+                    self._json({"error": "no legal moves", "state": state_dict(board)})
+                    return
+                board.push(result.move)
+                self._json({
+                    "move": result.move.uci(),
+                    "explanation": explanation,
+                    "state": state_dict(board),
+                })
+            else:
+                self.send_error(404)
+        except Exception as e:  # surface errors to the client during development
+            self._json({"error": f"{type(e).__name__}: {e}"}, 500)
+
+
+def main(port=8000):
+    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    print(f"ConceptChess GUI running at http://localhost:{port}")
+    server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

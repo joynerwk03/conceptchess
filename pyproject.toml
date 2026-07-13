@@ -1,0 +1,14 @@
+[project]
+name = "conceptchess"
+version = "0.1.0"
+description = "An interpretable chess engine that explains its evaluation through symbolic concepts"
+requires-python = ">=3.10"
+dependencies = ["chess>=1.10"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = ["slow: long-running tests (tactics suite); deselect with -m 'not slow'"]
