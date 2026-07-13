@@ -299,5 +299,15 @@
   "guard_ok": true,
   "kept": true,
   "seconds": 0.4
+ },
+ {
+  "n": 30,
+  "date": "2026-07-13",
+  "desc": "final bounded joint pass (with new features)",
+  "train_loss": 0.018044,
+  "val_loss": 0.016928,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.5
  }
 ]
