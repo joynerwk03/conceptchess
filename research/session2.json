@@ -218,5 +218,15 @@
   "guard_ok": true,
   "kept": true,
   "seconds": 0.4
+ },
+ {
+  "n": 22,
+  "date": "2026-07-13",
+  "desc": "fifth joint fine pass (to convergence)",
+  "train_loss": 0.018316,
+  "val_loss": 0.016788,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.4
  }
 ]
