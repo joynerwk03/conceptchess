@@ -1,0 +1,131 @@
+<title>ConceptChess — research progress</title>
+<style>
+.viz-root {
+  --surface-1: #fcfcfb; --text-primary: #0b0b0b; --text-secondary: #52514e;
+  --text-muted: #7a7974; --series-1: #2a78d6; --grid: #e7e6e2;
+  --panel: #ffffff; --border: #e2e1dc; --ok: #008300; --no: #b3261e;
+  max-width: 900px; margin: 0 auto; padding: 28px 20px 60px;
+  background: var(--surface-1); color: var(--text-primary);
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) { .viz-root {
+  --surface-1: #1a1a19; --text-primary: #ffffff; --text-secondary: #c3c2b7;
+  --text-muted: #8f8e86; --series-1: #3987e5; --grid: #2e2e2c;
+  --panel: #222221; --border: #33332f; --ok: #58b658; --no: #e66767; } }
+:root[data-theme="dark"] .viz-root {
+  --surface-1: #1a1a19; --text-primary: #ffffff; --text-secondary: #c3c2b7;
+  --text-muted: #8f8e86; --series-1: #3987e5; --grid: #2e2e2c;
+  --panel: #222221; --border: #33332f; --ok: #58b658; --no: #e66767; }
+:root[data-theme="light"] .viz-root {
+  --surface-1: #fcfcfb; --text-primary: #0b0b0b; --text-secondary: #52514e;
+  --text-muted: #7a7974; --series-1: #2a78d6; --grid: #e7e6e2;
+  --panel: #ffffff; --border: #e2e1dc; --ok: #008300; --no: #b3261e; }
+.viz-root h1 { font-size: 22px; margin: 0 0 2px; }
+.viz-root .sub { color: var(--text-secondary); margin: 0 0 22px; font-size: 14px; }
+.kpis { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 26px; }
+.tile { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+        padding: 12px 18px; min-width: 130px; }
+.klabel { font-size: 12px; color: var(--text-secondary); }
+.kvalue { font-size: 26px; font-weight: 600; margin-top: 2px; }
+.grid-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+               gap: 18px; margin-bottom: 30px; }
+.chart { margin: 0; background: var(--panel); border: 1px solid var(--border);
+         border-radius: 10px; padding: 12px 12px 4px; }
+.chart figcaption { font-size: 13.5px; margin: 2px 4px 6px; }
+.chart .unit { color: var(--text-muted); font-size: 12px; margin-left: 6px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.line { fill: none; stroke: var(--series-1); stroke-width: 2;
+        stroke-linejoin: round; stroke-linecap: round; }
+.grid { stroke: var(--grid); stroke-width: 1; }
+.tick { fill: var(--text-muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.endlabel { fill: var(--text-secondary); font-size: 11px; font-weight: 600; }
+.dot { fill: var(--series-1); stroke: var(--panel); stroke-width: 2; cursor: pointer; }
+.dot.rejected { fill: var(--panel); stroke: var(--text-muted); }
+table.exps { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+table.exps th { text-align: left; color: var(--text-secondary); font-size: 12px;
+    text-transform: uppercase; letter-spacing: .05em; padding: 6px 8px;
+    border-bottom: 1px solid var(--border); }
+table.exps td { padding: 10px 8px; border-bottom: 1px solid var(--border);
+    vertical-align: top; }
+table.exps td.num { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+table.exps strong, table.exps code { color: var(--text-primary); }
+.expl { color: var(--text-secondary); }
+.badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+         white-space: nowrap; }
+.b-ok { color: var(--ok); border: 1px solid var(--ok); }
+.b-no { color: var(--no); border: 1px solid var(--no); }
+.b-base { color: var(--text-muted); border: 1px solid var(--text-muted); }
+#tip { position: fixed; display: none; background: var(--panel); color: var(--text-primary);
+       border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+       font-size: 12px; white-space: pre-line; pointer-events: none; z-index: 5;
+       box-shadow: 0 4px 14px rgba(0,0,0,.18); max-width: 280px; }
+</style>
+<div class="viz-root">
+  <h1>ConceptChess — research progress</h1>
+  <p class="sub">8 experiments — 6 accepted, 1 rejected · updated 2026-07-13 · metrics measured after each experiment
+     (rejected experiments shown as hollow points; they left the engine unchanged)</p>
+  <div class="kpis"><div class="tile"><div class="klabel">Avg depth @ 2s</div><div class="kvalue">8.17</div></div><div class="tile"><div class="klabel">Nodes / second</div><div class="kvalue">46,274</div></div><div class="tile"><div class="klabel">Tactics solved</div><div class="kvalue">100.0%</div></div></div>
+  <div class="grid-charts">
+<figure class="chart">
+  <figcaption><strong>Average search depth</strong>
+    <span class="unit">plies @ 2s/position</span></figcaption>
+  <svg viewBox="0 0 380 200" role="img" aria-label="Average search depth by experiment">
+    <line x1="52" x2="366" y1="152.0" y2="152.0" class="grid"/><text x="46" y="152.0" class="tick" text-anchor="end" dy="0.32em">6.8</text><line x1="52" x2="366" y1="92.0" y2="92.0" class="grid"/><text x="46" y="92.0" class="tick" text-anchor="end" dy="0.32em">7.5</text><line x1="52" x2="366" y1="32.0" y2="32.0" class="grid"/><text x="46" y="32.0" class="tick" text-anchor="end" dy="0.32em">8.2</text><text x="52.0" y="192" class="tick" text-anchor="middle">0</text><text x="96.9" y="192" class="tick" text-anchor="middle">1</text><text x="141.7" y="192" class="tick" text-anchor="middle">2</text><text x="186.6" y="192" class="tick" text-anchor="middle">3</text><text x="231.4" y="192" class="tick" text-anchor="middle">4</text><text x="276.3" y="192" class="tick" text-anchor="middle">5</text><text x="321.1" y="192" class="tick" text-anchor="middle">6</text><text x="366.0" y="192" class="tick" text-anchor="middle">7</text>
+    <path d="M52.0,152.0 L96.9,121.6 L141.7,121.6 L186.6,136.8 L231.4,32.0 L276.3,47.2 L321.1,47.2 L366.0,32.0" class="line"/>
+    <circle cx="52.0" cy="152.0" r="5" class="dot" data-tip="#0 v0 baseline — BASELINE&amp;#10;avg_depth_2s: 6.83"/><circle cx="96.9" cy="121.6" r="5" class="dot" data-tip="#1 String-free eval fast path — ACCEPTED&amp;#10;avg_depth_2s: 7.17"/><circle cx="141.7" cy="121.6" r="5" class="dot" data-tip="#2 Qsearch capture generation — ACCEPTED&amp;#10;avg_depth_2s: 7.17"/><circle cx="186.6" cy="136.8" r="5" class="dot" data-tip="#3 Pawn-keyed eval caches — ACCEPTED&amp;#10;avg_depth_2s: 7.00"/><circle cx="231.4" cy="32.0" r="5" class="dot" data-tip="#4 Late move reductions — ACCEPTED&amp;#10;avg_depth_2s: 8.17"/><circle cx="276.3" cy="47.2" r="5" class="dot" data-tip="#5 Principal variation search — ACCEPTED&amp;#10;avg_depth_2s: 8.00"/><circle cx="321.1" cy="47.2" r="5" class="dot rejected" data-tip="#6 Aspiration windows — REJECTED&amp;#10;avg_depth_2s: 8.00"/><circle cx="366.0" cy="32.0" r="5" class="dot" data-tip="#7 Futility pruning — ACCEPTED&amp;#10;avg_depth_2s: 8.17"/><text x="358.0" y="22.0" class="endlabel" text-anchor="end">8.17</text>
+    <text x="209" y="192" class="tick axis-title"
+          text-anchor="middle" dy="12"></text>
+  </svg>
+</figure>
+<figure class="chart">
+  <figcaption><strong>Search speed</strong>
+    <span class="unit">nodes/second</span></figcaption>
+  <svg viewBox="0 0 380 200" role="img" aria-label="Search speed by experiment">
+    <line x1="52" x2="366" y1="152.0" y2="152.0" class="grid"/><text x="46" y="152.0" class="tick" text-anchor="end" dy="0.32em">38k</text><line x1="52" x2="366" y1="92.0" y2="92.0" class="grid"/><text x="46" y="92.0" class="tick" text-anchor="end" dy="0.32em">47k</text><line x1="52" x2="366" y1="32.0" y2="32.0" class="grid"/><text x="46" y="32.0" class="tick" text-anchor="end" dy="0.32em">55k</text><text x="52.0" y="192" class="tick" text-anchor="middle">0</text><text x="96.9" y="192" class="tick" text-anchor="middle">1</text><text x="141.7" y="192" class="tick" text-anchor="middle">2</text><text x="186.6" y="192" class="tick" text-anchor="middle">3</text><text x="231.4" y="192" class="tick" text-anchor="middle">4</text><text x="276.3" y="192" class="tick" text-anchor="middle">5</text><text x="321.1" y="192" class="tick" text-anchor="middle">6</text><text x="366.0" y="192" class="tick" text-anchor="middle">7</text>
+    <path d="M52.0,152.0 L96.9,101.3 L141.7,58.1 L186.6,32.0 L231.4,39.5 L276.3,32.7 L321.1,32.7 L366.0,94.1" class="line"/>
+    <circle cx="52.0" cy="152.0" r="5" class="dot" data-tip="#0 v0 baseline — BASELINE&amp;#10;avg_nps: 38,047"/><circle cx="96.9" cy="101.3" r="5" class="dot" data-tip="#1 String-free eval fast path — ACCEPTED&amp;#10;avg_nps: 45,254"/><circle cx="141.7" cy="58.1" r="5" class="dot" data-tip="#2 Qsearch capture generation — ACCEPTED&amp;#10;avg_nps: 51,393"/><circle cx="186.6" cy="32.0" r="5" class="dot" data-tip="#3 Pawn-keyed eval caches — ACCEPTED&amp;#10;avg_nps: 55,111"/><circle cx="231.4" cy="39.5" r="5" class="dot" data-tip="#4 Late move reductions — ACCEPTED&amp;#10;avg_nps: 54,043"/><circle cx="276.3" cy="32.7" r="5" class="dot" data-tip="#5 Principal variation search — ACCEPTED&amp;#10;avg_nps: 55,006"/><circle cx="321.1" cy="32.7" r="5" class="dot rejected" data-tip="#6 Aspiration windows — REJECTED&amp;#10;avg_nps: 55,006"/><circle cx="366.0" cy="94.1" r="5" class="dot" data-tip="#7 Futility pruning — ACCEPTED&amp;#10;avg_nps: 46,274"/><text x="358.0" y="84.1" class="endlabel" text-anchor="end">46,274</text>
+    <text x="209" y="192" class="tick axis-title"
+          text-anchor="middle" dy="12"></text>
+  </svg>
+</figure>
+<figure class="chart">
+  <figcaption><strong>Tactics accuracy</strong>
+    <span class="unit">% solved @ 1s/move</span></figcaption>
+  <svg viewBox="0 0 380 200" role="img" aria-label="Tactics accuracy by experiment">
+    <line x1="52" x2="366" y1="152.0" y2="152.0" class="grid"/><text x="46" y="152.0" class="tick" text-anchor="end" dy="0.32em">95.8</text><line x1="52" x2="366" y1="92.0" y2="92.0" class="grid"/><text x="46" y="92.0" class="tick" text-anchor="end" dy="0.32em">97.9</text><line x1="52" x2="366" y1="32.0" y2="32.0" class="grid"/><text x="46" y="32.0" class="tick" text-anchor="end" dy="0.32em">100</text><text x="52.0" y="192" class="tick" text-anchor="middle">0</text><text x="96.9" y="192" class="tick" text-anchor="middle">1</text><text x="141.7" y="192" class="tick" text-anchor="middle">2</text><text x="186.6" y="192" class="tick" text-anchor="middle">3</text><text x="231.4" y="192" class="tick" text-anchor="middle">4</text><text x="276.3" y="192" class="tick" text-anchor="middle">5</text><text x="321.1" y="192" class="tick" text-anchor="middle">6</text><text x="366.0" y="192" class="tick" text-anchor="middle">7</text>
+    <path d="M52.0,152.0 L96.9,152.0 L141.7,152.0 L186.6,152.0 L231.4,32.0 L276.3,32.0 L321.1,32.0 L366.0,32.0" class="line"/>
+    <circle cx="52.0" cy="152.0" r="5" class="dot" data-tip="#0 v0 baseline — BASELINE&amp;#10;tactics_pct_1s: 95.8%"/><circle cx="96.9" cy="152.0" r="5" class="dot" data-tip="#1 String-free eval fast path — ACCEPTED&amp;#10;tactics_pct_1s: 95.8%"/><circle cx="141.7" cy="152.0" r="5" class="dot" data-tip="#2 Qsearch capture generation — ACCEPTED&amp;#10;tactics_pct_1s: 95.8%"/><circle cx="186.6" cy="152.0" r="5" class="dot" data-tip="#3 Pawn-keyed eval caches — ACCEPTED&amp;#10;tactics_pct_1s: 95.8%"/><circle cx="231.4" cy="32.0" r="5" class="dot" data-tip="#4 Late move reductions — ACCEPTED&amp;#10;tactics_pct_1s: 100.0%"/><circle cx="276.3" cy="32.0" r="5" class="dot" data-tip="#5 Principal variation search — ACCEPTED&amp;#10;tactics_pct_1s: 100.0%"/><circle cx="321.1" cy="32.0" r="5" class="dot rejected" data-tip="#6 Aspiration windows — REJECTED&amp;#10;tactics_pct_1s: 100.0%"/><circle cx="366.0" cy="32.0" r="5" class="dot" data-tip="#7 Futility pruning — ACCEPTED&amp;#10;tactics_pct_1s: 100.0%"/><text x="358.0" y="22.0" class="endlabel" text-anchor="end">100.0%</text>
+    <text x="209" y="192" class="tick axis-title"
+          text-anchor="middle" dy="12"></text>
+  </svg>
+</figure>
+<figure class="chart">
+  <figcaption><strong>Search efficiency</strong>
+    <span class="unit">nodes to depth 6 (lower is better)</span></figcaption>
+  <svg viewBox="0 0 380 200" role="img" aria-label="Search efficiency by experiment">
+    <line x1="52" x2="366" y1="152.0" y2="152.0" class="grid"/><text x="46" y="152.0" class="tick" text-anchor="end" dy="0.32em">253k</text><line x1="52" x2="366" y1="92.0" y2="92.0" class="grid"/><text x="46" y="92.0" class="tick" text-anchor="end" dy="0.32em">334k</text><line x1="52" x2="366" y1="32.0" y2="32.0" class="grid"/><text x="46" y="32.0" class="tick" text-anchor="end" dy="0.32em">414k</text><text x="52.0" y="192" class="tick" text-anchor="middle">0</text><text x="96.9" y="192" class="tick" text-anchor="middle">1</text><text x="141.7" y="192" class="tick" text-anchor="middle">2</text><text x="186.6" y="192" class="tick" text-anchor="middle">3</text><text x="231.4" y="192" class="tick" text-anchor="middle">4</text><text x="276.3" y="192" class="tick" text-anchor="middle">5</text><text x="321.1" y="192" class="tick" text-anchor="middle">6</text><text x="366.0" y="192" class="tick" text-anchor="middle">7</text>
+    <path d="M276.3,34.4 L321.1,32.0 L366.0,152.0" class="line"/>
+    <circle cx="276.3" cy="34.4" r="5" class="dot" data-tip="#5 Principal variation search — ACCEPTED&amp;#10;nodes_to_depth6: 411,183"/><circle cx="321.1" cy="32.0" r="5" class="dot rejected" data-tip="#6 Aspiration windows — REJECTED&amp;#10;nodes_to_depth6: 414,390"/><circle cx="366.0" cy="152.0" r="5" class="dot" data-tip="#7 Futility pruning — ACCEPTED&amp;#10;nodes_to_depth6: 253,000"/><text x="358.0" y="142.0" class="endlabel" text-anchor="end">253,000</text>
+    <text x="209" y="192" class="tick axis-title"
+          text-anchor="middle" dy="12"></text>
+  </svg>
+</figure></div>
+  <h1 style="font-size:17px">Experiments &amp; explanations</h1>
+  <table class="exps">
+    <thead><tr><th>#</th><th>Experiment</th><th>Verdict</th><th>Commit</th></tr></thead>
+    <tbody><tr><td class="num">7</td><td><strong>Futility pruning</strong><br><span class="expl">Margins 150cp (depth 1) / 300cp (depth 2), at least one move always searched. 411k -&gt; 253k nodes to depth 6 (-38%), -16% wall time to fixed depth; tactics 24/24. NPS reads lower because pruned subtrees were the cheapest nodes; time-to-depth is what improved.</span></td><td><span class="badge b-ok">ACCEPTED</span></td><td><code>4094694</code></td></tr><tr><td class="num">6</td><td><strong>Aspiration windows</strong><br><span class="expl">+0.8% nodes at +/-50, -0.2% at +/-100 — within noise. Iteration-to-iteration score swings with this eval regularly exceed the window, so re-searches eat the savings. Reverted; revisit after eval tuning stabilizes root scores.</span></td><td><span class="badge b-no">REJECTED</span></td><td>—</td></tr><tr><td class="num">5</td><td><strong>Principal variation search</strong><br><span class="expl">First move full window, later moves scouted with (alpha, alpha+1), re-search on scout fail-high. 421k -&gt; 411k nodes to depth 6 (-2.4%), -4.5% wall time.</span></td><td><span class="badge b-ok">ACCEPTED</span></td><td><code>20b1f5d</code></td></tr><tr><td class="num">4</td><td><strong>Late move reductions</strong><br><span class="expl">Quiet moves ordered 5th+ at depth&gt;=3 (not in check) searched at depth-2 with a null window, full re-search if they beat alpha. Avg depth 7.0 -&gt; 8.2; the extra depth solved the last tactics position (24/24).</span></td><td><span class="badge b-ok">ACCEPTED</span></td><td><code>efd781a</code></td></tr><tr><td class="num">3</td><td><strong>Pawn-keyed eval caches</strong><br><span class="expl">Phase-free components cached by pawn/king bitboard keys, phase applied at use. details() recomputes from scratch so the explanation path stays exact. +7% NPS.</span></td><td><span class="badge b-ok">ACCEPTED</span></td><td><code>1fbf2f0</code></td></tr><tr><td class="num">2</td><td><strong>Qsearch capture generation</strong><br><span class="expl">generate_legal_captures() plus explicit non-capturing queen promotions replaces generate-all-and-filter in quiescence. +13% NPS.</span></td><td><span class="badge b-ok">ACCEPTED</span></td><td><code>23b3700</code></td></tr><tr><td class="num">1</td><td><strong>String-free eval fast path</strong><br><span class="expl">EvalContext built from bitboards (no dicts); pawn structure, king safety, piece activity score numerically instead of summing their labeled details. Faithfulness tests guarantee fast and detailed paths stay identical. +19% NPS.</span></td><td><span class="badge b-ok">ACCEPTED</span></td><td><code>b185f02</code></td></tr><tr><td class="num">0</td><td><strong>v0 baseline</strong><br><span class="expl">Concept-sum eval with faithfulness invariant; negamax + TT + quiescence + null move; no LMR/PVS yet.</span></td><td><span class="badge b-base">BASELINE</span></td><td><code>93489ca</code></td></tr></tbody>
+  </table>
+  <div id="tip"></div>
+</div>
+<script>
+const tip = document.getElementById("tip");
+document.querySelectorAll(".dot").forEach(d => {
+  d.addEventListener("mousemove", ev => {
+    tip.textContent = d.dataset.tip;
+    tip.style.display = "block";
+    tip.style.left = Math.min(ev.clientX + 14, innerWidth - 300) + "px";
+    tip.style.top = (ev.clientY + 14) + "px";
+  });
+  d.addEventListener("mouseleave", () => tip.style.display = "none");
+});
+</script>

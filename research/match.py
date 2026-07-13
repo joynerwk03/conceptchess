@@ -96,6 +96,8 @@ def main():
     p.add_argument("--movetime", type=float, default=0.5)
     p.add_argument("--opponent", default="stockfish:1400")
     p.add_argument("--opponent-cwd", default=None)
+    p.add_argument("--opening-offset", type=int, default=0,
+                   help="start at this index in the opening list (for batched matches)")
     p.add_argument("--pgn-out", default=None, help="optional PGN dump for analysis")
     args = p.parse_args()
 
@@ -105,7 +107,7 @@ def main():
         ours = open_ours()
         opp = open_opponent(args.opponent, args.opponent_cwd)
         try:
-            opening = OPENINGS[(g // 2) % len(OPENINGS)]
+            opening = OPENINGS[(args.opening_offset + g // 2) % len(OPENINGS)]
             we_are_white = g % 2 == 0
             white, black = (ours, opp) if we_are_white else (opp, ours)
             white_score, board = play_game(white, black, opening, args.movetime)

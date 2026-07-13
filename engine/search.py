@@ -64,6 +64,10 @@ class Searcher:
         root_moves = list(board.legal_moves)
         if not root_moves:
             return result
+        # Never return without a legal move: if time runs out before the
+        # first iteration completes, fall back to the best-ordered move.
+        result.move = self._order_moves(board, root_moves, self._tt_move(board), 0)[0]
+        result.depth = 0
 
         for depth in range(1, max_depth + 1):
             try:

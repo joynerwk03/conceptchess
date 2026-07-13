@@ -11,6 +11,107 @@
       "avg_nps": 38047,
       "tactics_pct_1s": 95.8
     },
-    "explanation": "Concept-sum eval with faithfulness invariant; negamax + TT + quiescence + null move; no LMR/PVS yet. Numbers from research/baselines.json."
+    "explanation": "Concept-sum eval with faithfulness invariant; negamax + TT + quiescence + null move; no LMR/PVS yet."
+  },
+  {
+    "experiment": 1,
+    "date": "2026-07-13",
+    "rev": "b185f02",
+    "title": "String-free eval fast path",
+    "hypothesis": "Profile showed 68% of search time in eval: piece_map dict building and f-string detail lists on the hot path. Bitboard-based EvalContext + numeric score() should give a large NPS gain.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "avg_depth_2s": 7.17,
+      "avg_nps": 45254,
+      "tactics_pct_1s": 95.8
+    },
+    "explanation": "EvalContext built from bitboards (no dicts); pawn structure, king safety, piece activity score numerically instead of summing their labeled details. Faithfulness tests guarantee fast and detailed paths stay identical. +19% NPS."
+  },
+  {
+    "experiment": 2,
+    "date": "2026-07-13",
+    "rev": "23b3700",
+    "title": "Qsearch capture generation",
+    "hypothesis": "Quiescence materializes the full legal move list at every node just to filter captures; generate_legal_captures() avoids that.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "avg_depth_2s": 7.17,
+      "avg_nps": 51393,
+      "tactics_pct_1s": 95.8
+    },
+    "explanation": "generate_legal_captures() plus explicit non-capturing queen promotions replaces generate-all-and-filter in quiescence. +13% NPS."
+  },
+  {
+    "experiment": 3,
+    "date": "2026-07-13",
+    "rev": "1fbf2f0",
+    "title": "Pawn-keyed eval caches",
+    "hypothesis": "Pawn structure depends only on the two pawn bitboards, king safety on pawns + king squares (linearly scaled by phase); both cache with high hit rates inside a search tree.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "avg_depth_2s": 7.0,
+      "avg_nps": 55111,
+      "tactics_pct_1s": 95.8
+    },
+    "explanation": "Phase-free components cached by pawn/king bitboard keys, phase applied at use. details() recomputes from scratch so the explanation path stays exact. +7% NPS."
+  },
+  {
+    "experiment": 4,
+    "date": "2026-07-13",
+    "rev": "efd781a",
+    "title": "Late move reductions",
+    "hypothesis": "With decent move ordering, quiet moves late in the list rarely change the result; searching them 2 plies shallower (re-search on surprise) buys depth.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "avg_depth_2s": 8.17,
+      "avg_nps": 54043,
+      "tactics_pct_1s": 100.0
+    },
+    "explanation": "Quiet moves ordered 5th+ at depth>=3 (not in check) searched at depth-2 with a null window, full re-search if they beat alpha. Avg depth 7.0 -> 8.2; the extra depth solved the last tactics position (24/24)."
+  },
+  {
+    "experiment": 5,
+    "date": "2026-07-13",
+    "rev": "20b1f5d",
+    "title": "Principal variation search",
+    "hypothesis": "Null-window scout searches for non-first moves cut nodes when move ordering is good.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "avg_depth_2s": 8.0,
+      "avg_nps": 55006,
+      "tactics_pct_1s": 100.0,
+      "nodes_to_depth6": 411183
+    },
+    "explanation": "First move full window, later moves scouted with (alpha, alpha+1), re-search on scout fail-high. 421k -> 411k nodes to depth 6 (-2.4%), -4.5% wall time."
+  },
+  {
+    "experiment": 6,
+    "date": "2026-07-13",
+    "rev": null,
+    "title": "Aspiration windows",
+    "hypothesis": "A +/-50cp root window around the previous iteration score should cut nodes via earlier cutoffs.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "avg_depth_2s": 8.0,
+      "avg_nps": 55006,
+      "tactics_pct_1s": 100.0,
+      "nodes_to_depth6": 414390
+    },
+    "explanation": "+0.8% nodes at +/-50, -0.2% at +/-100 \u2014 within noise. Iteration-to-iteration score swings with this eval regularly exceed the window, so re-searches eat the savings. Reverted; revisit after eval tuning stabilizes root scores."
+  },
+  {
+    "experiment": 7,
+    "date": "2026-07-13",
+    "rev": "4094694",
+    "title": "Futility pruning",
+    "hypothesis": "At frontier nodes (depth<=2, not in check), quiet non-checking moves are hopeless when static eval + margin can't reach alpha.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "avg_depth_2s": 8.17,
+      "avg_nps": 46274,
+      "tactics_pct_1s": 100.0,
+      "nodes_to_depth6": 253000
+    },
+    "explanation": "Margins 150cp (depth 1) / 300cp (depth 2), at least one move always searched. 411k -> 253k nodes to depth 6 (-38%), -16% wall time to fixed depth; tactics 24/24. NPS reads lower because pruned subtrees were the cheapest nodes; time-to-depth is what improved."
   }
 ]
