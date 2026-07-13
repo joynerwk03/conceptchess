@@ -259,5 +259,15 @@
   "guard_ok": true,
   "kept": true,
   "seconds": 0.5
+ },
+ {
+  "n": 26,
+  "date": "2026-07-13",
+  "desc": "bounded joint pass (all weights, clamped)",
+  "train_loss": 0.018367,
+  "val_loss": 0.017064,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.4
  }
 ]
