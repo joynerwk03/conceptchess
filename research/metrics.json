@@ -130,5 +130,21 @@
       "elo_abs_est": 1435
     },
     "explanation": "+11 =7 -2 (72.5%) over 20 games across 10 openings, both colors: about +168 Elo over v0 (95% CI roughly +20..+425). Also surfaced and fixed a real bug: search could return no move when depth 1 didn't complete in time, sending an illegal null move in games. Absolute anchor: +5 =1 -4 (55%) over 10 games vs strength-limited Stockfish 1400 at 0.3s/move -> roughly 1435 Elo absolute (wide CI at 10 games)."
+  },
+  {
+    "experiment": 9,
+    "date": "2026-07-13",
+    "rev": null,
+    "title": "Session 2: eval-accuracy loop (32 experiments)",
+    "hypothesis": "A fast proxy metric (static-eval accuracy vs Stockfish, win-prob MSE) enables Karpathy-style rapid iteration on the evaluation.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "avg_depth_2s": 7.83,
+      "avg_nps": 39984,
+      "tactics_pct_1s": 100.0,
+      "eval_val_loss": 0.019119,
+      "elo_vs_session1": 35
+    },
+    "explanation": "32 experiments at ~0.5s cycle time. Metric screened 5 good new concepts (king attack, safe mobility, blockaded passers, bad bishop, graded shield) and honestly rejected 4. Headline negative result: optimizing weights against the metric was anti-correlated with strength (fully-tuned engine ~-130 Elo vs session-1 despite -15% val loss). Adopted exp-13 state: new concepts at chess-prior weights, 55% vs session-1. See session2.json + session2_report.html."
   }
 ]

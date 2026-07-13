@@ -19,9 +19,9 @@ entry reference; add new ideas as they come up.
 
 ## Evaluation accuracy (better judgment per node)
 
-- [ ] Tune concept weights systematically (e.g., Texel tuning against game outcomes) —
-      weights stay per-concept, so tuning preserves interpretability
-- [ ] King safety: attack-unit model (count attackers/weight by piece type near king)
+- [x] ~~Tune concept weights via eval-loss vs Stockfish~~ (session 2: ANTI-CORRELATED with
+      strength — see LOG. Next attempt should target move-agreement or direct Elo)
+- [x] King safety: attack-unit model (session 2, kept)
 - [ ] Passed pawns: blockade detection, king proximity in endgame, connected passers
 - [ ] New concept: threats/hanging pieces (statically detect en prise material)
 - [ ] New concept: space (advanced-square control behind pawn chains)
@@ -40,7 +40,8 @@ entry reference; add new ideas as they come up.
 
 - [ ] Harder tactics suites: current suite is 96% at 1s (mostly captures). Mine
       quiet-move and deeper suites (`--depth 20+`, exclude bm-is-capture positions)
-- [ ] Positional test suite: measure eval agreement with Stockfish eval sign on quiet positions
+- [x] ~~Eval agreement with Stockfish~~ (session 2: built as eval-loss metric; good concept
+      screen, bad tuning target) — [ ] move-agreement-at-fixed-nodes metric instead
 - [ ] Automated Elo ladder script: current vs last-N-accepted commits, tracked in baselines.json
 - [ ] Game-phase-specific benchmarks (endgame play is a known weak spot for shallow searchers)
 - [ ] Explanation quality checks: does the stated top concept delta actually track the

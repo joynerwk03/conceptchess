@@ -309,5 +309,16 @@
   "guard_ok": true,
   "kept": true,
   "seconds": 0.5
+ },
+ {
+  "n": 31,
+  "date": "2026-07-13",
+  "desc": "final: revert weight drift, adopt exp-13 state (strength gate)",
+  "train_loss": 0.02254,
+  "val_loss": 0.019119,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 400.0,
+  "note": "20-game match: fully-tuned engine scored 32.5% vs session-1 (~-130 Elo) despite 14% better val loss. Exp-13 state (new concepts, chess-prior weights) scored 55% (+4=3-3). Adopted: concepts kept, tuning drift reverted. Conclusion: static-eval accuracy vs SF is a useful screen for new concepts but a harmful optimization target for weight values."
  }
 ]

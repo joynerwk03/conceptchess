@@ -93,7 +93,8 @@ def build_html():
                                  f"validation eval loss {first:.6f} → {last:.6f} "
                                  f"({100 * (first - last) / first:.1f}% better) · "
                                  f"metric: MSE between win-prob of our static eval and "
-                                 f"Stockfish depth-12, on a held-out 734-position set"))
+                                 f"Stockfish depth-12, on a held-out 734-position set · "
+                                 f"final state strength-gated by match play (see #24, #31)"))
     print(f"wrote {HTML_OUT}")
 
 

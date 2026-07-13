@@ -6,6 +6,43 @@ research/metrics.json (source of truth for the progress graphs).
 
 ---
 
+## 2026-07-13 — Session 2: eval-accuracy autoresearch (32 rapid experiments)
+
+**Methodology.** Built a fast optimization target: `eval loss` = MSE between
+win-prob of our static eval and Stockfish depth-12, over 2,204 quiet positions
+from self-play/random games (train 1,470 / held-out val 734, committed in
+research/data/). Central weights module (engine/weights.py), coordinate-descent
+tuner (research/tune.py), one-command experiment runner (research/exp2.py) that
+logs every attempt to session2.json. **Cycle time ~0.5s per experiment** vs
+minutes in session 1. Graph: `python -m research.plot2`.
+
+**What the metric was good at (screening concepts):**
+- KEPT: king attack units (quadratic, phase-scaled), safe mobility (exclude
+  enemy-pawn-controlled squares), blockaded passers, bad bishop, graded shield.
+- DISCARDED honestly: threats/hanging pieces, knight outposts, protected
+  passers, aspiration-style material re-trades (train improved, val worsened).
+
+**The headline negative result: the metric is a harmful optimization target
+for weight values.** Sequential joint tuning drove val loss 0.0197 → 0.0168
+(−15%) but produced chess-nonsense weights (semi-open > open file, ~free
+doubled pawns, zeroed PSTs) — and match play was monotonically anti-correlated
+with loss beyond small doses:
+- unbounded-tuned vs chess-prior-bounded: bounded won +7 =1 −2 (~+190 Elo)
+- fully-tuned (bounded) vs session-1: **32.5% over 20 games (~−130 Elo)**
+- exp-13 state (new concepts, prior weights) vs session-1: 55% (+4 =3 −3)
+
+**Adopted final state: exp-13** — the new interpretable concepts at chess-prior
+weights (≈ session-1 strength, richer explanations). All tuning drift reverted.
+
+**Why the proxy fails (hypotheses for session 3):** (1) play depends on eval
+*differences between sibling positions*, not absolute agreement with SF on
+quiet positions; (2) NPS cost of new concepts (−14%) eats depth; (3) tuned
+scales interact with search constants (futility margins, delta pruning, tempo
+in stand-pat). Better target candidates: move-agreement with SF at fixed
+nodes, or direct small-match Elo with sequential pruning (SPRT-lite).
+
+---
+
 ## 2026-07-13 — Session 1: speed + search (experiments 1–7)
 
 Profiling showed 68% of time in eval, dominated by dict building and f-string
