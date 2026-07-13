@@ -33,10 +33,10 @@ W = {
     "king.open_file": 15,
     "kattack.scale": 2.5,   # cp per weighted attack unit on the enemy king zone
     # mobility (cp per square above/below typical)
-    "mob.knight": 4,
-    "mob.bishop": 3,
-    "mob.rook": 2,
-    "mob.queen": 1,
+    "mob.knight": 3.394,
+    "mob.bishop": 3.507,
+    "mob.rook": 2.338,
+    "mob.queen": 1.169,
     # piece activity
     "act.bishop_pair": 30,
     "act.rook_open": 20,
