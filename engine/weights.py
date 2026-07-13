@@ -17,32 +17,32 @@ W = {
     "material.rook": 500,
     "material.queen": 900,
     # piece-square tables: multiplier per piece type on the (tapered) table value
-    "pst.pawn": 0.43,
-    "pst.knight": 0.649,
-    "pst.bishop": 0.439,
-    "pst.rook": 0.405,
-    "pst.queen": 2.361,
-    "pst.king": 2.228,
+    "pst.pawn": 0.274,
+    "pst.knight": 0.662,
+    "pst.bishop": 0.268,
+    "pst.rook": 0.248,
+    "pst.queen": 3.772,
+    "pst.king": 2.14,
     # pawn structure
-    "pawn.doubled": 6.081,
-    "pawn.isolated": 7.563,
-    "pawn.passed_scale": 0.686,     # multiplier on the per-rank passed bonus
-    "pawn.passed_eg_scale": 3.539,
-    "pawn.blocked_passer": 0.202,  # multiplier when the square in front is occupied  # passed pawns matter more in the endgame
+    "pawn.doubled": 3.716,
+    "pawn.isolated": 10.753,
+    "pawn.passed_scale": 0.524,     # multiplier on the per-rank passed bonus
+    "pawn.passed_eg_scale": 5.653,
+    "pawn.blocked_passer": 0.185,  # multiplier when the square in front is occupied  # passed pawns matter more in the endgame
     # king safety
-    "king.shield_gap": 4.865,
-    "king.open_file": 35.404,
-    "kattack.scale": 2.427,   # cp per weighted attack unit on the enemy king zone
+    "king.shield_gap": 2.973,
+    "king.open_file": 56.557,
+    "kattack.scale": 1.895,   # cp per weighted attack unit on the enemy king zone
     # mobility (cp per square above/below typical)
-    "mob.knight": 6.853,
-    "mob.bishop": 7.081,
-    "mob.rook": 4.72,
-    "mob.queen": 2.013,
+    "mob.knight": 5.922,
+    "mob.bishop": 10.671,
+    "mob.rook": 7.54,
+    "mob.queen": 1.307,
     # piece activity
-    "act.bishop_pair": 12.162,
-    "act.rook_open": 35.235,
-    "act.rook_semi": 23.604,
-    "act.rook_seventh": 8.108,
+    "act.bishop_pair": 7.432,
+    "act.rook_open": 32.458,
+    "act.rook_semi": 37.707,
+    "act.rook_seventh": 4.955,
     # tempo
-    "tempo": 23.604,
+    "tempo": 28.708,
 }
