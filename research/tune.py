@@ -23,11 +23,11 @@ COARSE = (0.7, 0.85, 1.15, 1.3)
 FINE = (0.94, 0.98, 1.02, 1.06)
 
 
-def tune(keys, passes):
+def tune(keys, passes, fine_only=False):
     best = loss("train")
     print(f"start train loss {best:.6f}  ({len(keys)} params)")
     for p in range(passes):
-        steps = COARSE if p == 0 else FINE
+        steps = FINE if (fine_only or p > 0) else COARSE
         improved = False
         for key in keys:
             base = W[key]
@@ -62,13 +62,14 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("groups", nargs="+", help="key prefixes, e.g. material. pst.")
     p.add_argument("--passes", type=int, default=3)
+    p.add_argument("--fine", action="store_true", help="skip the coarse pass")
     args = p.parse_args()
 
     keys = [k for k in W if any(k.startswith(g) for g in args.groups)]
     if not keys:
         sys.exit(f"no keys match {args.groups}")
     start = loss("train")
-    end = tune(keys, args.passes)
+    end = tune(keys, args.passes, args.fine)
     if end < start - 1e-7:
         for k in keys:
             print(f"  {k}: {W[k]}")
