@@ -152,12 +152,24 @@ class Searcher:
         if not moves:
             return -MATE_SCORE + ply if in_check else 0
 
+        # Futility pruning: near the frontier, if the static eval plus a
+        # generous margin still can't reach alpha, quiet moves are hopeless.
+        futile = False
+        if depth <= 2 and not in_check and abs(alpha) < MATE_THRESHOLD:
+            static = evaluate(board)
+            if board.turn == chess.BLACK:
+                static = -static
+            futile = static + (150 if depth == 1 else 300) <= alpha
+
         ordered = self._order_moves(board, moves, tt_move, ply)
         best_score = -MATE_SCORE - 1
         best_move = None
         orig_alpha = alpha
         for i, move in enumerate(ordered):
             is_quiet = not board.is_capture(move) and move.promotion is None
+            if (futile and is_quiet and best_move is not None
+                    and not board.gives_check(move)):
+                continue
             board.push(move)
             if i == 0:
                 # Principal variation: full window.
