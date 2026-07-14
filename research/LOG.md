@@ -6,6 +6,29 @@ research/metrics.json (source of truth for the progress graphs).
 
 ---
 
+## 2026-07-14 — Session 8: search refinements (both reverted) + plateau assessment
+
+Two untried search levers, both gated, both reverted — the engine is at a hard
+local optimum:
+- **Aspiration windows** (failed in s2, retried since the search is more stable):
+  −7% nodes to depth 7, but gated **46% (−26 Elo)** — neutral, same verdict as s2.
+- **One-reply extension** (forced single-legal moves +1 ply): gated **36%
+  (−98 Elo)**. At fixed movetime, extending steals time from breadth, and
+  one-reply moves are often already check-extended (double extension).
+
+**Plateau assessment.** Across this run every incremental search change has been
+either metric-gameable-but-strength-negative (reverse futility, late-move
+pruning) or directly neutral/negative (time management, aspiration, one-reply
+extension, book expansion). Only two things stuck: the session-6 opening book
+and the session-7 mating drive. Conclusion: **pure-Python search + a
+deliberately-simple eval is genuinely optimized at ~2018 Elo for this time
+control.** The one remaining large strength lever is a compiled core (move
+generation + eval in C/Rust, ~10–50× nodes/sec), which is a rewrite rather than
+a loop-sized experiment — and it would keep interpretability by mirroring the
+Python eval as a cross-checked reference. Engine unchanged this session.
+
+---
+
 ## 2026-07-14 — Session 7: endgame technique
 
 Theme: fix concrete endgame weaknesses (interpretable), found by a conversion
