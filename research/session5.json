@@ -22,5 +22,30 @@
   "kept": true,
   "quality": false,
   "seconds": 40.0
+ },
+ {
+  "n": 2,
+  "date": "2026-07-14",
+  "desc": "fast bitboard capture test in move ordering",
+  "nodes_d6": 388774,
+  "time_d6": 12.48,
+  "tactics_pct": 100.0,
+  "guard_ok": true,
+  "kept": false,
+  "quality": false,
+  "seconds": 39.9
+ },
+ {
+  "n": 3,
+  "date": "2026-07-14",
+  "desc": "adaptive null-move reduction (R+1 at depth>=6)",
+  "nodes_d6": 388774,
+  "time_d6": 12.73,
+  "tactics_pct": 100.0,
+  "guard_ok": true,
+  "kept": true,
+  "quality": false,
+  "seconds": 39.5,
+  "note": "d6 metric blind to it (no interior depth>=6 nodes at a d6 search). Measured at d7: 791k -> 688k nodes (-13%), 25.8 -> 22.7s (-12%). Kept."
  }
 ]

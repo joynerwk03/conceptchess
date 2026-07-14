@@ -170,10 +170,12 @@ class Searcher:
                     return tt_score
 
         # Null-move pruning: skip a turn; if we still beat beta, prune.
+        # Deeper nodes tolerate a bigger reduction.
         if (depth >= 3 and not in_check and beta < MATE_THRESHOLD
                 and self._has_non_pawn_material(board)):
             board.push(chess.Move.null())
-            score = -self._negamax(board, depth - 3, -beta, -beta + 1, ply + 1)
+            r = 4 if depth >= 6 else 3
+            score = -self._negamax(board, depth - r, -beta, -beta + 1, ply + 1)
             board.pop()
             if score >= beta:
                 return beta
