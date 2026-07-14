@@ -1,0 +1,13 @@
+[
+ {
+  "n": 0,
+  "date": "2026-07-13",
+  "desc": "baseline (exp-13 state)",
+  "train_rank": 42.515,
+  "val_rank": 45.49,
+  "evalloss_val": 0.019119,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.6
+ }
+]
