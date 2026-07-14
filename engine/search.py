@@ -90,9 +90,29 @@ class Searcher:
         result.move = self._order_moves(board, root_moves, self._tt_move(board), 0)[0]
         result.depth = 0
 
+        prev_score = None
         for depth in range(1, max_depth + 1):
             try:
-                score, move = self._search_root(board, depth, root_moves)
+                # Aspiration windows: from depth 4 on, search a narrow window
+                # around the previous score and widen on a fail. With good move
+                # ordering the search usually lands inside, saving nodes.
+                if depth >= 4 and prev_score is not None and abs(prev_score) < MATE_THRESHOLD:
+                    delta = 30
+                    while True:
+                        a, b = prev_score - delta, prev_score + delta
+                        score, move = self._search_root(board, depth, root_moves, a, b)
+                        if score <= a:
+                            delta *= 3
+                        elif score >= b:
+                            delta *= 3
+                        else:
+                            break
+                        if delta > 800:
+                            score, move = self._search_root(board, depth, root_moves)
+                            break
+                else:
+                    score, move = self._search_root(board, depth, root_moves)
+                prev_score = score
             except TimeUp:
                 break
             result.move = move
@@ -113,9 +133,10 @@ class Searcher:
         result.nodes = self.nodes
         return result
 
-    def _search_root(self, board, depth, root_moves):
-        alpha, beta = -MATE_SCORE, MATE_SCORE
+    def _search_root(self, board, depth, root_moves, alpha=-MATE_SCORE, beta=MATE_SCORE):
+        orig_alpha = alpha
         best_move = None
+        best_score = -MATE_SCORE - 1
         tt_move = self._tt_move(board)
         ordered = self._order_moves(board, root_moves, tt_move, 0)
         scores = {}
@@ -125,13 +146,17 @@ class Searcher:
                 score = -self._negamax(board, depth - 1, -beta, -alpha, 1)
             else:
                 score = -self._negamax(board, depth - 1, -alpha - 1, -alpha, 1)
-                if score > alpha:
+                if alpha < score < beta:
                     score = -self._negamax(board, depth - 1, -beta, -alpha, 1)
             board.pop()
             scores[move] = score
+            if score > best_score:
+                best_score = score
+                best_move = move
             if score > alpha:
                 alpha = score
-                best_move = move
+            if alpha >= beta:
+                break  # fail high: the aspiration loop will widen and re-search
         # Keep the best root move first for the next iteration.
         if best_move in root_moves:
             root_moves.remove(best_move)
@@ -140,8 +165,13 @@ class Searcher:
         if best_move is not None and self.root_ranking and self.root_ranking[0] != best_move:
             self.root_ranking.remove(best_move)
             self.root_ranking.insert(0, best_move)
-        self.tt[board._transposition_key()] = (depth, TT_EXACT, alpha, best_move)
-        return alpha, best_move
+        flag = TT_EXACT
+        if best_score <= orig_alpha:
+            flag = TT_UPPER
+        elif best_score >= beta:
+            flag = TT_LOWER
+        self.tt[board._transposition_key()] = (depth, flag, best_score, best_move)
+        return best_score, best_move
 
     def _negamax(self, board, depth, alpha, beta, ply):
         self.nodes += 1
