@@ -99,7 +99,15 @@ def main():
     p.add_argument("--opening-offset", type=int, default=0,
                    help="start at this index in the opening list (for batched matches)")
     p.add_argument("--pgn-out", default=None, help="optional PGN dump for analysis")
+    p.add_argument("--sprt", action="store_true",
+                   help="stop early via SPRT (H0 elo=0 vs H1 elo=+35)")
+    p.add_argument("--sprt-elo1", type=float, default=35.0)
     args = p.parse_args()
+
+    sprt = None
+    if args.sprt:
+        from research.sprt import SPRT
+        sprt = SPRT(elo0=0, elo1=args.sprt_elo1)
 
     wins = draws = losses = 0
     pgns = []
@@ -132,6 +140,13 @@ def main():
         finally:
             ours.quit()
             opp.quit()
+        if sprt is not None:
+            sprt.record(our_score)
+            verdict = sprt.status()
+            if verdict:
+                print(f"SPRT stop after {g + 1} games: "
+                      f"{'H1 (better)' if verdict == 'H1' else 'H0 (not better)'}")
+                break
 
     n = wins + draws + losses
     score = wins + 0.5 * draws

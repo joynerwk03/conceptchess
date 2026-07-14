@@ -1,0 +1,14 @@
+[
+ {
+  "n": 0,
+  "date": "2026-07-14",
+  "desc": "baseline (session-5 state, ~1850 Elo)",
+  "nodes_d6": 200515,
+  "time_d6": 9.76,
+  "tactics_pct": 100.0,
+  "guard_ok": true,
+  "kept": true,
+  "quality": false,
+  "seconds": 0.0
+ }
+]
