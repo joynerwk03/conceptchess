@@ -186,12 +186,6 @@ class Searcher:
         if not moves:
             return -MATE_SCORE + ply if in_check else 0
 
-        # One-reply extension: a forced move (only one legal) is searched one
-        # ply deeper — it costs almost nothing (no branching) and lets forcing
-        # sequences resolve past the horizon.
-        if len(moves) == 1:
-            depth += 1
-
         # Futility pruning: near the frontier, if the static eval plus a
         # generous margin still can't reach alpha, quiet moves are hopeless.
         futile = False
