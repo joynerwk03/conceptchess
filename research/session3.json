@@ -31,5 +31,16 @@
   "guard_ok": true,
   "kept": true,
   "seconds": 0.5
+ },
+ {
+  "n": 3,
+  "date": "2026-07-13",
+  "desc": "threats weight sweep (rank metric)",
+  "train_rank": 50.499,
+  "val_rank": 48.627,
+  "evalloss_val": 0.025888,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.5
  }
 ]
