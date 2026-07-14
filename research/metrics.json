@@ -146,5 +146,21 @@
       "elo_vs_session1": 35
     },
     "explanation": "32 experiments at ~0.5s cycle time. Metric screened 5 good new concepts (king attack, safe mobility, blockaded passers, bad bishop, graded shield) and honestly rejected 4. Headline negative result: optimizing weights against the metric was anti-correlated with strength (fully-tuned engine ~-130 Elo vs session-1 despite -15% val loss). Adopted exp-13 state: new concepts at chess-prior weights, 55% vs session-1. See session2.json + session2_report.html."
+  },
+  {
+    "experiment": 10,
+    "date": "2026-07-13",
+    "rev": null,
+    "title": "Session 3: metric research + move-ranking loop + contrastive explanations",
+    "hypothesis": "A metric validated against match-measured strength (sibling-rank agreement) iterates fast without session-2's anti-correlation; explanations should contrast the chosen move with the runner-up.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "avg_depth_2s": 7.83,
+      "avg_nps": 36864,
+      "tactics_pct_1s": 100.0,
+      "rank_agreement_val": 47.06,
+      "elo_vs_session1": 35
+    },
+    "explanation": "Meta-experiment picked rank agreement (monotone with strength across 4 match-measured states; evalloss anti-correlated, move-match noisy). Loop: threats concept adopted at 0.1x after passing its match gate (55%); the metric's preferred 0.6x scored 5% in the gate (~-500 Elo), confirming the rule that fast metrics screen concepts while matches set magnitudes. Speed: shared attack masks + bitmask threats (+15% NPS). Interpretability: contrastive explanations (why this move over the runner-up) with faithfulness tests."
   }
 ]

@@ -21,12 +21,14 @@ HERE = Path(__file__).parent
 SESSION = int(sys.argv[1]) if len(sys.argv) > 1 else 2
 CFG = {
     2: {"metric": "val_loss", "train": "train_loss", "fmt": "{:.6f}",
+        "val_h": "Val loss", "train_h": "Train loss",
         "ylabel": "Validation eval loss (lower is better)",
         "title": "session 2: evaluation-accuracy autoresearch",
         "blurb": "metric: MSE between win-prob of our static eval and Stockfish "
                  "depth-12, on a held-out 734-position set · final state "
                  "strength-gated by match play (see #24, #31)"},
     3: {"metric": "val_rank", "train": "train_rank", "fmt": "{:.2f}%",
+        "val_h": "Val rank", "train_h": "Train rank",
         "ylabel": "Validation rank agreement % (higher is better)",
         "title": "session 3: move-ranking autoresearch",
         "blurb": "metric: % of positions where the static eval ranks Stockfish's "
@@ -106,6 +108,8 @@ def build_html():
                         .replace("{{TITLE}}", CFG["title"])
                         .replace("{{SVG}}", svg)
                         .replace("{{ROWS}}", rows)
+                        .replace("{{VALH}}", CFG["val_h"])
+                        .replace("{{TRAINH}}", CFG["train_h"])
                         .replace("{{SUMMARY}}",
                                  f"{len(ENTRIES)} experiments, {n_kept} kept · "
                                  f"{CFG['fmt'].format(first)} → {CFG['fmt'].format(last)} · "
@@ -150,7 +154,7 @@ td.num { font-variant-numeric: tabular-nums; color: var(--muted); }
   <div class="figwrap">{{SVG}}</div>
   <h2>Every experiment</h2>
   <table class="exps">
-    <thead><tr><th>#</th><th>Experiment</th><th>Val loss</th><th>Train loss</th><th>Verdict</th></tr></thead>
+    <thead><tr><th>#</th><th>Experiment</th><th>{{VALH}}</th><th>{{TRAINH}}</th><th>Verdict</th></tr></thead>
     <tbody>{{ROWS}}</tbody>
   </table>
 </div>

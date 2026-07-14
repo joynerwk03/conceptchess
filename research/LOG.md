@@ -6,6 +6,43 @@ research/metrics.json (source of truth for the progress graphs).
 
 ---
 
+## 2026-07-13 — Session 3: metric research + move-ranking loop + contrastive explanations
+
+**Meta-experiment (the session's core deliverable).** Validated 4 candidate
+fast metrics against 4 engine states with match-measured strength spanning
+~350 Elo (research/validate_metrics.py, results in metric_validation.json):
+
+| metric | verdict |
+|---|---|
+| evalloss (session 2) | perfectly ANTI-correlated — retired as a target |
+| **rank agreement** (static eval picks SF's best of its top-3, margin ≥30cp) | **monotone with strength, <1s — adopted** |
+| qrank agreement (quiescence values) | monotone, smaller spread, slower |
+| move-match @ depth 3 | noisy, non-monotone at n=250 — rejected |
+
+**Loop results (session3.json, 8 experiments):**
+- Shared attack masks in EvalContext (−3.7% time to depth) and bitmask-based
+  threats (+15% NPS) — speed, eval-identical.
+- Threats concept re-screened: rank metric kept it (+1.6pt val) where evalloss
+  had rejected it; **match gate confirmed 0.1× weight (55% vs pre-threats)**.
+- **Second gaming failure documented:** the rank metric wanted threat weight
+  0.6 (+5.1pt val!) but that engine scored 5% in the gate match (~−500 Elo) —
+  a large static threat term fakes 1-ply lookahead and double-counts with
+  quiescence. **Standing rule: fast metrics screen concepts and directions;
+  matches set weight magnitudes. No weight change ships without a gate.**
+
+**Interpretability (product):** contrastive explanations — search reports its
+root-move ranking, the runner-up gets a brief sub-search, and the panel now
+explains the *choice*: "Nf3 was preferred over Bc4: the line after Bc4 is
+worse for White mainly in king safety (−0.35)…" with the alternative's line
+shown in the GUI and its shallower depth disclosed. tests/test_explain.py
+extends faithfulness to the contrast: alternative breakdowns must be exact
+evals, diffs exactly best−alt per concept, and no personification.
+
+**Final state:** exp-13 concepts + threats@0.1 + speed fixes. Tactics 24/24,
+avg depth 7.83 @2s, ~37k NPS. Strength ≈ session-1 +35±small (gate matches).
+
+---
+
 ## 2026-07-13 — Session 2: eval-accuracy autoresearch (32 rapid experiments)
 
 **Methodology.** Built a fast optimization target: `eval loss` = MSE between
