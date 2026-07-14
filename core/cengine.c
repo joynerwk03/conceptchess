@@ -268,3 +268,4 @@ U64 c_perft(const char *fen, int depth){
 }
 
 #include "ceval.c"
+#include "csearch.c"
