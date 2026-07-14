@@ -216,7 +216,7 @@ class Searcher:
                 if depth >= 3 and is_quiet and not in_check:
                     if i >= 12:
                         red = 3
-                    elif i >= 4:
+                    elif i >= 3:
                         red = 2
                 score = -self._negamax(board, depth - red, -alpha - 1, -alpha, ply + 1)
                 if score > alpha and (red > 1 or beta > alpha + 1):

@@ -59,5 +59,17 @@
   "kept": true,
   "quality": false,
   "seconds": 36.0
+ },
+ {
+  "n": 5,
+  "date": "2026-07-14",
+  "desc": "LMR onset at i>=3 (was 4)",
+  "nodes_d6": 278860,
+  "time_d6": 9.07,
+  "tactics_pct": 100.0,
+  "guard_ok": true,
+  "kept": true,
+  "quality": false,
+  "seconds": 35.0
  }
 ]
