@@ -53,5 +53,17 @@
   "guard_ok": true,
   "kept": true,
   "seconds": 0.5
+ },
+ {
+  "n": 5,
+  "date": "2026-07-13",
+  "desc": "match gate: threat 0.6 rejected (+0=1-9), revert to 0.1",
+  "train_rank": 46.307,
+  "val_rank": 47.059,
+  "evalloss_val": 0.019265,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 420.0,
+  "note": "10-game match vs pre-threats state: threat-0.6 engine scored 5% (~-500 Elo). Large static threat weights fake 1-ply lookahead and double-count with quiescence. Rank metric needs match gates for weight magnitudes, same as evalloss did. Weight reverted to 0.1 (pending its own gate)."
  }
 ]

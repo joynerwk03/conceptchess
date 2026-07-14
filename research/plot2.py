@@ -1,15 +1,16 @@
-"""Karpathy-style session-2 progress graph from research/session2.json.
+"""Karpathy-style session progress graphs from research/session{N}.json.
 
-X = experiment number (every attempt counts), Y = validation eval loss.
-Kept improvements are green dots on a running-best step line with labels;
-discarded attempts are faint gray dots. Writes research/session2_graph.svg
-and research/session2_report.html (graph + per-experiment explanations).
+X = experiment number (every attempt counts), Y = the session's metric.
+Kept improvements are green dots on an adopted-state step line with labels;
+discarded attempts are faint gray dots. Writes research/session{N}_graph.svg
+and research/session{N}_report.html (graph + per-experiment explanations).
 
-Usage: python -m research.plot2
+Usage: python -m research.plot2 [session]     # default 2
 """
 
 import html
 import json
+import sys
 from pathlib import Path
 
 import matplotlib
@@ -17,9 +18,25 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 HERE = Path(__file__).parent
-ENTRIES = json.loads((HERE / "session2.json").read_text())
-SVG = HERE / "session2_graph.svg"
-HTML_OUT = HERE / "session2_report.html"
+SESSION = int(sys.argv[1]) if len(sys.argv) > 1 else 2
+CFG = {
+    2: {"metric": "val_loss", "train": "train_loss", "fmt": "{:.6f}",
+        "ylabel": "Validation eval loss (lower is better)",
+        "title": "session 2: evaluation-accuracy autoresearch",
+        "blurb": "metric: MSE between win-prob of our static eval and Stockfish "
+                 "depth-12, on a held-out 734-position set · final state "
+                 "strength-gated by match play (see #24, #31)"},
+    3: {"metric": "val_rank", "train": "train_rank", "fmt": "{:.2f}%",
+        "ylabel": "Validation rank agreement % (higher is better)",
+        "title": "session 3: move-ranking autoresearch",
+        "blurb": "metric: % of positions where the static eval ranks Stockfish's "
+                 "best move first among its top-3 (margin ≥ 30cp), held-out val "
+                 "split · validated against match-measured strength of 4 engine "
+                 "states · weight changes additionally match-gated"},
+}[SESSION]
+ENTRIES = json.loads((HERE / f"session{SESSION}.json").read_text())
+SVG = HERE / f"session{SESSION}_graph.svg"
+HTML_OUT = HERE / f"session{SESSION}_report.html"
 
 GREEN = "#1baf7a"
 GRAY = "#c9c9c4"
@@ -27,14 +44,14 @@ GRAY = "#c9c9c4"
 
 def build_graph():
     xs = [e["n"] for e in ENTRIES]
-    ys = [e["val_loss"] for e in ENTRIES]
+    ys = [e[CFG["metric"]] for e in ENTRIES]
     kept = [e["kept"] for e in ENTRIES]
 
     fig, ax = plt.subplots(figsize=(12, 6), dpi=110)
     # adopted-state line: every kept experiment moves it (the strength-gated
     # override at exp 24 legitimately steps it UP)
     bx = [e["n"] for e in ENTRIES if e["kept"]]
-    by = [e["val_loss"] for e in ENTRIES if e["kept"]]
+    by = [e[CFG["metric"]] for e in ENTRIES if e["kept"]]
     ax.step(bx + [xs[-1]], by + [by[-1]], where="post", color=GREEN,
             lw=1.8, alpha=0.85, label="Adopted state", zorder=2)
 
@@ -48,7 +65,7 @@ def build_graph():
 
     for e in ENTRIES:
         if e["kept"]:
-            ax.annotate(e["desc"], (e["n"], e["val_loss"]),
+            ax.annotate(e["desc"], (e["n"], e[CFG["metric"]]),
                         textcoords="offset points", xytext=(6, 8),
                         fontsize=7.2, color="#128a5f", rotation=28,
                         rotation_mode="anchor", ha="left")
@@ -57,7 +74,7 @@ def build_graph():
     ax.set_title(f"Autoresearch Progress: {len(ENTRIES)} Experiments, "
                  f"{n_kept} Kept Improvements", fontsize=13)
     ax.set_xlabel("Experiment #")
-    ax.set_ylabel("Validation eval loss (lower is better)")
+    ax.set_ylabel(CFG["ylabel"])
     ax.grid(True, color="#eeeeea", lw=0.8)
     ax.set_axisbelow(True)
     for side in ("top", "right"):
@@ -79,26 +96,24 @@ def build_html():
         badge = ("b-ok", "KEPT") if e["kept"] else ("b-no", "DISCARDED")
         rows += (f'<tr><td class="num">{e["n"]}</td>'
                  f'<td>{html.escape(e["desc"])}</td>'
-                 f'<td class="num">{e["val_loss"]:.6f}</td>'
-                 f'<td class="num">{e["train_loss"]:.6f}</td>'
+                 f'<td class="num">{CFG["fmt"].format(e[CFG["metric"]])}</td>'
+                 f'<td class="num">{CFG["fmt"].format(e[CFG["train"]])}</td>'
                  f'<td><span class="badge {badge[0]}">{badge[1]}</span></td></tr>')
     n_kept = sum(e["kept"] for e in ENTRIES)
-    first = ENTRIES[0]["val_loss"]
-    last = [e["val_loss"] for e in ENTRIES if e["kept"]][-1]
+    first = ENTRIES[0][CFG["metric"]]
+    last = [e[CFG["metric"]] for e in ENTRIES if e["kept"]][-1]
     HTML_OUT.write_text(TEMPLATE
+                        .replace("{{TITLE}}", CFG["title"])
                         .replace("{{SVG}}", svg)
                         .replace("{{ROWS}}", rows)
                         .replace("{{SUMMARY}}",
                                  f"{len(ENTRIES)} experiments, {n_kept} kept · "
-                                 f"validation eval loss {first:.6f} → {last:.6f} "
-                                 f"({100 * (first - last) / first:.1f}% better) · "
-                                 f"metric: MSE between win-prob of our static eval and "
-                                 f"Stockfish depth-12, on a held-out 734-position set · "
-                                 f"final state strength-gated by match play (see #24, #31)"))
+                                 f"{CFG['fmt'].format(first)} → {CFG['fmt'].format(last)} · "
+                                 + CFG["blurb"]))
     print(f"wrote {HTML_OUT}")
 
 
-TEMPLATE = """<title>ConceptChess — session 2: eval-loss autoresearch</title>
+TEMPLATE = """<title>ConceptChess — autoresearch session</title>
 <style>
 .s2-root { --surface:#fcfcfb; --text:#0b0b0b; --muted:#52514e; --border:#e2e1dc;
   --panel:#ffffff; --ok:#128a5f; --no:#b3261e;
@@ -130,7 +145,7 @@ td.num { font-variant-numeric: tabular-nums; color: var(--muted); }
 .b-no { color: var(--no); border: 1px solid var(--no); }
 </style>
 <div class="s2-root">
-  <h1>ConceptChess — session 2: evaluation-accuracy autoresearch</h1>
+  <h1>ConceptChess — {{TITLE}}</h1>
   <p class="sub">{{SUMMARY}}</p>
   <div class="figwrap">{{SVG}}</div>
   <h2>Every experiment</h2>
