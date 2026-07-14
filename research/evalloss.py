@@ -13,7 +13,13 @@ from pathlib import Path
 
 import chess
 
-from engine.evaluation import evaluate, clear_caches
+try:
+    from engine.evaluation import evaluate, clear_caches
+except ImportError:  # pre-session-2 engine versions have no cache API
+    from engine.evaluation import evaluate
+
+    def clear_caches():
+        pass
 
 DATA = Path(__file__).parent / "data"
 _cache = {}
