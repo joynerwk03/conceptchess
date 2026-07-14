@@ -32,7 +32,8 @@
            grid-template-rows: repeat(8, 64px); border-radius: 4px; overflow: hidden;
            user-select: none; box-shadow: 0 4px 18px rgba(0,0,0,.4); }
   .sq { width: 64px; height: 64px; display: flex; align-items: center;
-        justify-content: center; font-size: 44px; cursor: pointer; position: relative; }
+        justify-content: center; font-size: 56px; line-height: 1; cursor: pointer;
+        position: relative; }
   .sq.light { background: var(--light-sq); } .sq.dark { background: var(--dark-sq); }
   .sq.selected { outline: 3px solid var(--accent); outline-offset: -3px; }
   .sq.lastmove::after { content:""; position:absolute; inset:0; background: rgba(91,157,217,.28); }
@@ -82,6 +83,19 @@
   .delta-pos { color: var(--good); } .delta-neg { color: var(--bad); }
   .thinking { color: var(--accent); animation: pulse 1.2s infinite; }
   @keyframes pulse { 50% { opacity: .45; } }
+  /* Tabs */
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tabbtn { background: none; border: none; border-bottom: 2px solid transparent;
+            color: var(--muted); padding: 6px 10px; border-radius: 0; }
+  .tabbtn.active { color: var(--text); border-bottom-color: var(--accent); }
+  /* Move list */
+  .movelist { font-size: 14px; line-height: 2; }
+  .movelist .mvnum { color: var(--muted); margin-right: 2px; }
+  .movelist .mv { cursor: pointer; padding: 2px 6px; border-radius: 5px;
+                  font-family: ui-monospace, Menlo, monospace; }
+  .movelist .mv:hover { background: var(--panel2); }
+  .movelist .mv.viewing { background: var(--accent); color: #fff; }
+  #evalgraph svg { width: 100%; height: auto; }
 </style>
 </head>
 <body>
@@ -115,19 +129,35 @@
   </div>
 
   <div class="panel">
-    <h2>Analysis</h2>
-    <div class="bigscore" id="score">+0.00</div>
-    <div class="meta" id="meta">Play a move to see the analysis.</div>
-    <div class="why" id="why" style="display:none"></div>
-    <h3>Expected line</h3>
-    <div class="pv" id="pv">—</div>
-    <div id="altwrap" style="display:none">
-      <h3>Considered alternative</h3>
-      <div class="pv" id="altpv">—</div>
+    <div class="tabs">
+      <button class="tabbtn active" data-tab="analysis">Analysis</button>
+      <button class="tabbtn" data-tab="moves">Moves</button>
+      <button class="tabbtn" data-tab="graph">Eval graph</button>
     </div>
-    <h3>Evaluation breakdown — <span id="cScope" style="text-transform:none">current position</span></h3>
-    <div class="meta" style="margin:0 0 6px">Positive favors White. Click a row for the individual contributions.</div>
-    <div id="concepts"></div>
+    <div id="tab-analysis" class="tab">
+      <div class="bigscore" id="score">+0.00</div>
+      <div class="meta" id="meta">Play a move to see the analysis.</div>
+      <div class="why" id="why" style="display:none"></div>
+      <h3>Expected line</h3>
+      <div class="pv" id="pv">—</div>
+      <div id="altwrap" style="display:none">
+        <h3>Considered alternative</h3>
+        <div class="pv" id="altpv">—</div>
+      </div>
+      <h3>Evaluation breakdown — <span id="cScope" style="text-transform:none">current position</span></h3>
+      <div class="meta" style="margin:0 0 6px">Positive favors White. Click a row for the individual contributions.</div>
+      <div id="concepts"></div>
+    </div>
+    <div id="tab-moves" class="tab" style="display:none">
+      <div class="meta" style="margin:6px 0 10px">Click a move to view that position;
+        click it again (or the latest move) to return to the game.</div>
+      <div id="movelist" class="movelist">No moves yet.</div>
+    </div>
+    <div id="tab-graph" class="tab" style="display:none">
+      <div class="meta" style="margin:6px 0 10px">Engine evaluation after each of its
+        searches (White's perspective, clamped to ±5).</div>
+      <div id="evalgraph"></div>
+    </div>
   </div>
 </div>
 
@@ -137,6 +167,10 @@ const state = {
   startFen: null, moves: [], legal: [], fen: null, turn: "white",
   playerColor: "white", flipped: false, selected: null, lastMove: null,
   thinking: false, status: "ongoing", inCheck: false,
+  sanHistory: [],          // SAN of every move played, from the server
+  evalPoints: [],          // {ply, cp} engine search evals (White persp.)
+  viewPly: null,           // non-null: viewing the position after move index k
+  viewFen: null,
 };
 
 const $ = id => document.getElementById(id);
@@ -164,24 +198,30 @@ function fenBoard(fen) {
 function renderBoard() {
   const board = $("board");
   board.innerHTML = "";
-  const grid = state.fen ? fenBoard(state.fen) : {};
+  const viewing = state.viewPly !== null;
+  const shownFen = viewing ? state.viewFen : state.fen;
+  const grid = shownFen ? fenBoard(shownFen) : {};
   const targets = new Set(
-    state.selected ? state.legal.filter(m => m.startsWith(state.selected))
-                                .map(m => m.slice(2, 4)) : []);
+    (!viewing && state.selected)
+      ? state.legal.filter(m => m.startsWith(state.selected)).map(m => m.slice(2, 4))
+      : []);
+  const lastMove = viewing ? state.moves[state.viewPly] : state.lastMove;
   for (let r = 0; r < 8; r++) {
     for (let f = 0; f < 8; f++) {
       const file = state.flipped ? 7 - f : f;
       const rank = state.flipped ? r + 1 : 8 - r;
       const sqName = String.fromCharCode(97 + file) + rank;
       const div = document.createElement("div");
-      div.className = "sq " + ((file + rank) % 2 ? "light" : "dark");
+      // (file 0-based + rank 1-based) odd = dark square: a1 dark, h1 light,
+      // queens start on their own color.
+      div.className = "sq " + ((file + rank) % 2 ? "dark" : "light");
       const pc = grid[sqName];
       if (pc) {
         const span = document.createElement("span");
         const isWhite = pc === pc.toUpperCase();
         span.className = "piece " + (isWhite ? "w" : "b");
         span.textContent = GLYPHS[pc.toLowerCase()];
-        if (state.inCheck && pc.toLowerCase() === "k" &&
+        if (!viewing && state.inCheck && pc.toLowerCase() === "k" &&
             (isWhite ? "white" : "black") === state.turn) div.classList.add("check");
         div.appendChild(span);
       }
@@ -190,8 +230,8 @@ function renderBoard() {
         div.classList.add("target");
         if (pc) div.classList.add("capture");
       }
-      if (state.lastMove &&
-          (state.lastMove.slice(0,2) === sqName || state.lastMove.slice(2,4) === sqName))
+      if (lastMove &&
+          (lastMove.slice(0,2) === sqName || lastMove.slice(2,4) === sqName))
         div.classList.add("lastmove");
       if (f === 7) { const c = document.createElement("span");
         c.className = "coords rank"; c.textContent = rank; div.appendChild(c); }
@@ -205,6 +245,7 @@ function renderBoard() {
 }
 
 function onSquareClick(sq, pc) {
+  if (state.viewPly !== null) return;  // viewing history: board is read-only
   if (state.thinking || state.status !== "ongoing") return;
   if (state.turn !== state.playerColor) return;
   const mine = pc && ((pc === pc.toUpperCase()) === (state.playerColor === "white"));
@@ -225,16 +266,24 @@ async function refreshState() {
   const s = await api("/api/state", payload());
   state.fen = s.fen; state.turn = s.turn; state.legal = s.legal_moves;
   state.status = s.status; state.inCheck = s.in_check; state.winner = s.winner;
+  state.sanHistory = s.san_history || [];
   renderBoard();
   updateStatusLine();
+  renderMoves();
+  // Concept chart may show the static view (it is labeled as such), but the
+  // eval bar only moves on completed engine searches.
   api("/api/eval", payload()).then(e => {
-    setEvalBar(e.breakdown.total);
     renderConcepts(e.breakdown, null, "current position");
   });
 }
 
 function updateStatusLine() {
   const el = $("status");
+  if (state.viewPly !== null) {
+    el.innerHTML = `Viewing position after <b>${state.sanHistory[state.viewPly]}</b> ` +
+                   `(move ${Math.floor(state.viewPly / 2) + 1}) — click the move again to return`;
+    return;
+  }
   if (state.status !== "ongoing") {
     const msg = state.status === "checkmate"
       ? `Checkmate — <b>${state.winner}</b> wins`
@@ -268,7 +317,11 @@ async function engineMove() {
   const s = r.state;
   state.fen = s.fen; state.turn = s.turn; state.legal = s.legal_moves;
   state.status = s.status; state.inCheck = s.in_check; state.winner = s.winner;
+  state.sanHistory = s.san_history || state.sanHistory;
+  if (r.explanation)
+    state.evalPoints.push({ ply: state.moves.length, cp: r.explanation.score_white });
   renderBoard(); updateStatusLine();
+  renderMoves(); renderGraph();
   showExplanation(r.explanation);
 }
 
@@ -338,6 +391,9 @@ function renderConcepts(breakdown, deltas, scope) {
 async function newGame(color) {
   state.startFen = null; state.moves = []; state.playerColor = color;
   state.selected = null; state.lastMove = null;
+  state.sanHistory = []; state.evalPoints = [];
+  state.viewPly = null; state.viewFen = null;
+  renderGraph();
   state.flipped = color === "black";
   $("why").style.display = "none"; $("pv").textContent = "—";
   $("score").textContent = "+0.00"; $("meta").textContent = "New game started.";
@@ -355,9 +411,88 @@ $("undoBtn").onclick = async () => {
   if (state.moves.length && state.turn === state.playerColor) state.moves.pop();
   state.lastMove = state.moves[state.moves.length - 1] || null;
   state.selected = null;
+  state.viewPly = null; state.viewFen = null;
+  state.evalPoints = state.evalPoints.filter(p => p.ply <= state.moves.length);
+  renderGraph();
   await refreshState();
   if (state.status === "ongoing" && state.turn !== state.playerColor) engineMove();
 };
+
+function renderMoves() {
+  const el = $("movelist");
+  if (!state.sanHistory.length) { el.textContent = "No moves yet."; return; }
+  el.innerHTML = "";
+  state.sanHistory.forEach((san, i) => {
+    if (i % 2 === 0) {
+      const num = document.createElement("span");
+      num.className = "mvnum";
+      num.textContent = `${i / 2 + 1}.`;
+      el.appendChild(num);
+    }
+    const mv = document.createElement("span");
+    mv.className = "mv" + (state.viewPly === i ? " viewing" : "");
+    mv.textContent = san;
+    mv.onclick = () => viewMove(i);
+    el.appendChild(mv);
+    el.appendChild(document.createTextNode(" "));
+  });
+}
+
+async function viewMove(i) {
+  // Clicking the currently-viewed move, or the latest move, returns to live.
+  if (state.viewPly === i || i === state.moves.length - 1) {
+    state.viewPly = null; state.viewFen = null;
+    renderBoard(); updateStatusLine(); renderMoves();
+    return;
+  }
+  const s = await api("/api/state",
+    { start_fen: state.startFen, moves: state.moves.slice(0, i + 1) });
+  state.viewPly = i;
+  state.viewFen = s.fen;
+  state.selected = null;
+  renderBoard(); updateStatusLine(); renderMoves();
+}
+
+function renderGraph() {
+  const wrap = $("evalgraph");
+  const pts = state.evalPoints;
+  if (pts.length < 1) { wrap.innerHTML = '<div class="meta">No engine evaluations yet.</div>'; return; }
+  const W = 420, H = 200, ml = 34, mr = 10, mt = 10, mb = 22, CLAMP = 500;
+  const maxPly = Math.max(state.moves.length, pts[pts.length - 1].ply, 2);
+  const X = p => ml + (p / maxPly) * (W - ml - mr);
+  const Y = cp => {
+    const c = Math.max(-CLAMP, Math.min(CLAMP, cp));
+    return mt + (1 - (c + CLAMP) / (2 * CLAMP)) * (H - mt - mb);
+  };
+  let svg = `<svg viewBox="0 0 ${W} ${H}">`;
+  // grid: +5 / 0 / -5
+  for (const [v, lab] of [[CLAMP, "+5"], [0, "0"], [-CLAMP, "-5"]]) {
+    svg += `<line x1="${ml}" x2="${W - mr}" y1="${Y(v)}" y2="${Y(v)}"
+            stroke="${v === 0 ? "#4a5262" : "#2b303a"}" stroke-width="1"/>` +
+           `<text x="${ml - 6}" y="${Y(v)}" fill="var(--muted)" font-size="10"
+            text-anchor="end" dy="0.32em">${lab}</text>`;
+  }
+  const path = pts.map((p, i) =>
+    `${i ? "L" : "M"}${X(p.ply).toFixed(1)},${Y(p.cp).toFixed(1)}`).join(" ");
+  svg += `<path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2"
+          stroke-linejoin="round" stroke-linecap="round"/>`;
+  for (const p of pts)
+    svg += `<circle cx="${X(p.ply).toFixed(1)}" cy="${Y(p.cp).toFixed(1)}" r="3.5"
+            fill="var(--accent)" stroke="var(--panel)" stroke-width="1.5">
+            <title>ply ${p.ply}: ${(p.cp / 100).toFixed(2)}</title></circle>`;
+  svg += `<text x="${(ml + W - mr) / 2}" y="${H - 6}" fill="var(--muted)"
+          font-size="10" text-anchor="middle">ply</text></svg>`;
+  wrap.innerHTML = svg;
+}
+
+document.querySelectorAll(".tabbtn").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".tabbtn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll(".tab").forEach(t => t.style.display = "none");
+    $("tab-" + btn.dataset.tab).style.display = "block";
+  };
+});
 
 newGame("white");
 </script>

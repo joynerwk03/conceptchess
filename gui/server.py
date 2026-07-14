@@ -28,6 +28,19 @@ def build_board(payload):
     return board
 
 
+def san_history(payload, extra_uci=None):
+    board = chess.Board(payload.get("start_fen") or chess.STARTING_FEN)
+    sans = []
+    moves = list(payload.get("moves", []))
+    if extra_uci:
+        moves.append(extra_uci)
+    for uci in moves:
+        mv = chess.Move.from_uci(uci)
+        sans.append(board.san(mv))
+        board.push(mv)
+    return sans
+
+
 def state_dict(board):
     outcome = board.outcome(claim_draw=True)
     if outcome is None:
@@ -80,7 +93,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if self.path == "/api/state":
                 board = build_board(payload)
-                self._json(state_dict(board))
+                s = state_dict(board)
+                s["san_history"] = san_history(payload)
+                self._json(s)
             elif self.path == "/api/eval":
                 board = build_board(payload)
                 breakdown = Engine.static_eval_detailed(board)
@@ -97,11 +112,14 @@ class Handler(BaseHTTPRequestHandler):
                 if result.move is None:
                     self._json({"error": "no legal moves", "state": state_dict(board)})
                     return
+                uci = result.move.uci()
                 board.push(result.move)
+                s = state_dict(board)
+                s["san_history"] = san_history(payload, extra_uci=uci)
                 self._json({
-                    "move": result.move.uci(),
+                    "move": uci,
                     "explanation": explanation,
-                    "state": state_dict(board),
+                    "state": s,
                 })
             else:
                 self.send_error(404)
