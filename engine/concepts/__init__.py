@@ -20,6 +20,7 @@ from engine.concepts.piece_activity import PieceActivity
 from engine.concepts.king_attack import KingAttack
 from engine.concepts.tempo import Tempo
 from engine.concepts.threats import Threats
+from engine.concepts.mate_drive import MateDrive
 
 ALL_CONCEPTS = [
     Material(),
@@ -31,4 +32,5 @@ ALL_CONCEPTS = [
     PieceActivity(),
     Tempo(),
     Threats(),
+    MateDrive(),
 ]

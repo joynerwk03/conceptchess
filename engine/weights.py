@@ -45,6 +45,9 @@ W = {
     "act.rook_seventh": 20,
     # threats
     "threat.hanging": 0.1,  # fraction of the hanging piece's value
+    # mating drive (bare-king endgames)
+    "mate_drive.corner": 12,
+    "mate_drive.king_prox": 6,
     # tempo
     "tempo": 10,
 }
