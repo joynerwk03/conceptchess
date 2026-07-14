@@ -194,5 +194,19 @@
       "elo_vs_session4": 53
     },
     "explanation": "7 experiments, 6 kept: transposition-keyed eval cache (-19% time), adaptive null-move R (-13% nodes at d7), two LMR tiers (-28%), SEE pruning/ordering in qsearch (-29%), qsearch evasions + first-ply quiet checks (gate 55%). Net 15.56s -> 9.88s to depth 6 with better tactical quality. Batch gate vs session-4: +9 =5 -6 (57.5%, ~+53 Elo). New ladder anchor: 1850 (1737-1963) over 40 games vs SF 1700-2000."
+  },
+  {
+    "experiment": 13,
+    "date": "2026-07-14",
+    "rev": null,
+    "title": "Session 6: opening book (+ SPRT tooling, pruning dead-ends)",
+    "hypothesis": "More search strength via pruning; if that fails, an interpretable opening book is a safe practical-Elo gain.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "tactics_pct_1s": 100.0,
+      "elo_ladder_mle": 2018,
+      "elo_vs_session5": 147
+    },
+    "explanation": "Pruning (reverse futility, late-move pruning) all passed the deterministic time-to-depth metric but lost their match gates (42%/29%/40% vs session-5) \u2014 the metric rewards node-cutting regardless of strength, and static-eval pruning hurts an engine with a deliberately simple eval. Reverted. The win: a 250-position curated opening book (interpretable, 'Book move: Ruy Lopez'), which gated at +20=2-8 (70%, +147 Elo). New ladder anchor 2018 (1905-2134). Added SPRT early-stopping to the match harness."
   }
 ]

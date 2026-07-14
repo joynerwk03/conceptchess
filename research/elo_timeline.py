@@ -26,6 +26,7 @@ GREEN = "#1baf7a"
 S1, S1_LO, S1_HI = ANCHORS["session1"]["mle"]
 CUR, CUR_LO, CUR_HI = ANCHORS["current"]["mle"]
 S5, S5_LO, S5_HI = ANCHORS["session5"]["mle"]
+S6, S6_LO, S6_HI = ANCHORS["session6"]["mle"]
 CHAIN_ERR = 220  # ± for delta-chained points (10-20 game matches)
 
 POINTS = [
@@ -49,6 +50,9 @@ POINTS = [
     # session 5: search sprint, ladder-anchored (40 games vs SF1700-2000)
     {"label": "session 5 — search sprint (SEE, LMR, checks)", "exps": 71,
      "elo": S5, "lo": S5_LO, "hi": S5_HI, "kind": "measured"},
+    # session 6: opening book, ladder-anchored (40 games vs SF1800-2100)
+    {"label": "session 6 — opening book (pruning dead-ends)", "exps": 78,
+     "elo": S6, "lo": S6_LO, "hi": S6_HI, "kind": "measured"},
 ]
 
 
@@ -95,13 +99,14 @@ def build_html():
     rows = ""
     for name, data in (("session 1", ANCHORS["session1"]),
                        ("session 4", ANCHORS["current"]),
-                       ("session 5 (current)", ANCHORS["session5"])):
+                       ("session 5", ANCHORS["session5"]),
+                       ("session 6 (current)", ANCHORS["session6"])):
         for opp, (w, d, l) in sorted(data["results"].items()):
             rows += (f"<tr><td>{name}</td><td>Stockfish {opp}</td>"
                      f"<td class='num'>+{w} ={d} −{l}</td>"
                      f"<td class='num'>{100 * (w + 0.5 * d) / (w + d + l):.0f}%</td></tr>")
     HTML_OUT.write_text(TEMPLATE.replace("{{SVG}}", svg).replace("{{ROWS}}", rows)
-                        .replace("{{CUR}}", f"{S5} (95% {S5_LO}–{S5_HI})"))
+                        .replace("{{CUR}}", f"{S6} (95% {S6_LO}–{S6_HI})"))
     print(f"wrote {HTML_OUT}")
 
 
@@ -132,7 +137,7 @@ td.num { font-variant-numeric: tabular-nums; }
 <div class="elo-root">
   <h1>ConceptChess — estimated Elo over time</h1>
   <p class="sub">Current engine: <strong>{{CUR}}</strong> on the Stockfish UCI_Elo
-  scale at 0.3s/move (40 ladder games vs SF 1700–2000). Filled points are direct ladder anchors;
+  scale at 0.3s/move (40 ladder games vs SF 1800–2100). Filled points are direct ladder anchors;
   hollow points are chained from head-to-head match deltas recorded in LOG.md.
   Caveats: UCI_Elo calibration at fast time controls compresses level differences,
   and 10-game matches carry ~±200 Elo of noise — treat the scale as internally

@@ -6,6 +6,42 @@ research/metrics.json (source of truth for the progress graphs).
 
 ---
 
+## 2026-07-14 — Session 6: pruning dead-ends, SPRT tooling, opening book
+
+Theme: more search strength. The session's biggest lesson is a negative one,
+and its win came from an unglamorous place.
+
+**Tooling:** `research/sprt.py` — trinomial SPRT (H0 elo=0 vs H1 elo=+35) with a
+self-test; `match.py --sprt` stops a gate as soon as it is decisive. `exp6.py`
+reuses the time-to-depth metric.
+
+**Pruning is a trap for THIS engine (the key finding).** The time-to-depth
+metric rewards node-cutting unconditionally, so every pruning idea "passed" it —
+and every one lost its match gate:
+- reverse futility + late-move pruning stacked: −38% time to depth, gate **42%**
+- reverse futility alone (buggy: applied at PV nodes): gate **29%**
+- reverse futility fixed (non-PV only, conservative 100cp/depth): gate **40%**
+All reverted. RFP trusts the static eval to predict the search result; ours is
+deliberately simple and interpretable (rank agreement ~47%), so static-eval
+pruning discards too many real fail-lows. **Generalized rule: a fast metric
+that rewards doing-less (pruning → fewer nodes, like s2's weight magnitudes →
+lower loss) is gameable and must be match-gated.** Time management was also
+tried and is neutral at fixed movetime (reverted).
+
+**The win: an opening book (interpretable).** `engine/book.py` — 17 openings /
+250 positions of mainline theory compiled from SAN, consulted for the first 16
+plies, working for either colour. Book moves are played instantly and reported
+as "Book move: Ruy Lopez", not dressed up as a search result. Gate vs the
+no-book session-5 engine: **+20 =2 −8 (70%), +147 Elo (95% +25..+321)** — a
+clear, significant gain. It keeps the engine out of dubious openings and saves
+clock for the middlegame; both help at 0.3s/move. GUI labels book moves.
+
+**Ladder anchor: ~2018 Elo (95% 1905–2134)** over 40 games vs SF 1800–2100 —
+up from session-5's 1850, consistent with the +147 head-to-head. 65% / 60% /
+55% / 55% across the four levels.
+
+---
+
 ## 2026-07-14 — Session 5: search sprint
 
 Metric: wall time to fixed depth-6 over 4 positions (research/ttd.py), nodes

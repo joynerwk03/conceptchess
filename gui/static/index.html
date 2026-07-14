@@ -337,9 +337,10 @@ function setEvalBar(cpWhite) {
 function showExplanation(ex) {
   if (!ex) return;
   $("score").textContent = ex.score_display;
-  $("meta").textContent =
-    `played ${ex.move} · depth ${ex.depth} · ${ex.nodes.toLocaleString()} nodes · ` +
-    `${ex.nps.toLocaleString()} nps · ${ex.time}s`;
+  $("meta").textContent = ex.book
+    ? `played ${ex.move} · opening book`
+    : `played ${ex.move} · depth ${ex.depth} · ${ex.nodes.toLocaleString()} nodes · ` +
+      `${ex.nps.toLocaleString()} nps · ${ex.time}s`;
   const why = $("why");
   why.style.display = "block";
   why.innerHTML = ex.explanation.map(s => "• " + s).join("<br>");
@@ -353,7 +354,8 @@ function showExplanation(ex) {
     $("altwrap").style.display = "none";
   }
   setEvalBar(ex.score_white);
-  renderConcepts(ex.breakdown_after, ex.concept_deltas, "end of expected line");
+  renderConcepts(ex.breakdown_after, ex.concept_deltas,
+                 ex.book ? "current position" : "end of expected line");
 }
 
 function renderConcepts(breakdown, deltas, scope) {
