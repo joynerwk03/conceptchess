@@ -208,5 +208,20 @@
       "elo_vs_session5": 147
     },
     "explanation": "Pruning (reverse futility, late-move pruning) all passed the deterministic time-to-depth metric but lost their match gates (42%/29%/40% vs session-5) \u2014 the metric rewards node-cutting regardless of strength, and static-eval pruning hurts an engine with a deliberately simple eval. Reverted. The win: a 250-position curated opening book (interpretable, 'Book move: Ruy Lopez'), which gated at +20=2-8 (70%, +147 Elo). New ladder anchor 2018 (1905-2134). Added SPRT early-stopping to the match harness."
+  },
+  {
+    "experiment": 14,
+    "date": "2026-07-14",
+    "rev": null,
+    "title": "Session 7: endgame technique (mating drive)",
+    "hypothesis": "Fix concrete endgame conversion weaknesses found by a diagnostic, interpretably.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "tactics_pct_1s": 100.0,
+      "elo_ladder_mle": 2018,
+      "kbb_mate_plies": 67,
+      "kbn_mate_plies": 79
+    },
+    "explanation": "Diagnostic: KBB/KBN vs K were unconvertable (50-move draws), a won KPvK was lost. Added a 'mating drive' concept (drive enemy king to corner + bring own king up) active only in bare-king endgames -> KBB mate in 67 plies, KBN in 79. Provably neutral outside bare-king endgames (0 on all non-lone-king positions), so no gate needed. Negative results: KPvK bitbase dropped (correctness rabbit hole, tiny Elo); book expansion 250->478 gate-rejected at 36% (-98 Elo) because added sharp lines don't suit the simple eval. Engine stays ~2018 Elo but converts basic mates it was drawing."
   }
 ]

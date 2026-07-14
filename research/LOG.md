@@ -6,6 +6,43 @@ research/metrics.json (source of truth for the progress graphs).
 
 ---
 
+## 2026-07-14 — Session 7: endgame technique
+
+Theme: fix concrete endgame weaknesses (interpretable), found by a conversion
+diagnostic (self-play a won position to mate vs a defender).
+
+**Diagnostic found real holes:** KQ/KR vs K mate fine (search handles them),
+but **K+2B vs K and K+B+N vs K were NOT converted in 120 plies** (drawn by the
+50-move rule), and a won **K+P vs K was lost** (pawn given away).
+
+**The win: a "mating drive" concept (`engine/concepts/mate_drive.py`).** In
+bare-king endgames only, it drives the enemy king toward a corner (center-
+manhattan distance) and brings our king up. After: **KBB mate in 67 plies, KBN
+in 79** — both inside the 50-move rule, from unconvertable before. It is
+*provably neutral outside bare-king endgames* — returns exactly 0 on all
+non-lone-king positions (verified: the 74/2204 eval-set triggers are all
+genuine bare-king endgames), so it needs no match gate and cannot touch normal
+play. Interpretable: "White driving the black king toward the corner." Tests in
+tests/test_endgame.py (gradient + KBB/KBN conversion).
+
+**Two negative results:**
+- **KPvK bitbase — dropped.** The KPvK loss needs exact opposition/key-square
+  knowledge (distance heuristics give the *wrong* sign there). A retrograde
+  bitbase is the correct fix but is a correctness rabbit hole for a very rare
+  endgame — poor Elo-per-effort. Noted as future work.
+- **Book expansion — gate-rejected.** Doubled the book (250→478 positions, adding
+  Najdorf/Dragon/Winawer/etc.) expecting more coverage = more Elo. It gated at
+  **36% (−98 Elo)** vs the session-6 book. Those lines are theoretically sound
+  but practically sharp, and our simple-eval engine mishandles them; the narrow
+  book had implicitly selected lines that *suit* this engine. Reverted. Lesson:
+  book quality for a given engine ≠ maximal theory coverage.
+
+**Net:** engine stays ≈2018 Elo (mate-drive helps rare endgames the 40-game
+ladder rarely reaches, so no re-anchor) but now converts the basic mates it was
+drawing. Two more entries for the "more isn't better — measure it" column.
+
+---
+
 ## 2026-07-14 — Session 6: pruning dead-ends, SPRT tooling, opening book
 
 Theme: more search strength. The session's biggest lesson is a negative one,
