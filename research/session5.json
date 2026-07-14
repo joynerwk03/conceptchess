@@ -47,5 +47,17 @@
   "quality": false,
   "seconds": 39.5,
   "note": "d6 metric blind to it (no interior depth>=6 nodes at a d6 search). Measured at d7: 791k -> 688k nodes (-13%), 25.8 -> 22.7s (-12%). Kept."
+ },
+ {
+  "n": 4,
+  "date": "2026-07-14",
+  "desc": "deeper LMR for very late quiet moves (r=3 at i>=12)",
+  "nodes_d6": 298640,
+  "time_d6": 9.83,
+  "tactics_pct": 100.0,
+  "guard_ok": true,
+  "kept": true,
+  "quality": false,
+  "seconds": 36.0
  }
 ]

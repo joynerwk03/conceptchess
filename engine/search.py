@@ -212,7 +212,12 @@ class Searcher:
                 # searched two plies shallower. Anything that beats alpha gets
                 # a full re-search. (Checking moves are safe: the in-check
                 # extension restores their depth in the child.)
-                red = 2 if (depth >= 3 and i >= 4 and is_quiet and not in_check) else 1
+                red = 1
+                if depth >= 3 and is_quiet and not in_check:
+                    if i >= 12:
+                        red = 3
+                    elif i >= 4:
+                        red = 2
                 score = -self._negamax(board, depth - red, -alpha - 1, -alpha, ply + 1)
                 if score > alpha and (red > 1 or beta > alpha + 1):
                     score = -self._negamax(board, depth - 1, -beta, -alpha, ply + 1)
