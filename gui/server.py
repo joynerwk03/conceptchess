@@ -15,6 +15,7 @@ import chess
 
 from engine.engine import Engine
 from engine.explain import explain_move, score_string
+from gui import coach
 
 STATIC = Path(__file__).parent / "static"
 _engine = Engine()
@@ -121,6 +122,26 @@ class Handler(BaseHTTPRequestHandler):
                     "explanation": explanation,
                     "state": s,
                 })
+            elif self.path == "/api/candidates":
+                board = build_board(payload)
+                mt = float(payload.get("movetime", 0.12))
+                with _engine_lock:
+                    self._json({"candidates": coach.candidates(board, movetime=mt)})
+            elif self.path == "/api/analyze":
+                board = build_board(payload)
+                with _engine_lock:
+                    self._json(coach.analyze_move(board, payload["move"],
+                                                  movetime=float(payload.get("movetime", 0.4))))
+            elif self.path == "/api/overlays":
+                board = build_board(payload)
+                self._json({"overlays": coach.overlays(board)})
+            elif self.path == "/api/review":
+                with _engine_lock:
+                    self._json({"review": coach.review(
+                        payload.get("start_fen"), payload.get("moves", []),
+                        movetime=float(payload.get("movetime", 0.18)))})
+            elif self.path == "/api/glossary":
+                self._json({"glossary": coach.GLOSSARY})
             else:
                 self.send_error(404)
         except Exception as e:  # surface errors to the client during development
