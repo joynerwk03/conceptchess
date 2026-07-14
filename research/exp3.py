@@ -43,7 +43,7 @@ def main():
     kept_vals = [e["val_rank"] for e in entries if e["kept"]]
     best = kept_vals[-1] if kept_vals else -1.0
 
-    kept = guard_ok and val > best + EPS
+    kept = guard_ok and round(val, 3) > best + EPS
     entries.append({
         "n": len(entries),
         "date": date.today().isoformat(),

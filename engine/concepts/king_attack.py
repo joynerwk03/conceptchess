@@ -38,7 +38,7 @@ class KingAttack:
             attackers = 0
             for pt, w in _UNIT.items():
                 for sq in ctx.pieces[color][pt]:
-                    hits = chess.popcount(board.attacks_mask(sq) & zone)
+                    hits = chess.popcount(ctx.attacks[sq] & zone)
                     if hits:
                         units += w * hits
                         attackers += 1

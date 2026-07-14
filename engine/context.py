@@ -22,7 +22,7 @@ def _squares(bb):
 
 
 class EvalContext:
-    __slots__ = ("board", "pieces", "pawn_files", "king_sq", "phase", "occupied_co")
+    __slots__ = ("board", "pieces", "pawn_files", "king_sq", "phase", "occupied_co", "attacks")
 
     def __init__(self, board: chess.Board):
         self.board = board
@@ -49,6 +49,16 @@ class EvalContext:
                 chess.KING: _squares(board.kings & occ_b),
             },
         }
+
+        # Attack masks for sliders/knights, shared by mobility + king attack.
+        attacks = {}
+        am = board.attacks_mask
+        for color in (chess.WHITE, chess.BLACK):
+            cp = self.pieces[color]
+            for pt in (chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN):
+                for sq in cp[pt]:
+                    attacks[sq] = am(sq)
+        self.attacks = attacks
 
         phase = ((board.knights | board.bishops).bit_count()
                  + 2 * board.rooks.bit_count()

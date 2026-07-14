@@ -34,13 +34,14 @@ class Mobility:
         s = 0
         board = ctx.board
         occ = ctx.occupied_co
+        attacks = ctx.attacks
         for color, sign in ((chess.WHITE, 1), (chess.BLACK, -1)):
             own = occ[color]
             unsafe = self._pawn_attacks(board, not color)
             for pt, (key, typical) in MOBILITY_PARAMS.items():
                 w = W[key]
                 for sq in ctx.pieces[color][pt]:
-                    n = chess.popcount(board.attacks_mask(sq) & ~own & ~unsafe)
+                    n = chess.popcount(attacks[sq] & ~own & ~unsafe)
                     s += sign * w * (n - typical)
         return s
 
@@ -54,7 +55,7 @@ class Mobility:
             for pt, (key, typical) in MOBILITY_PARAMS.items():
                 w = W[key]
                 for sq in ctx.pieces[color][pt]:
-                    n = chess.popcount(board.attacks_mask(sq) & ~own & ~unsafe)
+                    n = chess.popcount(ctx.attacks[sq] & ~own & ~unsafe)
                     v = sign * w * (n - typical)
                     if v:
                         label = (f"{cname} {chess.piece_name(pt)} on "

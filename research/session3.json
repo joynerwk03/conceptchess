@@ -9,5 +9,16 @@
   "guard_ok": true,
   "kept": true,
   "seconds": 0.6
+ },
+ {
+  "n": 1,
+  "date": "2026-07-13",
+  "desc": "speed: shared attack masks in EvalContext",
+  "train_rank": 42.515,
+  "val_rank": 45.49,
+  "evalloss_val": 0.019119,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.4
  }
 ]
