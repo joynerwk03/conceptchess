@@ -22,7 +22,8 @@ def _squares(bb):
 
 
 class EvalContext:
-    __slots__ = ("board", "pieces", "pawn_files", "king_sq", "phase", "occupied_co", "attacks")
+    __slots__ = ("board", "pieces", "pawn_files", "king_sq", "phase", "occupied_co",
+                 "attacks", "attacked_by")
 
     def __init__(self, board: chess.Board):
         self.board = board
@@ -59,6 +60,27 @@ class EvalContext:
                 for sq in cp[pt]:
                     attacks[sq] = am(sq)
         self.attacks = attacks
+
+        # Full attack-union mask per color (pieces + pawns + king).
+        atk_w = atk_b = 0
+        for color in (chess.WHITE, chess.BLACK):
+            cp = self.pieces[color]
+            acc = 0
+            for pt in (chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN):
+                for sq in cp[pt]:
+                    acc |= attacks[sq]
+            pawns = board.pawns & (occ_w if color == chess.WHITE else occ_b)
+            if color == chess.WHITE:
+                acc |= ((pawns << 7) & ~chess.BB_FILE_H) | ((pawns << 9) & ~chess.BB_FILE_A)
+            else:
+                acc |= ((pawns >> 7) & ~chess.BB_FILE_A) | ((pawns >> 9) & ~chess.BB_FILE_H)
+            if cp[chess.KING]:
+                acc |= chess.BB_KING_ATTACKS[cp[chess.KING][0]]
+            if color == chess.WHITE:
+                atk_w = acc
+            else:
+                atk_b = acc
+        self.attacked_by = (atk_b, atk_w)  # indexable by color bool
 
         phase = ((board.knights | board.bishops).bit_count()
                  + 2 * board.rooks.bit_count()

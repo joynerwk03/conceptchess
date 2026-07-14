@@ -20,16 +20,17 @@ class Threats:
 
     def _items(self, ctx, labels):
         items = []
-        board = ctx.board
         frac = W["threat.hanging"]
+        attacked_by = ctx.attacked_by
         for color, sign, cname in ((chess.WHITE, 1, "Black"), (chess.BLACK, -1, "White")):
             # color = attacker; iterate the *enemy*'s pieces
             enemy = not color
+            atk, dfd = attacked_by[color], attacked_by[enemy]
             for pt, sqs in ctx.pieces[enemy].items():
                 if pt == chess.KING:
                     continue
                 for sq in sqs:
-                    if board.is_attacked_by(color, sq) and not board.is_attacked_by(enemy, sq):
+                    if (atk >> sq) & 1 and not (dfd >> sq) & 1:
                         v = sign * frac * _VALUE[pt]
                         if labels:
                             items.append(

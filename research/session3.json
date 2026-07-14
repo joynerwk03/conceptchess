@@ -65,5 +65,29 @@
   "kept": true,
   "seconds": 420.0,
   "note": "10-game match vs pre-threats state: threat-0.6 engine scored 5% (~-500 Elo). Large static threat weights fake 1-ply lookahead and double-count with quiescence. Rank metric needs match gates for weight magnitudes, same as evalloss did. Weight reverted to 0.1 (pending its own gate)."
+ },
+ {
+  "n": 6,
+  "date": "2026-07-13",
+  "desc": "match gate: threat 0.1 passes (55% vs pre-threats), adopted",
+  "train_rank": 46.307,
+  "val_rank": 47.059,
+  "evalloss_val": 0.019265,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 400.0,
+  "note": "10-game gate: +4 =3 -3. Small threat weight helps (or at worst ties) real play AND raises rank agreement +1.57pt; the 6x larger weight the metric preferred loses ~500 Elo. Rule confirmed: fast metrics screen concepts, matches set magnitudes."
+ },
+ {
+  "n": 7,
+  "date": "2026-07-13",
+  "desc": "speed: threats via precomputed attack-union masks",
+  "train_rank": 46.307,
+  "val_rank": 47.059,
+  "evalloss_val": 0.019265,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.4,
+  "note": "Speed experiment: metric unchanged by design (identical eval values); gate is the benchmark. NPS 32.1k -> 36.9k (+15%), avg depth 7.5 -> 7.83."
  }
 ]
