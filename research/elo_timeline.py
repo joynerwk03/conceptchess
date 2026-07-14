@@ -132,7 +132,7 @@ td.num { font-variant-numeric: tabular-nums; }
 <div class="elo-root">
   <h1>ConceptChess — estimated Elo over time</h1>
   <p class="sub">Current engine: <strong>{{CUR}}</strong> on the Stockfish UCI_Elo
-  scale at 0.3s/move (60 ladder games). Filled points are direct ladder anchors;
+  scale at 0.3s/move (40 ladder games vs SF 1700–2000). Filled points are direct ladder anchors;
   hollow points are chained from head-to-head match deltas recorded in LOG.md.
   Caveats: UCI_Elo calibration at fast time controls compresses level differences,
   and 10-game matches carry ~±200 Elo of noise — treat the scale as internally
