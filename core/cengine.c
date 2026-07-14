@@ -266,3 +266,5 @@ U64 c_perft(const char *fen, int depth){
     Board b; if(set_fen(&b,fen)) return 0;
     return perft(&b,depth);
 }
+
+#include "ceval.c"
