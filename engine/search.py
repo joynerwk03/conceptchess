@@ -207,14 +207,11 @@ class Searcher:
         best_score = -MATE_SCORE - 1
         best_move = None
         orig_alpha = alpha
-        lmp = depth <= 3 and not in_check and abs(alpha) < MATE_THRESHOLD
-        lmp_count = 3 + depth * depth
         for i, move in enumerate(ordered):
             is_quiet = not board.is_capture(move) and move.promotion is None
-            if is_quiet and best_move is not None:
-                # Futility and late-move pruning of quiet moves near the frontier.
-                if (futile or (lmp and i >= lmp_count)) and not board.gives_check(move):
-                    continue
+            if (futile and is_quiet and best_move is not None
+                    and not board.gives_check(move)):
+                continue
             board.push(move)
             if i == 0:
                 # Principal variation: full window.

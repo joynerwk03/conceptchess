@@ -34,17 +34,5 @@
   "kept": true,
   "quality": false,
   "seconds": 29.9
- },
- {
-  "n": 3,
-  "date": "2026-07-14",
-  "desc": "late move pruning (3+depth^2 quiets at depth<=3)",
-  "nodes_d6": 65490,
-  "time_d6": 3.39,
-  "tactics_pct": 100.0,
-  "guard_ok": true,
-  "kept": true,
-  "quality": false,
-  "seconds": 29.6
  }
 ]
