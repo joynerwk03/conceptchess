@@ -83,5 +83,18 @@
   "kept": true,
   "quality": false,
   "seconds": 33.6
+ },
+ {
+  "n": 7,
+  "date": "2026-07-14",
+  "desc": "qsearch: evasions when in check + quiet checks at first ply",
+  "nodes_d6": 200515,
+  "time_d6": 9.88,
+  "tactics_pct": 100.0,
+  "guard_ok": true,
+  "kept": true,
+  "quality": true,
+  "seconds": 36.6,
+  "note": "Match gate vs same engine without checks: +5 =1 -4 (55%). Quality offsets the +54% time-to-depth tax, slightly positive. Adopted."
  }
 ]

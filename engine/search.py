@@ -245,10 +245,29 @@ class Searcher:
         self.tt[key] = (depth, flag, best_score, best_move)
         return best_score
 
-    def _quiescence(self, board, alpha, beta, ply):
+    def _quiescence(self, board, alpha, beta, ply, qdepth=0):
         self.nodes += 1
         if not self.nodes & 1023 and time.perf_counter() > self.stop_time:
             raise TimeUp
+
+        # In check inside quiescence: no stand-pat — search every evasion,
+        # so checking lines resolve to real outcomes (including mate).
+        if board.is_check():
+            moves = list(board.legal_moves)
+            if not moves:
+                return -MATE_SCORE + ply
+            best = -MATE_SCORE - 1
+            for move in self._order_moves(board, moves, None, min(ply, 127)):
+                board.push(move)
+                score = -self._quiescence(board, -beta, -alpha, ply + 1, qdepth + 1)
+                board.pop()
+                if score > best:
+                    best = score
+                if score > alpha:
+                    alpha = score
+                if alpha >= beta:
+                    break
+            return best
 
         stand_pat = self._eval(board)
         if board.turn == chess.BLACK:
@@ -278,12 +297,27 @@ class Searcher:
             if stand_pat + victim + 200 < alpha:
                 continue
             board.push(move)
-            score = -self._quiescence(board, -beta, -alpha, ply + 1)
+            score = -self._quiescence(board, -beta, -alpha, ply + 1, qdepth + 1)
             board.pop()
             if score >= beta:
                 return beta
             if score > alpha:
                 alpha = score
+
+        # First quiescence ply only: also try quiet checking moves, so
+        # attacks one tempo beyond the horizon get resolved.
+        if qdepth == 0:
+            gives_check = board.gives_check
+            for move in board.generate_legal_moves():
+                if move.promotion is None and not board.is_capture(move) \
+                        and gives_check(move):
+                    board.push(move)
+                    score = -self._quiescence(board, -beta, -alpha, ply + 1, qdepth + 1)
+                    board.pop()
+                    if score >= beta:
+                        return beta
+                    if score > alpha:
+                        alpha = score
         return alpha
 
     # ----- move ordering helpers -----
