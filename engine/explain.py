@@ -29,6 +29,32 @@ def score_string(score, pov_white=True):
     return f"{score / 100:+.2f}"
 
 
+def book_explanation(board, move, name):
+    """Explanation dict for an opening-book move (mirrors explain_move's shape
+    where the GUI needs it, but says plainly that this is book theory)."""
+    breakdown = evaluate_detailed(board)
+    return {
+        "alternative": None,
+        "move": board.san(move),
+        "uci": move.uci(),
+        "score_white": round(breakdown.total, 1),
+        "score_display": score_string(breakdown.total),
+        "mate_in": None,
+        "depth": 0,
+        "nodes": 0,
+        "nps": 0,
+        "time": 0.0,
+        "pv": [board.san(move)],
+        "book": True,
+        "book_name": name,
+        "breakdown_before": breakdown.as_dict(),
+        "breakdown_after": breakdown.as_dict(),
+        "concept_deltas": [],
+        "explanation": [f"Book move: {name}. Playing established opening theory "
+                        f"rather than calculating."],
+    }
+
+
 def explain_move(board, result, searcher=None):
     """Build an explanation dict for the move chosen by search.
 

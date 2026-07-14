@@ -11,7 +11,8 @@ from engine.search import MATE_THRESHOLD
 
 @pytest.fixture
 def engine():
-    return Engine()
+    # Search tests exercise the search directly, not the opening book.
+    return Engine(use_book=False)
 
 
 class TestMates:

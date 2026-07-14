@@ -37,6 +37,8 @@ class SearchResult:
     # root moves from the last completed iteration, best first; scores of
     # non-best moves are alpha-beta bounds, good enough for ranking
     root_ranking: list = field(default_factory=list)
+    book: bool = False           # move came from the opening book
+    book_name: str = ""
 
     @property
     def nps(self):
