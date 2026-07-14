@@ -258,16 +258,21 @@ class Searcher:
         if stand_pat > alpha:
             alpha = stand_pat
 
-        captures = list(board.generate_legal_captures())
+        captures = []
+        for m in board.generate_legal_captures():
+            see = self._see(board, m)
+            if see < 0:
+                continue  # losing capture: not worth resolving in quiescence
+            captures.append((see, m))
         # Non-capturing queen promotions are tactically loud too.
         promo_rank = chess.BB_RANK_7 if board.turn == chess.WHITE else chess.BB_RANK_2
         if board.pawns & board.occupied_co[board.turn] & promo_rank:
             captures.extend(
-                m for m in board.generate_legal_moves(
+                (ORDER_VALUES[chess.QUEEN], m) for m in board.generate_legal_moves(
                     board.pawns & promo_rank, ~board.occupied)
                 if m.promotion == chess.QUEEN)
-        captures.sort(key=lambda m: self._mvv_lva(board, m), reverse=True)
-        for move in captures:
+        captures.sort(key=lambda x: x[0], reverse=True)
+        for see, move in captures:
             # Delta pruning: even winning the victim can't raise alpha.
             victim = self._victim_value(board, move)
             if stand_pat + victim + 200 < alpha:
@@ -316,6 +321,48 @@ class Searcher:
             return ORDER_VALUES[chess.PAWN]
         vt = board.piece_type_at(move.to_square)
         return ORDER_VALUES.get(vt, 0)
+
+    @staticmethod
+    def _see(board, move):
+        """Static exchange evaluation of a capture (cp, from the mover's side).
+        Iterative swap algorithm on the target square."""
+        to = move.to_square
+        frm = move.from_square
+        if board.is_en_passant(move):
+            first_victim = ORDER_VALUES[chess.PAWN]
+        else:
+            vt = board.piece_type_at(to)
+            if vt is None:
+                return 0
+            first_victim = ORDER_VALUES[vt]
+        occupied = board.occupied & ~(1 << frm)
+        gain = [first_victim]
+        attacker_value = ORDER_VALUES.get(board.piece_type_at(frm), 0)
+        color = not board.turn
+        while True:
+            # Mask with our shrinking occupancy: attackers_mask intersects the
+            # board's full piece sets, so already-removed pieces reappear.
+            attackers = board.attackers_mask(color, to, occupied) & occupied
+            if not attackers:
+                break
+            # cheapest attacker
+            best_sq, best_val = None, 10 ** 9
+            bb = attackers
+            while bb:
+                lsb = bb & -bb
+                sq = lsb.bit_length() - 1
+                v = ORDER_VALUES.get(board.piece_type_at(sq), 0)
+                if v < best_val:
+                    best_val, best_sq = v, sq
+                bb ^= lsb
+            gain.append(attacker_value - gain[-1])
+            attacker_value = best_val
+            occupied &= ~(1 << best_sq)
+            color = not color
+        while len(gain) > 1:
+            gain[-2] = -max(-gain[-2], gain[-1])
+            gain.pop()
+        return gain[0]
 
     @staticmethod
     def _has_non_pawn_material(board):

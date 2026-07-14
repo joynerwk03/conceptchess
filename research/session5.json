@@ -71,5 +71,17 @@
   "kept": true,
   "quality": false,
   "seconds": 35.0
+ },
+ {
+  "n": 6,
+  "date": "2026-07-14",
+  "desc": "SEE: prune losing captures in qsearch, order by SEE",
+  "nodes_d6": 187712,
+  "time_d6": 6.4,
+  "tactics_pct": 100.0,
+  "guard_ok": true,
+  "kept": true,
+  "quality": false,
+  "seconds": 33.6
  }
 ]
