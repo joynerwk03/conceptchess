@@ -169,20 +169,6 @@ class Searcher:
                 if tt_flag == TT_UPPER and tt_score <= alpha:
                     return tt_score
 
-        # Reverse futility (static null-move) pruning: at a NON-PV node, if the
-        # static eval already clears beta by a comfortable margin, we're very
-        # likely fail-high; cut without searching. Restricted to null-window
-        # (non-PV) nodes at shallow depth — applying it in a PV node would
-        # corrupt the principal variation.
-        is_pv = beta - alpha > 1
-        if (not is_pv and depth <= 4 and not in_check
-                and abs(beta) < MATE_THRESHOLD):
-            static = self._eval(board)
-            if board.turn == chess.BLACK:
-                static = -static
-            if static - 100 * depth >= beta:
-                return static
-
         # Null-move pruning: skip a turn; if we still beat beta, prune.
         # Deeper nodes tolerate a bigger reduction.
         if (depth >= 3 and not in_check and beta < MATE_THRESHOLD
