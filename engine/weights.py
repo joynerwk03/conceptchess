@@ -43,6 +43,8 @@ W = {
     "act.rook_open": 20,
     "act.rook_semi": 10,
     "act.rook_seventh": 20,
+    # threats
+    "threat.hanging": 0.1,  # fraction of the hanging piece's value
     # tempo
     "tempo": 10,
 }

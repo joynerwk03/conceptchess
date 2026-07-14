@@ -20,5 +20,16 @@
   "guard_ok": true,
   "kept": true,
   "seconds": 0.4
+ },
+ {
+  "n": 2,
+  "date": "2026-07-13",
+  "desc": "re-screen threats concept with rank metric (0.1x)",
+  "train_rank": 46.307,
+  "val_rank": 47.059,
+  "evalloss_val": 0.019265,
+  "guard_ok": true,
+  "kept": true,
+  "seconds": 0.5
  }
 ]

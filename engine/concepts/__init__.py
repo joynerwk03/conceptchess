@@ -19,6 +19,7 @@ from engine.concepts.mobility import Mobility
 from engine.concepts.piece_activity import PieceActivity
 from engine.concepts.king_attack import KingAttack
 from engine.concepts.tempo import Tempo
+from engine.concepts.threats import Threats
 
 ALL_CONCEPTS = [
     Material(),
@@ -29,4 +30,5 @@ ALL_CONCEPTS = [
     Mobility(),
     PieceActivity(),
     Tempo(),
+    Threats(),
 ]
