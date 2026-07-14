@@ -121,6 +121,10 @@
     <div class="why" id="why" style="display:none"></div>
     <h3>Expected line</h3>
     <div class="pv" id="pv">—</div>
+    <div id="altwrap" style="display:none">
+      <h3>Considered alternative</h3>
+      <div class="pv" id="altpv">—</div>
+    </div>
     <h3>Evaluation breakdown — <span id="cScope" style="text-transform:none">current position</span></h3>
     <div class="meta" style="margin:0 0 6px">Positive favors White. Click a row for the individual contributions.</div>
     <div id="concepts"></div>
@@ -287,6 +291,14 @@ function showExplanation(ex) {
   why.style.display = "block";
   why.innerHTML = ex.explanation.map(s => "• " + s).join("<br>");
   $("pv").textContent = ex.pv.join("  ") || "—";
+  if (ex.alternative) {
+    $("altwrap").style.display = "block";
+    $("altpv").textContent =
+      `${ex.alternative.move} (${ex.alternative.score_display} at depth ` +
+      `${ex.alternative.depth})  —  ${ex.alternative.pv.join("  ")}`;
+  } else {
+    $("altwrap").style.display = "none";
+  }
   setEvalBar(ex.score_white);
   renderConcepts(ex.breakdown_after, ex.concept_deltas, "end of expected line");
 }

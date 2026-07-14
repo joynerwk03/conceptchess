@@ -34,6 +34,9 @@ class SearchResult:
     nodes: int = 0
     time: float = 0.0
     pv: list = field(default_factory=list)
+    # root moves from the last completed iteration, best first; scores of
+    # non-best moves are alpha-beta bounds, good enough for ranking
+    root_ranking: list = field(default_factory=list)
 
     @property
     def nps(self):
@@ -81,6 +84,7 @@ class Searcher:
             result.nodes = self.nodes
             result.time = time.perf_counter() - start
             result.pv = self._extract_pv(board, depth)
+            result.root_ranking = list(getattr(self, "root_ranking", []))
             if info_callback:
                 info_callback(result)
             # Stop early on forced mate or if there's no time for another iteration.
@@ -97,6 +101,7 @@ class Searcher:
         best_move = None
         tt_move = self._tt_move(board)
         ordered = self._order_moves(board, root_moves, tt_move, 0)
+        scores = {}
         for i, move in enumerate(ordered):
             board.push(move)
             if i == 0:
@@ -106,6 +111,7 @@ class Searcher:
                 if score > alpha:
                     score = -self._negamax(board, depth - 1, -beta, -alpha, 1)
             board.pop()
+            scores[move] = score
             if score > alpha:
                 alpha = score
                 best_move = move
@@ -113,6 +119,10 @@ class Searcher:
         if best_move in root_moves:
             root_moves.remove(best_move)
             root_moves.insert(0, best_move)
+        self.root_ranking = sorted(scores, key=scores.get, reverse=True)
+        if best_move is not None and self.root_ranking and self.root_ranking[0] != best_move:
+            self.root_ranking.remove(best_move)
+            self.root_ranking.insert(0, best_move)
         self.tt[board._transposition_key()] = (depth, TT_EXACT, alpha, best_move)
         return alpha, best_move
 

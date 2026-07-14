@@ -17,9 +17,13 @@ class Engine:
                                     info_callback=info_callback)
 
     def best_move_explained(self, board, movetime=1.0, max_depth=64):
-        """Search and return (SearchResult, explanation dict)."""
+        """Search and return (SearchResult, explanation dict).
+
+        The explanation includes a contrastive comparison against the
+        runner-up root move (briefly sub-searched)."""
         result = self.best_move(board, movetime=movetime, max_depth=max_depth)
-        explanation = explain_move(board, result) if result.move else None
+        explanation = (explain_move(board, result, searcher=self.searcher)
+                       if result.move else None)
         return result, explanation
 
     def new_game(self):

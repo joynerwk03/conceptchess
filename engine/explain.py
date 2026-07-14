@@ -29,11 +29,13 @@ def score_string(score, pov_white=True):
     return f"{score / 100:+.2f}"
 
 
-def explain_move(board, result):
+def explain_move(board, result, searcher=None):
     """Build an explanation dict for the move chosen by search.
 
     board: position BEFORE the engine's move.
     result: SearchResult (score is from the mover's perspective).
+    searcher: optional Searcher; when given, the runner-up root move gets a
+        brief sub-search so the explanation can contrast the two futures.
     Returns a JSON-friendly dict.
     """
     mover_white = board.turn == chess.WHITE
@@ -63,7 +65,15 @@ def explain_move(board, result):
     sentences = _sentences(white_score, result.score, deltas, mover_white,
                            after.total)
 
+    alternative = None
+    if searcher is not None and len(result.root_ranking) > 1:
+        alternative = _explain_alternative(board, result, after, mover_white,
+                                           searcher)
+        if alternative:
+            sentences.extend(alternative["contrast"])
+
     return {
+        "alternative": alternative,
         "move": board.san(result.move) if result.move else None,
         "uci": result.move.uci() if result.move else None,
         "score_white": round(white_score, 1),
@@ -78,6 +88,69 @@ def explain_move(board, result):
         "breakdown_after": after.as_dict(),
         "concept_deltas": deltas,
         "explanation": sentences,
+    }
+
+
+def _explain_alternative(board, result, best_after, mover_white, searcher):
+    """Sub-search the runner-up root move and contrast the two futures."""
+    alt_move = result.root_ranking[1]
+    b = board.copy(stack=False)
+    alt_san = b.san(alt_move)
+    b.push(alt_move)
+    depth = max(2, result.depth - 2)
+    sub = searcher.search(b, movetime=max(0.05, result.time * 0.2), max_depth=depth)
+    # sub.score is from the opponent's perspective in the child position.
+    alt_score_white = -sub.score if mover_white else sub.score
+
+    alt_pv_san = [alt_san]
+    for mv in sub.pv:
+        alt_pv_san.append(b.san(mv))
+        b.push(mv)
+    alt_after = evaluate_detailed(b)
+
+    best_by = {c.name: c for c in best_after.concepts}
+    diffs = []
+    for c in alt_after.concepts:
+        d = best_by[c.name].score - c.score  # positive: best move's future is better for White
+        diffs.append({"name": c.name, "display_name": c.display_name,
+                      "best": round(best_by[c.name].score, 1),
+                      "alt": round(c.score, 1), "diff": round(d, 1)})
+
+    best_white = result.score if mover_white else -result.score
+    gap = best_white - alt_score_white  # White perspective
+    mover = "White" if mover_white else "Black"
+    best_san = board.san(result.move)
+    sentences = []
+    mover_gap = gap if mover_white else -gap
+    if mover_gap < 25:
+        sentences.append(f"The choice between {best_san} and {alt_san} was close "
+                         f"(evaluations within {abs(gap) / 100:.2f}; the alternative "
+                         f"was checked at lower depth).")
+    else:
+        sign = 1 if mover_white else -1
+        top = sorted((d for d in diffs
+                      if d["name"] != "tempo" and sign * d["diff"] >= 10),
+                     key=lambda d: -sign * d["diff"])[:3]
+        if top:
+            parts = ", ".join(f"{d['display_name'].lower()} ({d['diff'] / 100:+.2f})"
+                              for d in top)
+            sentences.append(f"{best_san} was preferred over {alt_san}: the line "
+                             f"after {alt_san} is worse for {mover} mainly in {parts} "
+                             f"(values from White's perspective).")
+        else:
+            sentences.append(f"{best_san} was preferred over {alt_san} "
+                             f"({gap / 100:+.2f} difference in the expected lines).")
+
+    return {
+        "move": alt_san,
+        "uci": alt_move.uci(),
+        "score_white": round(alt_score_white, 1),
+        "score_display": score_string(alt_score_white),
+        "depth": sub.depth,
+        "pv": alt_pv_san,
+        "breakdown_after": alt_after.as_dict(),
+        "concept_diffs": diffs,
+        "contrast": sentences,
     }
 
 
