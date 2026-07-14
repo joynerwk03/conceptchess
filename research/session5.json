@@ -1,0 +1,14 @@
+[
+ {
+  "n": 0,
+  "date": "2026-07-14",
+  "desc": "baseline (session-4 state)",
+  "nodes_d6": 388774,
+  "time_d6": 15.56,
+  "tactics_pct": 100.0,
+  "guard_ok": true,
+  "kept": true,
+  "quality": false,
+  "seconds": 0.0
+ }
+]
