@@ -46,10 +46,24 @@ class SearchResult:
 class Searcher:
     def __init__(self):
         self.tt = {}
+        self.eval_cache = {}  # transposition key -> static eval (White persp.)
         self.nodes = 0
         self.stop_time = None
         self.killers = [[None, None] for _ in range(128)]
         self.history = {}
+
+    def _eval(self, board):
+        """Static eval with a transposition-keyed cache. Iterative deepening
+        and qsearch revisit the same positions constantly; eval is the most
+        expensive leaf operation, so this hits hard."""
+        key = board._transposition_key()
+        v = self.eval_cache.get(key)
+        if v is None:
+            v = evaluate(board)
+            if len(self.eval_cache) > 1_000_000:
+                self.eval_cache.clear()
+            self.eval_cache[key] = v
+        return v
 
     def search(self, board, movetime=1.0, max_depth=64, info_callback=None):
         """Iterative deepening. movetime is a soft budget in seconds."""
@@ -63,6 +77,7 @@ class Searcher:
         self.history = {}
         if len(self.tt) > 2_000_000:
             self.tt.clear()
+            self.eval_cache.clear()
 
         result = SearchResult()
         root_moves = list(board.legal_moves)
@@ -171,7 +186,7 @@ class Searcher:
         # generous margin still can't reach alpha, quiet moves are hopeless.
         futile = False
         if depth <= 2 and not in_check and abs(alpha) < MATE_THRESHOLD:
-            static = evaluate(board)
+            static = self._eval(board)
             if board.turn == chess.BLACK:
                 static = -static
             futile = static + (150 if depth == 1 else 300) <= alpha
@@ -228,7 +243,7 @@ class Searcher:
         if not self.nodes & 1023 and time.perf_counter() > self.stop_time:
             raise TimeUp
 
-        stand_pat = evaluate(board)
+        stand_pat = self._eval(board)
         if board.turn == chess.BLACK:
             stand_pat = -stand_pat
         if stand_pat >= beta:

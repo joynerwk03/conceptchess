@@ -10,5 +10,17 @@
   "kept": true,
   "quality": false,
   "seconds": 0.0
+ },
+ {
+  "n": 1,
+  "date": "2026-07-14",
+  "desc": "eval cache keyed by transposition key",
+  "nodes_d6": 388774,
+  "time_d6": 12.65,
+  "tactics_pct": 100.0,
+  "guard_ok": true,
+  "kept": true,
+  "quality": false,
+  "seconds": 40.0
  }
 ]
