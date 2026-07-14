@@ -5,3 +5,4 @@ __pycache__/
 .DS_Store
 *.pgn
 research/worktrees/
+core/libcengine.dylib
