@@ -169,6 +169,16 @@ class Searcher:
                 if tt_flag == TT_UPPER and tt_score <= alpha:
                     return tt_score
 
+        # Reverse futility (static null-move) pruning: if the static eval is
+        # already far enough above beta, the opponent won't let us keep it but
+        # we're very likely fail-high, so cut without searching.
+        if depth <= 6 and not in_check and abs(beta) < MATE_THRESHOLD:
+            static = self._eval(board)
+            if board.turn == chess.BLACK:
+                static = -static
+            if static - 80 * depth >= beta:
+                return static
+
         # Null-move pruning: skip a turn; if we still beat beta, prune.
         # Deeper nodes tolerate a bigger reduction.
         if (depth >= 3 and not in_check and beta < MATE_THRESHOLD

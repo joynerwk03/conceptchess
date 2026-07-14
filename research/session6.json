@@ -10,5 +10,29 @@
   "kept": true,
   "quality": false,
   "seconds": 0.0
+ },
+ {
+  "n": 1,
+  "date": "2026-07-14",
+  "desc": "counter-move heuristic",
+  "nodes_d6": 200496,
+  "time_d6": 9.97,
+  "tactics_pct": 100.0,
+  "guard_ok": true,
+  "kept": false,
+  "quality": false,
+  "seconds": 36.5
+ },
+ {
+  "n": 2,
+  "date": "2026-07-14",
+  "desc": "reverse futility pruning (80cp*depth margin)",
+  "nodes_d6": 151027,
+  "time_d6": 6.02,
+  "tactics_pct": 100.0,
+  "guard_ok": true,
+  "kept": true,
+  "quality": false,
+  "seconds": 29.9
  }
 ]
