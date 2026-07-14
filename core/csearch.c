@@ -328,6 +328,10 @@ int c_search(const char *startfen, const char *moves, double movetime,
         }
         if(SS.stopped) break;
         if(bm_found){ best=bm; score=bs; cd=depth;
+            /* store the root entry so c_pv can extract the line */
+            U64 rh=compute_hash(&b);
+            TTEntry *re=&TT[rh&TT_MASK];
+            re->key=rh; re->depth=depth; re->flag=TT_EXACTF; re->score=score; re->move=best;
             /* move best to front for next iteration */
             for(int i=0;i<rn;i++) if(root[i]==best){ Move t=root[i]; for(int j=i;j>0;j--)root[j]=root[j-1]; root[0]=t; break; } }
         if(score>S_MATE_TH||score<-S_MATE_TH) break;
