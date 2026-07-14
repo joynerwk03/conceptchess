@@ -223,5 +223,21 @@
       "kbn_mate_plies": 79
     },
     "explanation": "Diagnostic: KBB/KBN vs K were unconvertable (50-move draws), a won KPvK was lost. Added a 'mating drive' concept (drive enemy king to corner + bring own king up) active only in bare-king endgames -> KBB mate in 67 plies, KBN in 79. Provably neutral outside bare-king endgames (0 on all non-lone-king positions), so no gate needed. Negative results: KPvK bitbase dropped (correctness rabbit hole, tiny Elo); book expansion 250->478 gate-rejected at 36% (-98 Elo) because added sharp lines don't suit the simple eval. Engine stays ~2018 Elo but converts basic mates it was drawing."
+  },
+  {
+    "experiment": 15,
+    "date": "2026-07-14",
+    "rev": null,
+    "title": "Compiled core (C engine) \u2014 the big strength jump",
+    "hypothesis": "A compiled core (move gen + search + eval mirroring Python exactly) breaks the pure-Python plateau while preserving interpretability.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "tactics_pct_1s": 100.0,
+      "elo_ladder_mle": 2442,
+      "elo_vs_python": 382,
+      "movegen_speedup": 43,
+      "depth_at_1s": 9
+    },
+    "explanation": "Ported board+movegen+search+eval to C (clang->dylib, ctypes). Perft matches python-chess exactly (43x faster movegen). C eval == Python eval to 0.000000 on 6204 positions (interpretability guarantee: fast search optimizes exactly what the explanation shows). C search reaches depth 9 vs Python's 4 at 1s. Head-to-head: +24=6-0 (90%, +382 Elo) vs the ~2018 Python engine. Ladder-anchored at 2442 (2305-2582). Python explanation layer unchanged and still exact."
   }
 ]

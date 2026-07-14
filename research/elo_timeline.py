@@ -27,6 +27,7 @@ S1, S1_LO, S1_HI = ANCHORS["session1"]["mle"]
 CUR, CUR_LO, CUR_HI = ANCHORS["current"]["mle"]
 S5, S5_LO, S5_HI = ANCHORS["session5"]["mle"]
 S6, S6_LO, S6_HI = ANCHORS["session6"]["mle"]
+CC, CC_LO, CC_HI = ANCHORS["compiled"]["mle"]
 CHAIN_ERR = 220  # ± for delta-chained points (10-20 game matches)
 
 POINTS = [
@@ -53,6 +54,12 @@ POINTS = [
     # session 6: opening book, ladder-anchored (40 games vs SF1800-2100)
     {"label": "session 6 — opening book (pruning dead-ends)", "exps": 78,
      "elo": S6, "lo": S6_LO, "hi": S6_HI, "kind": "measured"},
+    # sessions 7-8: endgame fix + plateau (no strength change)
+    {"label": "sessions 7-8 — endgame fix, pure-Python plateau", "exps": 88,
+     "elo": S6, "lo": S6-180, "hi": S6+180, "kind": "chained"},
+    # compiled core: C engine, ladder-anchored (30 games vs SF2200-2600)
+    {"label": "COMPILED CORE — C engine (43x movegen)", "exps": 92,
+     "elo": CC, "lo": CC_LO, "hi": CC_HI, "kind": "measured"},
 ]
 
 
@@ -100,13 +107,14 @@ def build_html():
     for name, data in (("session 1", ANCHORS["session1"]),
                        ("session 4", ANCHORS["current"]),
                        ("session 5", ANCHORS["session5"]),
-                       ("session 6 (current)", ANCHORS["session6"])):
+                       ("session 6", ANCHORS["session6"]),
+                       ("compiled core (current)", ANCHORS["compiled"])):
         for opp, (w, d, l) in sorted(data["results"].items()):
             rows += (f"<tr><td>{name}</td><td>Stockfish {opp}</td>"
                      f"<td class='num'>+{w} ={d} −{l}</td>"
                      f"<td class='num'>{100 * (w + 0.5 * d) / (w + d + l):.0f}%</td></tr>")
     HTML_OUT.write_text(TEMPLATE.replace("{{SVG}}", svg).replace("{{ROWS}}", rows)
-                        .replace("{{CUR}}", f"{S6} (95% {S6_LO}–{S6_HI})"))
+                        .replace("{{CUR}}", f"{CC} (95% {CC_LO}–{CC_HI})"))
     print(f"wrote {HTML_OUT}")
 
 
@@ -137,7 +145,7 @@ td.num { font-variant-numeric: tabular-nums; }
 <div class="elo-root">
   <h1>ConceptChess — estimated Elo over time</h1>
   <p class="sub">Current engine: <strong>{{CUR}}</strong> on the Stockfish UCI_Elo
-  scale at 0.3s/move (40 ladder games vs SF 1800–2100). Filled points are direct ladder anchors;
+  scale at 0.3s/move (compiled C core; 30 ladder games vs SF 2200–2600). Filled points are direct ladder anchors;
   hollow points are chained from head-to-head match deltas recorded in LOG.md.
   Caveats: UCI_Elo calibration at fast time controls compresses level differences,
   and 10-game matches carry ~±200 Elo of noise — treat the scale as internally

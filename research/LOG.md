@@ -32,7 +32,7 @@ loaded via ctypes; no new Python deps). Four milestones, each validated:
 biggest jump in the project. Interpretability fully preserved: the concept
 breakdown and per-concept explanations are unchanged and still exact.
 
-**Ladder anchor:** (filled below — see metrics.json / elo_report.html.)
+**Ladder anchor: 2442 Elo (95% 2305–2582)** over 30 games vs SF 2200–2600 — up from the Python engine's ~2018 (+424, consistent with the +382 head-to-head). Same interpretable eval; the jump is entirely from ~50x deeper search.
 
 Notes for future work: the contrastive "alternative" explanation currently
 needs the Python path (use_core=False) — the C search doesn't export the root
