@@ -162,5 +162,21 @@
       "elo_vs_session1": 35
     },
     "explanation": "Meta-experiment picked rank agreement (monotone with strength across 4 match-measured states; evalloss anti-correlated, move-match noisy). Loop: threats concept adopted at 0.1x after passing its match gate (55%); the metric's preferred 0.6x scored 5% in the gate (~-500 Elo), confirming the rule that fast metrics screen concepts while matches set magnitudes. Speed: shared attack masks + bitmask threats (+15% NPS). Interpretability: contrastive explanations (why this move over the runner-up) with faithfulness tests."
+  },
+  {
+    "experiment": 11,
+    "date": "2026-07-14",
+    "rev": null,
+    "title": "Session 4: divergence mining + SF ladder + Elo timeline",
+    "hypothesis": "Positions where our eval diverges most from Stockfish point at fixable weaknesses; a multi-level ladder gives a solid absolute Elo anchor.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "avg_depth_2s": 7.83,
+      "avg_nps": 36864,
+      "tactics_pct_1s": 100.0,
+      "rank_agreement_val": 47.06,
+      "elo_ladder_mle": 1773
+    },
+    "explanation": "Divergence miner found the dominant error motif (center-stuck kings under attack) but all three targeted static terms failed both metrics honestly - this class needs search, not eval terms. 60-game SF ladder: 1773 Elo (1668-1886); session-1 state re-anchored at ~1737 on the same scale, consistent with head-to-head deltas. GUI: square colors fixed, moves tab, eval graph, gated eval bar. Elo timeline: research/elo_report.html."
   }
 ]

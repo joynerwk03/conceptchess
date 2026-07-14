@@ -6,6 +6,38 @@ research/metrics.json (source of truth for the progress graphs).
 
 ---
 
+## 2026-07-14 — Session 4: divergence mining + Stockfish ladder + Elo timeline
+
+**GUI (user-driven):** square colors were inverted (a1 rendered light) — fixed,
+queens now start on their color; pieces enlarged; eval bar only moves on
+completed searches; new Moves tab (click any move to view that position) and
+Eval-graph tab; server returns SAN history.
+
+**Divergence mining (research/divergence.py):** ranked the eval set by
+|winprob(ours) − winprob(SF)|. 126/150 worst cases are queens-on middlegames;
+the dominant motif is a king stuck in the center under attack (SF +4, us −1.5).
+Three targeted experiments, all honestly discarded:
+- stuck-in-center penalty: BOTH metrics worse at every weight 15–90 (misfires
+  on legitimately-fine uncastled kings in this distribution)
+- pawn-storm units in king attack: rank −0.39pt, evalloss −0.0001 — mixed noise
+- kattack scale sweep: 3.0 confirmed optimal on both metrics
+Conclusion: this error class likely needs search (deeper attack resolution),
+not more static terms. Candidate: qsearch checks, king-attack extensions.
+
+**Stockfish ladder (60 games, levels 1320–1800 @ 0.3s/move):**
+100% / 85% / 65% / 75% / 60% / 60% → **MLE 1773 Elo (95% 1668–1886)**.
+Re-anchored the session-1 state on the same ladder (20 games): ≈1737
+(1575–1916) — consistent with the +70 head-to-head chain since. The original
+"1435" anchor was a noisy 10-game draw; scale caveat: UCI_Elo differences
+compress at fast time controls (60% vs 1700 AND 1800).
+
+**Elo timeline:** research/elo_timeline.py → elo_timeline.svg / elo_report.html.
+Honest picture: session 1 (search) bought the big jump; sessions 2–4 are flat
+within error bars — they bought explanation quality, metrics infrastructure,
+and negative knowledge instead.
+
+---
+
 ## 2026-07-13 — Session 3: metric research + move-ranking loop + contrastive explanations
 
 **Meta-experiment (the session's core deliverable).** Validated 4 candidate
