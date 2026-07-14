@@ -6,6 +6,41 @@ research/metrics.json (source of truth for the progress graphs).
 
 ---
 
+## 2026-07-14 — Session 9: compiled core (C engine) — the big strength jump
+
+After the session-8 plateau, ported the engine core to C (clang → shared lib,
+loaded via ctypes; no new Python deps). Four milestones, each validated:
+
+- **M1 move generator** (core/cengine.c): bitboard board + legal move gen
+  (copy-make). **Perft matches python-chess exactly** on startpos, Kiwipete, and
+  3 tricky endgames (core/perft_check.py). **~43× faster** (42.8 vs 0.99 Mnps).
+- **M2 eval** (core/ceval.c): every concept ported to C; constants generated
+  from the Python source (core/gen_eval_data.py → eval_data.h) so they can't
+  drift. **Cross-check: C eval == Python eval to 0.000000 on 6,204 positions**
+  (core/eval_check.py) — this is the interpretability guarantee.
+- **M3 search** (core/csearch.c): iterative-deepening negamax, Zobrist TT,
+  MVV-LVA/killer/history ordering, quiescence + SEE + first-ply checks, null
+  move, two-tier LMR, PVS, futility, check extension, draw detection, PV export.
+  On the Italian at 1s: **depth 9 / 1.0 Mnps vs Python depth 4 / 20 knps.**
+- **M4 integration**: Engine uses the C core by default; the Python explanation
+  layer stays authoritative (breakdowns from evaluate_detailed, expected line
+  from the C PV). The C eval == Python eval, so the fast search optimizes
+  exactly what the breakdown shows. All 43 tests pass; UCI/GUI/matches run C.
+
+**Head-to-head gate vs the session-8 Python engine: +24 =6 −0 (90%), +382 Elo
+(95% +233..+1200) — zero losses in 30 games.** The compiled core is the single
+biggest jump in the project. Interpretability fully preserved: the concept
+breakdown and per-concept explanations are unchanged and still exact.
+
+**Ladder anchor:** (filled below — see metrics.json / elo_report.html.)
+
+Notes for future work: the contrastive "alternative" explanation currently
+needs the Python path (use_core=False) — the C search doesn't export the root
+ranking yet. Any eval change must re-run core/gen_eval_data.py + rebuild, or
+tests/test_core.py::test_c_eval_matches_python fails by design.
+
+---
+
 ## 2026-07-14 — Session 8: search refinements (both reverted) + plateau assessment
 
 Two untried search levers, both gated, both reverted — the engine is at a hard
