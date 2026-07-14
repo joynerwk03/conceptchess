@@ -7,13 +7,25 @@ from engine.engine import Engine
 from engine.evaluation import evaluate
 
 
+_FEN = "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 6 5"
+
+
 @pytest.fixture(scope="module")
 def explained():
-    board = chess.Board(
-        "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 6 5")
-    engine = Engine()
-    result, ex = engine.best_move_explained(board, movetime=1.5)
+    # Pure-Python engine: full explanation including the contrastive alternative.
+    board = chess.Board(_FEN)
+    result, ex = Engine(use_core=False).best_move_explained(board, movetime=1.5)
     return board, result, ex
+
+
+def test_core_explanation_is_faithful():
+    """The compiled engine's shown breakdown is a real eval of the PV leaf."""
+    board = chess.Board(_FEN)
+    _, ex = Engine().best_move_explained(board, movetime=1.0)
+    b = board.copy()
+    for san in ex["pv"]:
+        b.push_san(san)
+    assert ex["breakdown_after"]["total"] == pytest.approx(evaluate(b), abs=0.06)
 
 
 def test_breakdowns_are_faithful(explained):

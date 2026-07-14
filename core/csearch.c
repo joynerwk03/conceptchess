@@ -280,8 +280,9 @@ static void uci_of(Move m, char *out){
 /* Public API: search from startfen after the given space-separated UCI moves.
  * Fills uci_out (>=6 bytes), depth_out, nodes_out; returns score (stm cp). */
 static int g_search_init=0;
-int c_search(const char *startfen, const char *moves, double movetime,
+int c_search(const char *startfen, const char *moves, double movetime, int max_depth,
              char *uci_out, int *depth_out, long *nodes_out){
+    if(max_depth<=0) max_depth=64;
     if(!g_init){ init_tables(); g_init=1; }
     if(!g_search_init){ zobrist_init(); TT=calloc(TT_SIZE,sizeof(TTEntry)); g_search_init=1; }
     Board b; if(set_fen(&b,startfen)){ uci_out[0]=0; return 0; }
@@ -313,7 +314,7 @@ int c_search(const char *startfen, const char *moves, double movetime,
     Move root[256]; int rn=gen_legal(&b,root);
     if(!rn){ uci_out[0]=0; return 0; }
     Move best=root[0]; int score=0, cd=0;
-    for(int depth=1; depth<=64; depth++){
+    for(int depth=1; depth<=max_depth; depth++){
         int a=-S_MATE, bt=S_MATE, bm_found=0; Move bm=0; int bs=-S_MATE-1;
         order(&b,root,rn,best,0);
         for(int i=0;i<rn;i++){
