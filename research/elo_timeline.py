@@ -25,6 +25,7 @@ GREEN = "#1baf7a"
 
 S1, S1_LO, S1_HI = ANCHORS["session1"]["mle"]
 CUR, CUR_LO, CUR_HI = ANCHORS["current"]["mle"]
+S5, S5_LO, S5_HI = ANCHORS["session5"]["mle"]
 CHAIN_ERR = 220  # ± for delta-chained points (10-20 game matches)
 
 POINTS = [
@@ -45,6 +46,9 @@ POINTS = [
     # session 4: ladder-anchored (60 games vs SF1320-1800)
     {"label": "session 4 — ladder anchor (60 games)", "exps": 63,
      "elo": CUR, "lo": CUR_LO, "hi": CUR_HI, "kind": "measured"},
+    # session 5: search sprint, ladder-anchored (40 games vs SF1700-2000)
+    {"label": "session 5 — search sprint (SEE, LMR, checks)", "exps": 71,
+     "elo": S5, "lo": S5_LO, "hi": S5_HI, "kind": "measured"},
 ]
 
 
@@ -90,13 +94,14 @@ def build_html():
     svg = svg[svg.index("<svg"):]
     rows = ""
     for name, data in (("session 1", ANCHORS["session1"]),
-                       ("session 4 (current)", ANCHORS["current"])):
+                       ("session 4", ANCHORS["current"]),
+                       ("session 5 (current)", ANCHORS["session5"])):
         for opp, (w, d, l) in sorted(data["results"].items()):
             rows += (f"<tr><td>{name}</td><td>Stockfish {opp}</td>"
                      f"<td class='num'>+{w} ={d} −{l}</td>"
                      f"<td class='num'>{100 * (w + 0.5 * d) / (w + d + l):.0f}%</td></tr>")
     HTML_OUT.write_text(TEMPLATE.replace("{{SVG}}", svg).replace("{{ROWS}}", rows)
-                        .replace("{{CUR}}", f"{CUR} (95% {CUR_LO}–{CUR_HI})"))
+                        .replace("{{CUR}}", f"{S5} (95% {S5_LO}–{S5_HI})"))
     print(f"wrote {HTML_OUT}")
 
 

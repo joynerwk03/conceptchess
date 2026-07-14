@@ -35,7 +35,16 @@ CFG = {
                  "best move first among its top-3 (margin ≥ 30cp), held-out val "
                  "split · validated against match-measured strength of 4 engine "
                  "states · weight changes additionally match-gated"},
+    5: {"metric": "time_d6", "train": "nodes_d6", "fmt": "{:.2f}s",
+        "fmt2": "{:,.0f}", "val_h": "Time to d6", "train_h": "Nodes to d6",
+        "ylabel": "Time to depth 6, seconds (lower is better)",
+        "title": "session 5: search sprint",
+        "blurb": "metric: wall time to a fixed depth-6 search over 4 positions "
+                 "(nodes shown for determinism) · quality-affecting changes "
+                 "(adaptive null move, LMR tiers, SEE, qsearch checks) additionally "
+                 "match-gated; see notes on each entry"},
 }[SESSION]
+CFG.setdefault("fmt2", CFG["fmt"])
 ENTRIES = json.loads((HERE / f"session{SESSION}.json").read_text())
 SVG = HERE / f"session{SESSION}_graph.svg"
 HTML_OUT = HERE / f"session{SESSION}_report.html"
@@ -99,7 +108,7 @@ def build_html():
         rows += (f'<tr><td class="num">{e["n"]}</td>'
                  f'<td>{html.escape(e["desc"])}</td>'
                  f'<td class="num">{CFG["fmt"].format(e[CFG["metric"]])}</td>'
-                 f'<td class="num">{CFG["fmt"].format(e[CFG["train"]])}</td>'
+                 f'<td class="num">{CFG["fmt2"].format(e[CFG["train"]])}</td>'
                  f'<td><span class="badge {badge[0]}">{badge[1]}</span></td></tr>')
     n_kept = sum(e["kept"] for e in ENTRIES)
     first = ENTRIES[0][CFG["metric"]]

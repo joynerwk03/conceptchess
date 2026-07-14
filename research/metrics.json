@@ -178,5 +178,21 @@
       "elo_ladder_mle": 1773
     },
     "explanation": "Divergence miner found the dominant error motif (center-stuck kings under attack) but all three targeted static terms failed both metrics honestly - this class needs search, not eval terms. 60-game SF ladder: 1773 Elo (1668-1886); session-1 state re-anchored at ~1737 on the same scale, consistent with head-to-head deltas. GUI: square colors fixed, moves tab, eval graph, gated eval bar. Elo timeline: research/elo_report.html."
+  },
+  {
+    "experiment": 12,
+    "date": "2026-07-14",
+    "rev": null,
+    "title": "Session 5: search sprint (SEE, LMR tiers, eval cache, qsearch checks)",
+    "hypothesis": "Search depth/quality is the highest-confidence Elo lever (sessions 1-4 evidence).",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "time_to_d6": 9.88,
+      "nodes_to_d6": 200515,
+      "tactics_pct_1s": 100.0,
+      "elo_ladder_mle": 1850,
+      "elo_vs_session4": 53
+    },
+    "explanation": "7 experiments, 6 kept: transposition-keyed eval cache (-19% time), adaptive null-move R (-13% nodes at d7), two LMR tiers (-28%), SEE pruning/ordering in qsearch (-29%), qsearch evasions + first-ply quiet checks (gate 55%). Net 15.56s -> 9.88s to depth 6 with better tactical quality. Batch gate vs session-4: +9 =5 -6 (57.5%, ~+53 Elo). New ladder anchor: 1850 (1737-1963) over 40 games vs SF 1700-2000."
   }
 ]

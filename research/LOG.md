@@ -6,6 +6,34 @@ research/metrics.json (source of truth for the progress graphs).
 
 ---
 
+## 2026-07-14 — Session 5: search sprint
+
+Metric: wall time to fixed depth-6 over 4 positions (research/ttd.py), nodes
+reported for determinism; quality-affecting changes match-gated. Runner:
+research/exp5.py → session5.json. Baseline: 388,774 nodes / 15.56s.
+
+| # | Change | Result | Verdict |
+|---|---|---|---|
+| 1 | Eval cache keyed by transposition key | −18.7% time, nodes identical | KEPT |
+| 2 | Bitboard capture test in ordering | +1.3% — under the 3% bar | DISCARDED |
+| 3 | Adaptive null-move R (+1 at depth ≥6) | −13% nodes at d7 (d6-blind) | KEPT |
+| 4 | LMR r=3 tier for moves ≥12 | −23% time, tactics 100% | KEPT |
+| 5 | LMR onset i≥3 | −7.7% time | KEPT |
+| 6 | SEE pruning + ordering in qsearch | −29% time, −33% nodes | KEPT |
+| 7 | Qsearch evasions + first-ply quiet checks | +54% time tax; gate +5 =1 −4 (55%) | KEPT (gated) |
+
+Net: **15.56s → 9.88s to depth 6 with strictly better search quality** (2.4×
+faster before the check extension spent some of it on tactics). SEE bug worth
+remembering: `attackers_mask(color, sq, occupied)` intersects the board's full
+piece sets — mask the result with the shrinking occupancy or SEE loops forever.
+
+**Batch gate: +9 =5 −6 (57.5%) over 20 games vs session-4 ≈ +53 Elo** —
+consistent with ~1 extra ply at 0.3s/move.
+
+**Ladder anchor:** (results below — see metrics.json exp 12 / elo_report.html.)
+
+---
+
 ## 2026-07-14 — Session 4: divergence mining + Stockfish ladder + Elo timeline
 
 **GUI (user-driven):** square colors were inverted (a1 rendered light) — fixed,
