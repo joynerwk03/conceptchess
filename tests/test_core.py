@@ -41,7 +41,7 @@ def test_c_eval_matches_python():
 
 
 def test_core_finds_mate():
-    engine_move, score, depth, nodes, pv = core.search(
+    engine_move, score, depth, nodes, pv, _ = core.search(
         chess.Board("6k1/5ppp/8/8/8/8/8/R6K w - - 0 1"), movetime=1.0)
     assert engine_move == chess.Move.from_uci("a1a8")
     assert score > 90000

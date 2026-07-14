@@ -32,7 +32,7 @@ def _load():
         lib = ctypes.CDLL(str(_LIB))
         lib.c_search.restype = ctypes.c_int
         lib.c_search.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_double,
-                                 ctypes.c_int, ctypes.c_char_p,
+                                 ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p,
                                  ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_long)]
         lib.c_pv.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
         lib.c_eval.restype = ctypes.c_double
@@ -47,25 +47,42 @@ _load()
 
 
 def search(board, movetime=1.0, max_depth=64):
-    """Return (move, score, depth, nodes, pv) using the compiled core.
+    """Return (move, score, depth, nodes, pv, second) using the compiled core.
 
     score is centipawns from the side-to-move's perspective (mate near
-    +/-100000); pv is a list of chess.Move for the expected line.
+    +/-100000); pv is the expected line; second is the runner-up root move
+    (chess.Move or None) for contrastive explanations.
     """
     start_fen = board.root().fen()
     moves = " ".join(m.uci() for m in board.move_stack)
     out = ctypes.create_string_buffer(8)
+    second = ctypes.create_string_buffer(8)
     depth = ctypes.c_int(0)
     nodes = ctypes.c_long(0)
     sc = _lib.c_search(start_fen.encode(), moves.encode(), float(movetime),
-                       int(max_depth), out, ctypes.byref(depth), ctypes.byref(nodes))
+                       int(max_depth), out, second, ctypes.byref(depth), ctypes.byref(nodes))
     uci = out.value.decode()
     move = chess.Move.from_uci(uci) if uci else None
+    snd = chess.Move.from_uci(second.value.decode()) if second.value else None
 
     pv_buf = ctypes.create_string_buffer(512)
     _lib.c_pv(start_fen.encode(), moves.encode(), pv_buf, 512)
     pv = [chess.Move.from_uci(u) for u in pv_buf.value.decode().split()] if pv_buf.value else []
-    return move, sc, depth.value, nodes.value, pv
+    return move, sc, depth.value, nodes.value, pv, snd
+
+
+def eval_move(board, move, movetime=0.3):
+    """How good is `move` for the side to move? Search the resulting position
+    and report (score_for_mover_cp, line) where line starts with `move`.
+
+    This is the atomic building block for candidate ranking, 'analyze my move',
+    and the contrastive alternative — all reuse the same C search.
+    """
+    b = board.copy()
+    b.push(move)
+    reply, reply_sc, depth, nodes, reply_pv, _ = search(b, movetime)
+    line = [move] + reply_pv
+    return -reply_sc, line, depth
 
 
 def c_eval(fen):

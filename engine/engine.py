@@ -46,10 +46,10 @@ class Engine:
             return r
         if self.use_core:
             t = time.perf_counter()
-            move, score, depth, nodes, pv = core.search(board, movetime, max_depth)
+            move, score, depth, nodes, pv, second = core.search(board, movetime, max_depth)
             r = SearchResult(move=move, score=score, depth=depth, nodes=nodes,
                              time=time.perf_counter() - t, pv=pv)
-            r.root_ranking = [move] if move else []
+            r.root_ranking = [move, second] if move else []
             return r
         return self.searcher.search(board, movetime=movetime, max_depth=max_depth,
                                     info_callback=info_callback)
@@ -66,8 +66,19 @@ class Engine:
         result = self.best_move(board, movetime=movetime, max_depth=max_depth)
         if not result.move:
             return result, None
-        searcher = None if self.use_core else self.searcher
-        explanation = explain_move(board, result, searcher=searcher)
+        sub_time = max(0.05, result.time * 0.3) if result.time else 0.2
+
+        if self.use_core:
+            def sub_search(bd):
+                _, sc, _, _, pv, _ = core.search(bd, movetime=sub_time)
+                return sc, pv
+        else:
+            def sub_search(bd):
+                depth = max(2, result.depth - 2)
+                r = self.searcher.search(bd, movetime=sub_time, max_depth=depth)
+                return r.score, r.pv
+
+        explanation = explain_move(board, result, sub_search=sub_search)
         return result, explanation
 
     def new_game(self):

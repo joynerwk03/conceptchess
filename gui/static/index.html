@@ -348,8 +348,7 @@ function showExplanation(ex) {
   if (ex.alternative) {
     $("altwrap").style.display = "block";
     $("altpv").textContent =
-      `${ex.alternative.move} (${ex.alternative.score_display} at depth ` +
-      `${ex.alternative.depth})  —  ${ex.alternative.pv.join("  ")}`;
+      `${ex.alternative.move} (${ex.alternative.score_display})  —  ${ex.alternative.pv.join("  ")}`;
   } else {
     $("altwrap").style.display = "none";
   }

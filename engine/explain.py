@@ -55,13 +55,13 @@ def book_explanation(board, move, name):
     }
 
 
-def explain_move(board, result, searcher=None):
+def explain_move(board, result, sub_search=None):
     """Build an explanation dict for the move chosen by search.
 
     board: position BEFORE the engine's move.
     result: SearchResult (score is from the mover's perspective).
-    searcher: optional Searcher; when given, the runner-up root move gets a
-        brief sub-search so the explanation can contrast the two futures.
+    sub_search: optional callable(board)->(score, pv); when given, the
+        runner-up root move gets a brief sub-search to contrast the two futures.
     Returns a JSON-friendly dict.
     """
     mover_white = board.turn == chess.WHITE
@@ -92,9 +92,9 @@ def explain_move(board, result, searcher=None):
                            after.total)
 
     alternative = None
-    if searcher is not None and len(result.root_ranking) > 1:
+    if sub_search is not None and len(result.root_ranking) > 1 and result.root_ranking[1]:
         alternative = _explain_alternative(board, result, after, mover_white,
-                                           searcher)
+                                           sub_search)
         if alternative:
             sentences.extend(alternative["contrast"])
 
@@ -117,19 +117,18 @@ def explain_move(board, result, searcher=None):
     }
 
 
-def _explain_alternative(board, result, best_after, mover_white, searcher):
+def _explain_alternative(board, result, best_after, mover_white, sub_search):
     """Sub-search the runner-up root move and contrast the two futures."""
     alt_move = result.root_ranking[1]
     b = board.copy(stack=False)
     alt_san = b.san(alt_move)
     b.push(alt_move)
-    depth = max(2, result.depth - 2)
-    sub = searcher.search(b, movetime=max(0.05, result.time * 0.2), max_depth=depth)
-    # sub.score is from the opponent's perspective in the child position.
-    alt_score_white = -sub.score if mover_white else sub.score
+    sub_score, sub_pv = sub_search(b)
+    # sub_score is from the opponent's perspective in the child position.
+    alt_score_white = -sub_score if mover_white else sub_score
 
     alt_pv_san = [alt_san]
-    for mv in sub.pv:
+    for mv in sub_pv:
         alt_pv_san.append(b.san(mv))
         b.push(mv)
     alt_after = evaluate_detailed(b)
@@ -172,7 +171,6 @@ def _explain_alternative(board, result, best_after, mover_white, searcher):
         "uci": alt_move.uci(),
         "score_white": round(alt_score_white, 1),
         "score_display": score_string(alt_score_white),
-        "depth": sub.depth,
         "pv": alt_pv_san,
         "breakdown_after": alt_after.as_dict(),
         "concept_diffs": diffs,

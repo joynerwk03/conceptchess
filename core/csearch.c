@@ -281,7 +281,7 @@ static void uci_of(Move m, char *out){
  * Fills uci_out (>=6 bytes), depth_out, nodes_out; returns score (stm cp). */
 static int g_search_init=0;
 int c_search(const char *startfen, const char *moves, double movetime, int max_depth,
-             char *uci_out, int *depth_out, long *nodes_out){
+             char *uci_out, char *second_out, int *depth_out, long *nodes_out){
     if(max_depth<=0) max_depth=64;
     if(!g_init){ init_tables(); g_init=1; }
     if(!g_search_init){ zobrist_init(); TT=calloc(TT_SIZE,sizeof(TTEntry)); g_search_init=1; }
@@ -313,9 +313,9 @@ int c_search(const char *startfen, const char *moves, double movetime, int max_d
     double start=now_sec(); SS.stop_time=start+movetime;
     Move root[256]; int rn=gen_legal(&b,root);
     if(!rn){ uci_out[0]=0; return 0; }
-    Move best=root[0]; int score=0, cd=0;
+    Move best=root[0], second=0; int score=0, cd=0;
     for(int depth=1; depth<=max_depth; depth++){
-        int a=-S_MATE, bt=S_MATE, bm_found=0; Move bm=0; int bs=-S_MATE-1;
+        int a=-S_MATE, bt=S_MATE, bm_found=0; Move bm=0, sm=0; int bs=-S_MATE-1, ss=-S_MATE-1;
         order(&b,root,rn,best,0);
         for(int i=0;i<rn;i++){
             Board c=b; make(&c,root[i]);
@@ -324,11 +324,12 @@ int c_search(const char *startfen, const char *moves, double movetime, int max_d
             else { sc=-negamax(&c,depth-1,-a-1,-a,1);
                    if(sc>a) sc=-negamax(&c,depth-1,-bt,-a,1); }
             if(SS.stopped) break;
-            if(sc>bs){ bs=sc; bm=root[i]; bm_found=1; }
+            if(sc>bs){ ss=bs; sm=bm; bs=sc; bm=root[i]; bm_found=1; }
+            else if(sc>ss){ ss=sc; sm=root[i]; }
             if(sc>a) a=sc;
         }
         if(SS.stopped) break;
-        if(bm_found){ best=bm; score=bs; cd=depth;
+        if(bm_found){ best=bm; score=bs; cd=depth; second=sm;
             /* store the root entry so c_pv can extract the line */
             U64 rh=compute_hash(&b);
             TTEntry *re=&TT[rh&TT_MASK];
@@ -339,6 +340,7 @@ int c_search(const char *startfen, const char *moves, double movetime, int max_d
         if(now_sec()-start > movetime*0.5) break;
     }
     uci_of(best,uci_out);
+    if(second_out){ if(second) uci_of(second,second_out); else second_out[0]=0; }
     if(depth_out)*depth_out=cd;
     if(nodes_out)*nodes_out=SS.nodes;
     return score;
