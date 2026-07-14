@@ -128,8 +128,18 @@ def analyze_move(board, user_uci, movetime=0.4):
     sentences = []
     user_san = board.san(user_move)
     best_san = board.san(best_move)
+    user_mate = mate_distance(user_cp)      # from the mover's perspective
+    best_mate = mate_distance(best_stm)
+
     if is_best:
         sentences.append(f"{user_san} is {phrase} — well played.")
+    elif user_mate is not None and user_mate < 0:
+        n = (abs(user_mate) + 1) // 2
+        sentences.append(f"{user_san} walks into a forced mate — the opponent "
+                         f"mates in {n}. {best_san} was necessary.")
+    elif best_mate is not None and best_mate > 0 and (user_mate is None or user_mate <= 0):
+        n = (best_mate + 1) // 2
+        sentences.append(f"{user_san} misses a forced mate: {best_san} mates in {n}.")
     else:
         sentences.append(f"{user_san} is {phrase}; it gives up "
                          f"{loss / 100:.2f} versus {best_san}.")

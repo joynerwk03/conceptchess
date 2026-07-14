@@ -1,3 +1,26 @@
+---
+
+## 2026-07-14 — Learning-tool session: from "engine that explains" to "coach"
+
+Full session on interpretability + the app as a teaching tool (engine strength
+unchanged). First restored the contrastive "alternative" for the C engine
+(c_search now exports its runner-up; core.eval_move scores any move by searching
+the child position — the reusable primitive behind everything below).
+
+New coaching layer (gui/coach.py + server routes + redesigned GUI), all reusing
+the compiled search and the interpretable concept breakdown so every number is
+a real evaluation:
+- **Coach my moves** — instant verdict on each human move vs the engine's best,
+  in concept terms, with clear mate phrasing ("walks into a forced mate in 1").
+- **Candidates** — top moves ranked, each with the concepts it changes + line.
+- **Insights** — board overlays: hanging pieces (yours/winnable), king under
+  attack, passed pawns.
+- **Review** — post-game blunder detection (loss = E_i + E_{i+1}); each move
+  marked on the eval graph + move list by quality.
+- **Concepts** — glossary of every eval term (what + why).
+Consistent best→blunder color scale throughout. 45 tests pass; the compiled
+eval is still verified identical to the Python concept eval.
+
 # Research log
 
 Newest entries at the top. Every experiment gets an entry, including rejected

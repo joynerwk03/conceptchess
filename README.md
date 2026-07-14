@@ -1,15 +1,14 @@
 # ConceptChess
 
-A chess engine that **shows its work**. The evaluation is a sum of named,
+A chess **coach** that shows its work. The engine plays at roughly 2400 Elo
+(a fast compiled core), but its evaluation is deliberately a sum of named,
 human-meaningful concepts — material, piece placement, pawn structure, king
-safety, mobility, piece activity, tempo — and while you play against it, the
-GUI shows exactly how each concept contributes to its judgment and how the
-engine expects each one to change in the line it's calculating.
+safety, king attack, mobility, activity, threats, tempo — so every judgment can
+be explained. Tests enforce that the displayed breakdown is *exactly* the
+evaluation the search maximized (even the compiled eval is verified identical
+to the readable Python one), so nothing shown is a post-hoc summary.
 
-The explanation is not a summary bolted on afterward: tests enforce that the
-displayed breakdown is *exactly* the evaluation the search maximized.
-
-## Play
+## Play & learn
 
 ```bash
 python3 -m venv .venv
@@ -18,15 +17,22 @@ python3 -m venv .venv
 # open http://localhost:8000
 ```
 
-Click a piece, click a destination (promotions auto-queen). After each engine
-move the right panel shows:
+The web app is built to teach:
 
-- the evaluation and the line the engine expects (PV)
-- a neutral summary of the main factors behind the score and how they change
-  over the expected line
-- every concept's contribution, with per-item detail (click a row)
+- **Coach my moves** — after each move you play, an instant verdict
+  (best / good / inaccuracy / mistake / blunder) versus the engine's choice,
+  explained in concept terms ("gives up 0.46; worse in threats and placement").
+- **Candidates** — the engine's top moves for the position, ranked, each with
+  the concepts it changes and its line. Click one to see it on the board.
+- **Insights** — hanging pieces (yours in red, winnable in green), a king under
+  attack, and passed pawns highlighted right on the board.
+- **Review** — after the game, every move is marked on the eval graph and move
+  list by quality, with the better move on hover.
+- **Concepts** — a glossary of every evaluation term: what it means and why.
+- **Analysis** — the engine's own move: its assessment, the expected line, the
+  runner-up it considered, and the full concept breakdown.
 
-The engine also speaks UCI (`python -m engine.uci`) if you prefer your own GUI.
+The engine also speaks UCI (`python -m engine.uci`) for your own GUI.
 
 ## Project layout
 
