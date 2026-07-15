@@ -113,7 +113,15 @@ static void order(const Board *b, Move *mv, int n, Move ttm, int ply){
     for(int i=0;i<n;i++){
         Move m=mv[i];
         if(m==ttm) sc[i]=1000000;
-        else if(is_capture(b,m)) sc[i]=100000+mvv_lva(b,m);
+        else if(is_capture(b,m)){
+            /* SEE ranks captures by actual material outcome (mirrors qsearch's
+             * pruning signal), not MVV-LVA's cruder victim/attacker heuristic.
+             * Losing captures (SEE<0) are demoted below quiet-move history —
+             * still searched (unlike qsearch, which prunes them outright),
+             * just not wastefully explored first. */
+            int s = see(b,m);
+            sc[i] = (s>=0) ? (100000+s) : (-1000000+s);
+        }
         else if(MV_PROMO(m)==QUEEN) sc[i]=90000;
         else if(m==k0) sc[i]=80000;
         else if(m==k1) sc[i]=79000;
