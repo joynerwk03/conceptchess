@@ -1,0 +1,27 @@
+[
+ {
+  "n": 0,
+  "date": "2026-07-14",
+  "desc": "baseline (compiled core + coaching layer, pre-hashing)",
+  "nodes_d9": 1401527,
+  "time_d9": 1.28,
+  "tactics_pct": 100.0,
+  "guard_ok": true,
+  "kept": true,
+  "shape_change": false,
+  "seconds": 0.0
+ },
+ {
+  "n": 1,
+  "date": "2026-07-14",
+  "desc": "incremental Zobrist hashing in make() + make_light() for legality-only copies",
+  "nodes_d9": 1401527,
+  "time_d9": 1.22,
+  "tactics_pct": 100.0,
+  "guard_ok": true,
+  "kept": true,
+  "shape_change": false,
+  "seconds": 0.0,
+  "note": "Board.hash maintained incrementally by make() (XOR exactly what changed) instead of every negamax node recomputing from scratch. First attempt was SLOWER (1.28->1.33s) because gen_legal()'s throwaway legality-test copies were paying for hash upkeep they never use; added make_light() (piece placement only, no hash/castle/ep/side) for that path. Net: 1.28->~1.22s (-5%), node count BYTE-IDENTICAL (1,401,527, confirming search shape unchanged - no strength gate needed, same as the s5 eval cache). Verified: perft unchanged, hash-verify walks 350k+ positions with zero mismatches against a from-scratch recompute (tests/test_core.py), eval cross-check still 0.000000, all 46 tests pass, UCI smoke test clean."
+ }
+]
