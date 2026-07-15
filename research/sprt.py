@@ -43,16 +43,17 @@ class SPRT:
         n = self.w + self.d + self.l
         if n == 0:
             return 0.0
-        pd = self.d / n
-        # clamp win probs into a valid trinomial for both hypotheses
+        # Clamp every probability away from 0 (and pd away from 1) so no log()
+        # call can go negative or hit zero — an all-draw start (pd -> 1) used
+        # to push 1-pd-eps below eps, breaking the pw/pl clamp and crashing.
         eps = 1e-4
+        pd = min(max(self.d / n, eps), 1 - 2 * eps)
         llr = 0.0
         for p, sign in ((self.p1, 1), (self.p0, -1)):
             pw = min(max(p - pd / 2, eps), 1 - pd - eps)
-            pl = 1 - pd - pw
-            pdd = max(pd, eps)
+            pl = max(1 - pd - pw, eps)
             llr += sign * (self.w * math.log(pw) + self.l * math.log(pl)
-                           + self.d * math.log(pdd))
+                           + self.d * math.log(pd))
         return llr
 
     def status(self):
@@ -82,6 +83,21 @@ def _self_test():
             if outcome:
                 break
         assert outcome == expect, (true_p, outcome)
+
+    # Regression: an all-draw start (pd -> 1) used to crash _llr() with a
+    # math domain error (1-pd-eps went negative). Must not raise, at any n.
+    s = SPRT(elo0=0, elo1=35)
+    for _ in range(50):
+        s.record(0.5)
+        s.status()  # must not raise
+    # An all-draws-forever run is genuinely uninformative in this trinomial
+    # model (both hypotheses explain a 100%-draw sample equally well, since
+    # only pd is observed) -- it must never crash and must never claim H1.
+    s2 = SPRT(elo0=0, elo1=35, min_games=6)
+    for _ in range(2000):
+        s2.record(0.5)
+        assert s2.status() != "H1"
+
     print("sprt self-test ok")
 
 
