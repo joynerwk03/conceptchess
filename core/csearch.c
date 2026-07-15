@@ -262,7 +262,9 @@ static void uci_of(Move m, char *out){
     int f=MV_FROM(m), t=MV_TO(m);
     out[0]='a'+(f&7); out[1]='1'+(f>>3); out[2]='a'+(t&7); out[3]='1'+(t>>3);
     int pr=MV_PROMO(m);
-    if(pr){ out[4]="  nbrq"[pr]; out[5]=0; } else out[4]=0;
+    /* promo piece type: 1=N,2=B,3=R,4=Q (see MK_MOVE/PIECE enum) — index 0
+     * is unused (pr=0 means no promotion, guarded by the `if(pr)` above). */
+    if(pr){ out[4]=" nbrq"[pr]; out[5]=0; } else out[4]=0;
 }
 
 /* Public API: search from startfen after the given space-separated UCI moves.
