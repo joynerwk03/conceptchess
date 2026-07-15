@@ -37,6 +37,9 @@ def _load():
         lib.c_pv.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
         lib.c_eval.restype = ctypes.c_double
         lib.c_eval.argtypes = [ctypes.c_char_p]
+        lib.c_verify_hash.restype = ctypes.c_long
+        lib.c_verify_hash.argtypes = [ctypes.c_char_p, ctypes.c_int]
+        lib.c_verify_hash_fail_fen.restype = ctypes.c_char_p
         _lib = lib
         HAS_CORE = True
     except Exception:
@@ -88,3 +91,13 @@ def eval_move(board, move, movetime=0.3):
 def c_eval(fen):
     """Compiled static eval of a FEN (White's perspective) — for cross-checks."""
     return _lib.c_eval(fen.encode())
+
+
+def verify_hash(fen, depth):
+    """Walk the perft tree from `fen` to `depth`, asserting the incrementally
+    maintained Board.hash matches a from-scratch recompute at every node.
+    Returns (ok, positions_checked, fail_fen)."""
+    n = _lib.c_verify_hash(fen.encode(), depth)
+    if n < 0:
+        return False, 0, _lib.c_verify_hash_fail_fen().decode()
+    return True, n, None

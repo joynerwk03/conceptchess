@@ -11,6 +11,8 @@
 
 typedef uint64_t U64;
 
+static int g_init=0;
+
 enum { WHITE, BLACK };
 enum { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING };
 
@@ -21,7 +23,22 @@ typedef struct {
     int side;         /* side to move */
     int ep;           /* en-passant target square, or -1 */
     int castle;       /* bits: 1=WK 2=WQ 4=BK 8=BQ */
+    U64 hash;          /* Zobrist hash, maintained incrementally by make() */
 } Board;
+
+/* Zobrist tables. Defined here (not in csearch.c) so make() can maintain
+ * Board.hash incrementally instead of every caller recomputing it from
+ * scratch every node. zobrist_init() runs once, from init_tables(). */
+static U64 Z_PIECE[2][6][64], Z_SIDE, Z_CASTLE[16], Z_EP[8];
+static U64 splitmix(U64 *x){ U64 z=(*x+=0x9E3779B97F4A7C15ULL);
+    z=(z^(z>>30))*0xBF58476D1CE4E5B9ULL; z=(z^(z>>27))*0x94D049BB133111EBULL; return z^(z>>31); }
+static void zobrist_init(void){
+    U64 s=0x123456789ABCDEFULL;
+    for(int c=0;c<2;c++)for(int p=0;p<6;p++)for(int q=0;q<64;q++)Z_PIECE[c][p][q]=splitmix(&s);
+    Z_SIDE=splitmix(&s);
+    for(int i=0;i<16;i++)Z_CASTLE[i]=splitmix(&s);
+    for(int i=0;i<8;i++)Z_EP[i]=splitmix(&s);
+}
 
 /* A move: from | to<<6 | promo<<12 | flag<<15
  * promo: 0 none, else piece type (N=1..Q=4). flag: 1 ep, 2 castle, 3 double-push */
@@ -60,6 +77,18 @@ static void init_tables(void){
         if(f<7&&r>0) bp|=1ULL<<((r-1)*8+f+1);
         PAWN_ATK[WHITE][sq]=wp; PAWN_ATK[BLACK][sq]=bp;
     }
+    zobrist_init();
+}
+
+/* Full recompute — used only to seed Board.hash in set_fen() and to verify
+ * the incremental maintenance in make() (see c_verify_hash / test_core.py). */
+static U64 compute_hash_full(const Board *b){
+    U64 h=0;
+    for(int c=0;c<2;c++)for(int p=0;p<6;p++){ U64 x=b->bb[c][p]; while(x){int sq=lsb(x);x&=x-1;h^=Z_PIECE[c][p][sq];}}
+    if(b->side==BLACK)h^=Z_SIDE;
+    h^=Z_CASTLE[b->castle&15];
+    if(b->ep>=0)h^=Z_EP[b->ep&7];
+    return h;
 }
 
 /* Sliding attacks by ray scan until a blocker (occ). */
@@ -109,29 +138,39 @@ static int piece_at(const Board *b, int sq, int color){
     return -1;
 }
 
-/* Apply a move (copy-make: caller passes a copy). Returns nothing; updates b. */
+/* Apply a move (copy-make: caller passes a copy). Returns nothing; updates b.
+ * Maintains b->hash incrementally (XOR in/out exactly what changed) instead
+ * of the caller recomputing it from scratch — this runs at every search node. */
 static void make(Board *b, Move mv){
     int from=MV_FROM(mv), to=MV_TO(mv), promo=MV_PROMO(mv), flag=MV_FLAG(mv);
     int us=b->side, them=!us;
     int pc=piece_at(b,from,us);
     U64 frombb=1ULL<<from, tobb=1ULL<<to;
+    int old_castle=b->castle, old_ep=b->ep;
+
     b->bb[us][pc]&=~frombb;
+    b->hash ^= Z_PIECE[us][pc][from];
     /* captures */
     if(flag==1){ /* en passant */
         int capsq = us==WHITE ? to-8 : to+8;
         b->bb[them][PAWN]&=~(1ULL<<capsq);
+        b->hash ^= Z_PIECE[them][PAWN][capsq];
     } else {
         int cap=piece_at(b,to,them);
-        if(cap>=0) b->bb[them][cap]&=~tobb;
+        if(cap>=0){ b->bb[them][cap]&=~tobb; b->hash ^= Z_PIECE[them][cap][to]; }
     }
-    if(promo){ b->bb[us][promo]|=tobb; }
-    else { b->bb[us][pc]|=tobb; }
+    if(promo){ b->bb[us][promo]|=tobb; b->hash ^= Z_PIECE[us][promo][to]; }
+    else { b->bb[us][pc]|=tobb; b->hash ^= Z_PIECE[us][pc][to]; }
     /* castling rook move */
     if(flag==2){
-        if(to==6){ b->bb[us][ROOK]&=~(1ULL<<7); b->bb[us][ROOK]|=1ULL<<5; }
-        else if(to==2){ b->bb[us][ROOK]&=~(1ULL<<0); b->bb[us][ROOK]|=1ULL<<3; }
-        else if(to==62){ b->bb[us][ROOK]&=~(1ULL<<63); b->bb[us][ROOK]|=1ULL<<61; }
-        else if(to==58){ b->bb[us][ROOK]&=~(1ULL<<56); b->bb[us][ROOK]|=1ULL<<59; }
+        if(to==6){ b->bb[us][ROOK]&=~(1ULL<<7); b->bb[us][ROOK]|=1ULL<<5;
+            b->hash ^= Z_PIECE[us][ROOK][7] ^ Z_PIECE[us][ROOK][5]; }
+        else if(to==2){ b->bb[us][ROOK]&=~(1ULL<<0); b->bb[us][ROOK]|=1ULL<<3;
+            b->hash ^= Z_PIECE[us][ROOK][0] ^ Z_PIECE[us][ROOK][3]; }
+        else if(to==62){ b->bb[us][ROOK]&=~(1ULL<<63); b->bb[us][ROOK]|=1ULL<<61;
+            b->hash ^= Z_PIECE[us][ROOK][63] ^ Z_PIECE[us][ROOK][61]; }
+        else if(to==58){ b->bb[us][ROOK]&=~(1ULL<<56); b->bb[us][ROOK]|=1ULL<<59;
+            b->hash ^= Z_PIECE[us][ROOK][56] ^ Z_PIECE[us][ROOK][59]; }
     }
     /* castling rights */
     if(pc==KING){ if(us==WHITE) b->castle&=~3; else b->castle&=~12; }
@@ -139,9 +178,42 @@ static void make(Board *b, Move mv){
     if(from==7||to==7) b->castle&=~1;
     if(from==56||to==56) b->castle&=~8;
     if(from==63||to==63) b->castle&=~4;
+    if(b->castle != old_castle) b->hash ^= Z_CASTLE[old_castle&15] ^ Z_CASTLE[b->castle&15];
     /* en passant target */
     b->ep = (flag==3) ? (us==WHITE ? from+8 : from-8) : -1;
+    if(old_ep>=0) b->hash ^= Z_EP[old_ep&7];
+    if(b->ep>=0) b->hash ^= Z_EP[b->ep&7];
     b->side=them;
+    b->hash ^= Z_SIDE;
+    refresh(b);
+}
+
+/* Board-only mutation for legality testing (gen_legal's throwaway copy):
+ * in_check() only reads piece bitboards + occ/all, never side/castle/ep/hash,
+ * so this skips all of that bookkeeping. Using full make() here was making
+ * every pseudo-legal move pay for hash maintenance it never uses — legality
+ * testing calls this far more often than the search tree calls make(). */
+static void make_light(Board *b, Move mv){
+    int from=MV_FROM(mv), to=MV_TO(mv), promo=MV_PROMO(mv), flag=MV_FLAG(mv);
+    int us=b->side, them=!us;
+    int pc=piece_at(b,from,us);
+    U64 frombb=1ULL<<from, tobb=1ULL<<to;
+    b->bb[us][pc]&=~frombb;
+    if(flag==1){
+        int capsq = us==WHITE ? to-8 : to+8;
+        b->bb[them][PAWN]&=~(1ULL<<capsq);
+    } else {
+        int cap=piece_at(b,to,them);
+        if(cap>=0) b->bb[them][cap]&=~tobb;
+    }
+    if(promo) b->bb[us][promo]|=tobb;
+    else b->bb[us][pc]|=tobb;
+    if(flag==2){
+        if(to==6){ b->bb[us][ROOK]&=~(1ULL<<7); b->bb[us][ROOK]|=1ULL<<5; }
+        else if(to==2){ b->bb[us][ROOK]&=~(1ULL<<0); b->bb[us][ROOK]|=1ULL<<3; }
+        else if(to==62){ b->bb[us][ROOK]&=~(1ULL<<63); b->bb[us][ROOK]|=1ULL<<61; }
+        else if(to==58){ b->bb[us][ROOK]&=~(1ULL<<56); b->bb[us][ROOK]|=1ULL<<59; }
+    }
     refresh(b);
 }
 
@@ -213,7 +285,7 @@ static int gen_pseudo(const Board *b, Move *list){
 int gen_legal(const Board *b, Move *out){
     Move pl[256]; int n=gen_pseudo(b,pl), m=0;
     for(int i=0;i<n;i++){
-        Board c=*b; make(&c,pl[i]);
+        Board c=*b; make_light(&c,pl[i]);
         if(!in_check(&c,b->side)) out[m++]=pl[i];
     }
     return m;
@@ -246,6 +318,7 @@ int set_fen(Board *b, const char *fen){
     while(*s==' ')s++;
     if(*s && *s!='-'){ int f=s[0]-'a', r=s[1]-'1'; b->ep=r*8+f; }
     refresh(b);
+    b->hash = compute_hash_full(b);
     return 0;
 }
 
@@ -259,8 +332,54 @@ U64 perft(Board *b, int depth){
     return nodes;
 }
 
+/* Same traversal as perft, but at every node asserts the incrementally
+ * maintained Board.hash equals a from-scratch recompute. Returns the number
+ * of positions checked, or -1 at the first mismatch (verify_fail_fen is set). */
+static char verify_fail_fen[128];
+static void board_to_fen(const Board *b, char *out);
+static long perft_verify_hash(Board *b, int depth){
+    if(b->hash != compute_hash_full(b)){
+        board_to_fen(b, verify_fail_fen);
+        return -1;
+    }
+    if(depth==0) return 1;
+    Move list[256]; int n=gen_legal(b,list);
+    long total=1;
+    for(int i=0;i<n;i++){
+        Board c=*b; make(&c,list[i]);
+        long r=perft_verify_hash(&c,depth-1);
+        if(r<0) return -1;
+        total+=r;
+    }
+    return total;
+}
+static void board_to_fen(const Board *b, char *out){
+    int pos=0;
+    for(int r=7; r>=0; r--){
+        int empty=0;
+        for(int f=0; f<8; f++){
+            int sq=r*8+f, pc=-1, col=-1;
+            for(int c=0;c<2;c++) for(int p=0;p<6;p++) if(b->bb[c][p]&(1ULL<<sq)){ pc=p; col=c; }
+            if(pc<0){ empty++; continue; }
+            if(empty){ out[pos++]='0'+empty; empty=0; }
+            char ch = "pnbrqk"[pc];
+            out[pos++] = col==WHITE ? ch-32 : ch;
+        }
+        if(empty) out[pos++]='0'+empty;
+        if(r>0) out[pos++]='/';
+    }
+    out[pos++]=' '; out[pos++]= b->side==WHITE?'w':'b';
+    out[pos]=0;
+}
+long c_verify_hash(const char *fen, int depth){
+    if(!g_init){ init_tables(); g_init=1; }
+    Board b; if(set_fen(&b,fen)) return -1;
+    verify_fail_fen[0]=0;
+    return perft_verify_hash(&b,depth);
+}
+const char *c_verify_hash_fail_fen(void){ return verify_fail_fen; }
+
 /* --- C API for ctypes --- */
-static int g_init=0;
 U64 c_perft(const char *fen, int depth){
     if(!g_init){ init_tables(); g_init=1; }
     Board b; if(set_fen(&b,fen)) return 0;

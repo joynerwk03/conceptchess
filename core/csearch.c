@@ -20,25 +20,8 @@
 
 static const int SEEV[6]={100,320,330,500,900,0};
 
-/* Zobrist */
-static U64 Z_PIECE[2][6][64], Z_SIDE, Z_CASTLE[16], Z_EP[8];
-static U64 splitmix(U64 *x){ U64 z=(*x+=0x9E3779B97F4A7C15ULL);
-    z=(z^(z>>30))*0xBF58476D1CE4E5B9ULL; z=(z^(z>>27))*0x94D049BB133111EBULL; return z^(z>>31); }
-static void zobrist_init(void){
-    U64 s=0x123456789ABCDEFULL;
-    for(int c=0;c<2;c++)for(int p=0;p<6;p++)for(int q=0;q<64;q++)Z_PIECE[c][p][q]=splitmix(&s);
-    Z_SIDE=splitmix(&s);
-    for(int i=0;i<16;i++)Z_CASTLE[i]=splitmix(&s);
-    for(int i=0;i<8;i++)Z_EP[i]=splitmix(&s);
-}
-static U64 compute_hash(const Board *b){
-    U64 h=0;
-    for(int c=0;c<2;c++)for(int p=0;p<6;p++){ U64 x=b->bb[c][p]; while(x){int sq=lsb(x);x&=x-1;h^=Z_PIECE[c][p][sq];}}
-    if(b->side==BLACK)h^=Z_SIDE;
-    h^=Z_CASTLE[b->castle&15];
-    if(b->ep>=0)h^=Z_EP[b->ep&7];
-    return h;
-}
+/* Zobrist tables + zobrist_init() live in cengine.c (make() needs them to
+ * maintain Board.hash incrementally); this file just consumes b->hash. */
 
 typedef struct { U64 key; int score; Move move; short depth; unsigned char flag; } TTEntry;
 static TTEntry *TT=0;
@@ -199,7 +182,7 @@ static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
 static int negamax(Board *b, int depth, int alpha, int beta, int ply){
     SS.nodes++;
     if(!(SS.nodes&2047) && now_sec()>SS.stop_time){ SS.stopped=1; return 0; }
-    U64 h=compute_hash(b);
+    U64 h=b->hash;
     SS.path[SS.path_len++]=h;
     int ret, done=0;
     if(is_rep(h)||insufficient(b)){ ret=0; done=1; }
@@ -222,7 +205,12 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply){
 
     /* null move */
     if(depth>=3 && !checked && beta<S_MATE_TH && has_non_pawn(b)){
-        Board c=*b; c.side=!c.side; c.ep=-1;
+        Board c=*b;
+        /* c is not built via make(), so its hash must be fixed up by hand for
+         * the side flip + ep clear (same terms make() would apply). */
+        c.hash ^= Z_SIDE;
+        if(b->ep>=0) c.hash ^= Z_EP[b->ep&7];
+        c.side=!c.side; c.ep=-1;
         int r = depth>=6?4:3;
         int sc=-negamax(&c,depth-r,-beta,-beta+1,ply+1);
         if(SS.stopped){ SS.path_len--; return 0; }
@@ -284,11 +272,11 @@ int c_search(const char *startfen, const char *moves, double movetime, int max_d
              char *uci_out, char *second_out, int *depth_out, long *nodes_out){
     if(max_depth<=0) max_depth=64;
     if(!g_init){ init_tables(); g_init=1; }
-    if(!g_search_init){ zobrist_init(); TT=calloc(TT_SIZE,sizeof(TTEntry)); g_search_init=1; }
+    if(!g_search_init){ TT=calloc(TT_SIZE,sizeof(TTEntry)); g_search_init=1; }
     Board b; if(set_fen(&b,startfen)){ uci_out[0]=0; return 0; }
     /* replay moves to build the board + repetition history */
     memset(&SS,0,sizeof(SS));
-    SS.path[SS.path_len++]=compute_hash(&b);
+    SS.path[SS.path_len++]=b.hash;
     if(moves && *moves){
         const char *p=moves;
         while(*p){
@@ -305,7 +293,7 @@ int c_search(const char *startfen, const char *moves, double movetime, int max_d
             if(mover==KING && abs(tf-ff)==2) flag=2;
             Move m=MK_MOVE(from,to,promo,flag);
             make(&b,m);
-            SS.path[SS.path_len++]=compute_hash(&b);
+            SS.path[SS.path_len++]=b.hash;
             p+=4; while(*p&&*p!=' ')p++;
         }
     }
@@ -331,7 +319,7 @@ int c_search(const char *startfen, const char *moves, double movetime, int max_d
         if(SS.stopped) break;
         if(bm_found){ best=bm; score=bs; cd=depth; second=sm;
             /* store the root entry so c_pv can extract the line */
-            U64 rh=compute_hash(&b);
+            U64 rh=b.hash;
             TTEntry *re=&TT[rh&TT_MASK];
             re->key=rh; re->depth=depth; re->flag=TT_EXACTF; re->score=score; re->move=best;
             /* move best to front for next iteration */
@@ -363,7 +351,7 @@ void c_pv(const char *startfen, const char *moves, char *pv_out, int maxlen){
     }
     int pos=0; U64 seen[64]; int ns=0;
     for(int d=0; d<24; d++){
-        U64 h=compute_hash(&b);
+        U64 h=b.hash;
         for(int i=0;i<ns;i++) if(seen[i]==h){ d=999; break; }
         if(d==999) break;
         if(ns<64) seen[ns++]=h;
