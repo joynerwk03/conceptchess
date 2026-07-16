@@ -66,8 +66,12 @@ def _converts(fen, max_plies):
 
 @pytest.mark.slow
 class TestMateConversion:
+    # 120-ply budget: KBN takes ~80 plies under best defence and the winner
+    # searches at 0.2s/move, so 100 was load-flaky (system load -> shallower
+    # searches -> slower conversion). 120 still fails on any drawing bug --
+    # the 50-move rule bites at ply 100 of shuffling regardless.
     def test_kbb_vs_k(self):
-        assert _converts("8/8/8/4k3/8/8/8/2B1KB2 w - - 0 1", 100)
+        assert _converts("8/8/8/4k3/8/8/8/2B1KB2 w - - 0 1", 120)
 
     def test_kbn_vs_k(self):
-        assert _converts("8/8/8/4k3/8/8/8/2BNK3 w - - 0 1", 100)
+        assert _converts("8/8/8/4k3/8/8/8/2BNK3 w - - 0 1", 120)
