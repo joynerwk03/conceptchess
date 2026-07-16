@@ -107,11 +107,16 @@ static int insufficient(const Board *b){
     return minors<=1;
 }
 static int is_rep(U64 h, int hm){
-    /* positions older than the halfmove clock are unreachable again (a pawn
-     * move or capture is irreversible), so bound the scan — same answers,
-     * O(hm) instead of O(game length) per node */
+    /* Positions older than the halfmove clock are unreachable again (a pawn
+     * move or capture is irreversible), so bound the scan to O(hm).
+     * Scan EVERY entry in the window: the hash includes side-to-move
+     * (Z_SIDE), so wrong-side entries can never match — and stepping by 2
+     * is unsound anyway once null moves interleave the path. (The original
+     * port started at path_len-2 stepping 2, which only ever visited
+     * opposite-side entries: repetition detection had been dead since the
+     * C port. Found via the KBN mate-conversion test.) */
     int lo = SS.path_len-1-hm; if(lo<0) lo=0;
-    for(int i=SS.path_len-2;i>=lo;i-=2) if(SS.path[i]==h) return 1;
+    for(int i=SS.path_len-2;i>=lo;i--) if(SS.path[i]==h) return 1;
     return 0;
 }
 
@@ -262,6 +267,10 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
         c.hash ^= Z_SIDE;
         if(b->ep>=0) c.hash ^= Z_EP[b->ep&7];
         c.side=!c.side; c.ep=-1;
+        c.hm++;   /* a null move is reversible: without this, path entries under
+                   * a null move outnumber the clock and is_rep's bound cuts off
+                   * legitimate repetition history (missed rep draws broke KBN
+                   * mate conversion — found by tests/test_endgame.py) */
         int r = depth>=6?4:3;
         int sc=-negamax(&c,depth-r,-beta,-beta+1,ply+1,0);
         if(SS.stopped){ SS.path_len--; return 0; }
