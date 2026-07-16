@@ -27,6 +27,17 @@ static const int SEEV[6]={100,320,330,500,900,0};
 typedef struct { U64 key; int score; Move move; short depth; unsigned char flag; } TTEntry;
 static TTEntry *TT=0;
 
+/* Eval hash: caches side-to-move static eval by Board.hash. The hash covers
+ * side to move (Z_SIDE), so one entry can never serve both colors; full
+ * 64-bit key compare, same collision profile as the TT. Values are exactly
+ * what eval_core would return, so search shape is byte-identical — this is a
+ * pure speedup (qsearch stand-pat + futility probes stop recomputing). */
+#define EH_BITS 20
+#define EH_SIZE (1u<<EH_BITS)
+#define EH_MASK (EH_SIZE-1)
+typedef struct { U64 key; int val; } EHEntry;
+static EHEntry *EH=0;
+
 typedef struct {
     long nodes;
     double stop_time;
@@ -139,6 +150,15 @@ static int has_non_pawn(const Board *b){
     return (b->bb[c][KNIGHT]|b->bb[c][BISHOP]|b->bb[c][ROOK]|b->bb[c][QUEEN])!=0;
 }
 
+/* side-to-move static eval via the eval hash (see EHEntry above) */
+static int eval_stm(Board *b){
+    EHEntry *e=&EH[b->hash&EH_MASK];
+    if(e->key==b->hash) return e->val;
+    int v=(int)eval_core(b->bb,b->side); if(b->side==BLACK) v=-v;
+    e->key=b->hash; e->val=v;
+    return v;
+}
+
 static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
     SS.nodes++;
     if(!(SS.nodes&2047) && now_sec()>SS.stop_time){ SS.stopped=1; return 0; }
@@ -156,7 +176,7 @@ static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
             if(alpha>=beta) break; }
         return best;
     }
-    int stand = (int)eval_core(b->bb,b->side); if(b->side==BLACK) stand=-stand;
+    int stand = eval_stm(b);
     if(stand>=beta) return beta;
     if(stand>alpha) alpha=stand;
     Move mv[256]; int n=gen_legal(b,mv), cn=0; Move caps[256]; int cs[256];
@@ -233,7 +253,7 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
 
     int futile=0;
     if(depth<=2 && !checked && (alpha>-S_MATE_TH&&alpha<S_MATE_TH)){
-        int st=(int)eval_core(b->bb,b->side); if(b->side==BLACK)st=-st;
+        int st=eval_stm(b);
         futile = st + (depth==1?150:300) <= alpha;
     }
     Move cm = prev ? SS.counter[b->side][MV_FROM(prev)][MV_TO(prev)] : 0;
@@ -294,7 +314,7 @@ int c_search(const char *startfen, const char *moves, double movetime, int max_d
              char *uci_out, char *second_out, int *depth_out, long *nodes_out){
     if(max_depth<=0) max_depth=64;
     if(!g_init){ init_tables(); g_init=1; }
-    if(!g_search_init){ TT=calloc(TT_SIZE,sizeof(TTEntry)); g_search_init=1; }
+    if(!g_search_init){ TT=calloc(TT_SIZE,sizeof(TTEntry)); EH=calloc(EH_SIZE,sizeof(EHEntry)); g_search_init=1; }
     Board b; if(set_fen(&b,startfen)){ uci_out[0]=0; return 0; }
     /* replay moves to build the board + repetition history */
     memset(&SS,0,sizeof(SS));
