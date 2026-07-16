@@ -35,6 +35,8 @@ entry reference; add new ideas as they come up.
 - [x] Qsearch: include checks at first ply of quiescence (s5)
 - [x] ~~Aggressive log-log LMR reduction table~~ (s11: REJECTED −29 Elo at 46%; 4–5 ply reductions discard too much at depth ~10–12)
 - [ ] Mate-distance pruning
+- [ ] 50-move-rule detection in the C search (Board.hm now exists — s11 exp11 —
+      but no draw-by-50 check; matters in fortress/shuffling endgames; gate it)
 - [ ] Aspiration windows, third attempt — only after root scores prove stable at C-core depths (failed at depth ~7 twice; the C core reaches 10–12 where swings may be smaller)
 - [ ] Singular / TT-move extensions
 - [ ] Repetition-aware TT (avoid TT cutoffs masking repetition draws)
