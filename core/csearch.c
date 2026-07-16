@@ -260,20 +260,30 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
         if(sc>=beta){ SS.path_len--; return beta; }
     }
 
-    Move mv[256]; int n=gen_legal(b,mv);
-    if(!n){ SS.path_len--; return checked? -S_MATE+ply : 0; }
-
     int futile=0;
     if(depth<=2 && !checked && (alpha>-S_MATE_TH&&alpha<S_MATE_TH)){
         int st=eval_stm(b);
         futile = st + (depth==1?150:300) <= alpha;
     }
+
+    /* Lazy legality: order the PSEUDO-legal list up front (stable sort +
+     * per-move scores, so the legal moves' relative order is exactly what
+     * order() on the legal list produced), then pay the copy+in_check
+     * legality tax per move only as the loop reaches it. On a first-move
+     * cutoff — the common case at interior nodes with a TT move — the other
+     * ~35 legality tests are never paid. Search-shape is byte-identical:
+     * order() runs before any child search (same history/killer state), and
+     * illegal moves score but never search. */
+    Move pl[256]; int np=gen_pseudo(b,pl);
     Move cm = prev ? SS.counter[b->side][MV_FROM(prev)][MV_TO(prev)] : 0;
-    order(b,mv,n,ttm,ply<MAXPLY?ply:MAXPLY-1,cm);
+    order(b,pl,np,ttm,ply<MAXPLY?ply:MAXPLY-1,cm);
     int best=-S_MATE-1, orig_alpha=alpha; Move bestm=0;
     Move quiets[64]; int nq=0;   /* quiets tried before a cutoff, for history malus */
-    for(int i=0;i<n;i++){
-        Move m=mv[i];
+    int li=0;                    /* index among LEGAL moves (drives PVS/LMR) */
+    for(int pi=0;pi<np;pi++){
+        Move m=pl[pi];
+        { Board t=*b; make_light(&t,m); if(in_check(&t,b->side)) continue; }
+        int i=li++;
         int quiet = !is_capture(b,m) && MV_PROMO(m)==0;
         Board c=*b; make(&c,m);
         if(futile && quiet && bestm && !in_check(&c,c.side)){ continue; }
@@ -303,6 +313,7 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
         }
         if(quiet && nq<64) quiets[nq++]=m;
     }
+    if(!li){ SS.path_len--; return checked? -S_MATE+ply : 0; }
     int flag = best<=orig_alpha?TT_UPPERF : best>=beta?TT_LOWERF : TT_EXACTF;
     TTEntry *e=&TT[h&TT_MASK];
     e->key=h; e->depth=depth; e->flag=flag; e->score=best; e->move=bestm;
