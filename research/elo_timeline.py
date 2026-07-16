@@ -29,6 +29,7 @@ S5, S5_LO, S5_HI = ANCHORS["session5"]["mle"]
 S6, S6_LO, S6_HI = ANCHORS["session6"]["mle"]
 CC, CC_LO, CC_HI = ANCHORS["compiled"]["mle"]
 S11, S11_LO, S11_HI = ANCHORS["session11"]["mle"]
+S11B, S11B_LO, S11B_HI = ANCHORS["session11b"]["mle"]
 CHAIN_ERR = 220  # ± for delta-chained points (10-20 game matches)
 
 POINTS = [
@@ -69,6 +70,11 @@ POINTS = [
     # ladder re-anchored (30 games vs SF2400-2800)
     {"label": "session 11 — ordering + speed batch (re-anchor)", "exps": 103,
      "elo": S11, "lo": S11_LO, "hi": S11_HI, "kind": "measured"},
+    # session 11 close: magics/is_legal (2x speed total) + nm-guard;
+    # second anchor statistically identical to the first (speed effect vs
+    # SF-limited opponents is inside 30-game anchor noise)
+    {"label": "session 11 close — magics, is_legal, nm-guard", "exps": 110,
+     "elo": S11B, "lo": S11B_LO, "hi": S11B_HI, "kind": "measured"},
 ]
 
 
@@ -118,13 +124,14 @@ def build_html():
                        ("session 5", ANCHORS["session5"]),
                        ("session 6", ANCHORS["session6"]),
                        ("compiled core (session 9)", ANCHORS["compiled"]),
-                       ("session 11 (current)", ANCHORS["session11"])):
+                       ("session 11", ANCHORS["session11"]),
+                       ("session 11 close (current)", ANCHORS["session11b"])):
         for opp, (w, d, l) in sorted(data["results"].items()):
             rows += (f"<tr><td>{name}</td><td>Stockfish {opp}</td>"
                      f"<td class='num'>+{w} ={d} −{l}</td>"
                      f"<td class='num'>{100 * (w + 0.5 * d) / (w + d + l):.0f}%</td></tr>")
     HTML_OUT.write_text(TEMPLATE.replace("{{SVG}}", svg).replace("{{ROWS}}", rows)
-                        .replace("{{CUR}}", f"{S11} (95% {S11_LO}–{S11_HI})"))
+                        .replace("{{CUR}}", f"{S11B} (95% {S11B_LO}–{S11B_HI})"))
     print(f"wrote {HTML_OUT}")
 
 
