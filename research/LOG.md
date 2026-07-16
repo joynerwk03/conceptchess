@@ -31,8 +31,9 @@ opponent punishes it; self-play siblings shared the same bug. (3) The s11
 "byte-identical" hm-bound validated cleanly partly *because* is_rep almost
 never fired.
 
-**Match gate vs HEAD:** running (strength-relevant shape change; expect
-positive-ish — wins that were being drawn now convert).
+**Match gate vs HEAD: +16 =36 −8 (57%), +47 Elo (95% −41..+141) — ACCEPTED**
+(8c39103). Wins that were being drawn now convert; 2:1 decisive ratio. Chain
+estimate ≈**2680** on the project scale (2529 anchor +108 speed +47 this).
 
 ---
 

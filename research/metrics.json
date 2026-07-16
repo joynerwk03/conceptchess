@@ -411,5 +411,21 @@
       "elo_chain_est": 2630
     },
     "explanation": "60-game h2h vs f0525a6 (same strength features, pre eval-hash/captures-gen/magics/is_legal/guard/hm): +21 =36 -3 (65%, +108 Elo, 95% +20..+211). The fresh SF ladder (2514, 2372-2652) is statistically identical to the pre-batch 2529 -- UCI_Elo-limited opponents saturate: once their deliberate mistakes are refuted, extra depth converts poorly against THEM but fully against an equal engine. Chain places the engine ~2620-2640 on the project scale; anchors are the conservative instrument."
+  },
+  {
+    "experiment": 28,
+    "date": "2026-07-16",
+    "rev": "8c39103",
+    "title": "Session 12: dead repetition detector fixed",
+    "hypothesis": "is_rep never fired (opposite-side-only scan since the C port); fixing it converts wins that were being drawn.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "gate_score_pct": 57,
+      "elo_vs_pre_fix": 47,
+      "kbn_mate_plies": 57,
+      "kbb_mate_plies": 45,
+      "nodes_d10_cttd": 3007230
+    },
+    "explanation": "Found via slow KBN/KBB conversion tests the gates had been skipping; winning side walked into threefold at ply 48. Scan now covers every entry in the halfmove-clock window (Z_SIDE rejects wrong-side; null-move children increment hm). Gate vs HEAD: +16 =36 -8 (57%, +47 Elo). Chain estimate now ~2680 on the project scale."
   }
 ]
