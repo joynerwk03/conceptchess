@@ -32,6 +32,35 @@ verdict without ablating.
 **State after s11 so far:** s10 + malus/countermove ≈ **2530 Elo** (chained:
 2442 anchor +53 +35; two chained hops now, fresh ladder anchor queued).
 
+**exps 3–6 — the byte-identical speed batch (all KEPT, −21% time to depth).**
+Four speedups, each validated by EXACTLY unchanged cttd node counts
+(3,418,463 across the 4-position suite) so search shape is provably untouched
+— the no-gate protocol from the s5 eval cache / s10 incremental hashing:
+- **eval hash** (−4%): side-to-move static eval cached by Board.hash (hash
+  covers side via Z_SIDE; full 64-bit key compare like the TT). qsearch
+  stand-pat + futility probes stop recomputing eval_core.
+- **captures-only movegen in deep qsearch** (−7%): gen_legal_captures()
+  generates captures + queen promos in gen_pseudo's exact relative order;
+  qd>0 nodes skip the copy+in_check legality tax on the ~90% of moves they
+  were about to discard. (Same win the Python engine got in s1 exp2 — the C
+  port had regressed to generate-all-and-filter.)
+- **quiet-check test on a light copy** (−2%): the qd==0 quiet-checks scan
+  paid full make() per quiet just to test check; in_check only reads piece
+  bitboards, so test on make_light and pay make() only for actual checkers.
+- **lazy legality via ordered pseudo list** (−10%, the big one): negamax
+  orders the pseudo-legal list up front (stable sort + per-move scores keep
+  the legal moves' relative order identical) and legality-tests each move
+  only when the loop reaches it. On a first-move cutoff — the common case at
+  interior nodes with a TT move — the other ~35 copy+in_check tests are never
+  paid. Subtle design point: an earlier "staged TT-move" draft searched the
+  TT move before ordering the rest, which reads the history table *after* the
+  TT subtree updated it — not byte-identical, would have needed a match gate.
+  Ordering pseudo-moves first keeps order() before any child search.
+
+Net: 3.12s → 2.46s to depth 10 on the cttd suite; benchmark now ~2.0M NPS,
+depth 10–11 middlegames @2s (vs 9 at the s9 port). Perft + eval cross-check
+(0.000000 on 6,204) + 46 tests + tactics 24/24 green throughout.
+
 ---
 
 ## 2026-07-15 — Session 10: post-core search cleanups (hashing, SEE ordering, two bug fixes)

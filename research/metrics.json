@@ -297,5 +297,20 @@
       "elo_chained_est": 2530
     },
     "explanation": "Gate vs session-10 HEAD: +11 =44 -5 (55%, +35 Elo, 95% -53..+128), 60 games at 0.3s/move. Confirms the batch's -29 came from the aggressive LMR table (~-60 implied). Chained estimate ~2530 (2442 anchor +53 SEE +35 this); fresh ladder anchor queued."
+  },
+  {
+    "experiment": 20,
+    "date": "2026-07-16",
+    "rev": "eff5aeb",
+    "title": "Session 11 exps 3-6: byte-identical speed batch (eval hash, qsearch capture gen, light check test, lazy legality)",
+    "hypothesis": "The C search recomputes eval and pays full legality/make bookkeeping it can skip; each fix is provably shape-neutral (identical node counts), so time-to-depth gains are pure Elo at fixed movetime.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "time_to_d10_cttd": 2.46,
+      "nodes_d10_cttd": 3418463,
+      "avg_nps": 2041731,
+      "tactics_pct_1s": 100.0
+    },
+    "explanation": "Four KEPT speedups, each with cttd nodes EXACTLY 3,418,463 (byte-identical search): eval hash by Board.hash (-4%), captures-only generation in deep qsearch (-7%), quiet-check test on a make_light copy (-2%), lazy legality on an up-front-ordered pseudo list (-10%; first-move cutoffs skip ~35 legality tests). Net 3.12->2.46s (-21%). Benchmark ~2.0M NPS. Perft, eval cross-check, 46 tests, tactics all green."
   }
 ]
