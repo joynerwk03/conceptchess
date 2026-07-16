@@ -17,6 +17,13 @@ SUITE = Path(__file__).parent / "suites" / "tactics_v1.epd"
 MOVETIME = 1.0
 MIN_ACCURACY_PCT = 90  # baseline 23/24 (95.8%); threshold allows one extra miss
 
+# v2 (mined 2026-07-16, SF depth 22, gap >=250cp): the compiled engine
+# saturates it at 1s (30/30), so the gate runs at 0.25s where the baseline
+# is 29/30 (96.7%) — the short clock is what makes it discriminating.
+SUITE_V2 = Path(__file__).parent / "suites" / "tactics_v2.epd"
+MOVETIME_V2 = 0.25
+MIN_ACCURACY_PCT_V2 = 90  # allows one extra miss vs the 29/30 baseline
+
 
 @pytest.mark.slow
 def test_tactics_suite():
@@ -24,3 +31,11 @@ def test_tactics_suite():
     assert result["pct"] >= MIN_ACCURACY_PCT, (
         f"tactics accuracy regressed: {result['solved']}/{result['total']} "
         f"({result['pct']:.1f}%) < {MIN_ACCURACY_PCT}%")
+
+
+@pytest.mark.slow
+def test_tactics_suite_v2():
+    result = run_suite(SUITE_V2, movetime=MOVETIME_V2, verbose=False)
+    assert result["pct"] >= MIN_ACCURACY_PCT_V2, (
+        f"tactics v2 accuracy regressed: {result['solved']}/{result['total']} "
+        f"({result['pct']:.1f}%) < {MIN_ACCURACY_PCT_V2}%")
