@@ -253,5 +253,56 @@
         "time": 2.0
       }
     ]
+  },
+  {
+    "date": "2026-07-16",
+    "rev": "7d98fa6",
+    "movetime": 2.0,
+    "avg_depth": 17.83,
+    "avg_nps": 3759249,
+    "positions": [
+      {
+        "name": "startpos",
+        "depth": 0,
+        "nodes": 0,
+        "nps": 0,
+        "time": 0.0
+      },
+      {
+        "name": "italian_mg",
+        "depth": 11,
+        "nodes": 4378624,
+        "nps": 1842235,
+        "time": 2.38
+      },
+      {
+        "name": "closed_mg",
+        "depth": 11,
+        "nodes": 2503149,
+        "nps": 2212779,
+        "time": 1.13
+      },
+      {
+        "name": "open_tactics",
+        "depth": 13,
+        "nodes": 3170766,
+        "nps": 2383477,
+        "time": 1.33
+      },
+      {
+        "name": "rook_endgame",
+        "depth": 15,
+        "nodes": 7670939,
+        "nps": 5669900,
+        "time": 1.35
+      },
+      {
+        "name": "pawn_endgame",
+        "depth": 57,
+        "nodes": 20897799,
+        "nps": 10447107,
+        "time": 2.0
+      }
+    ]
   }
 ]

@@ -326,5 +326,20 @@
       "elo_ladder_hi": 2666
     },
     "explanation": "30 games vs SF 2400/2600/2800 at 0.3s/move: 60%/50%/15%. MLE 2529 (2388-2666) vs chained ~2530 -- agreement within 1 Elo validates both. Anchored post speed-batch (the -21% time matters at fixed movetime)."
+  },
+  {
+    "experiment": 22,
+    "date": "2026-07-16",
+    "rev": "HEAD",
+    "title": "Session 11 exp7: magic bitboards \u2014 the second-biggest speed win",
+    "hypothesis": "slide()'s ray loops (under in_check, SEE, movegen, eval mobility) dominate per-node cost; magic-bitboard lookups are byte-identical and much faster.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "time_to_d10_cttd": 1.79,
+      "nodes_d10_cttd": 3418463,
+      "avg_nps": 3759249,
+      "tactics_pct_1s": 100.0
+    },
+    "explanation": "Magics found at init (seeded, deterministic, <0.5s); tables built FROM slide() and verified injective, so attack sets identical by construction. cttd 2.46->1.79s (-28%); session speed total 3.12->1.79s (-43%), all byte-identical. Benchmark 3.76M NPS (2.04M pre-magics). Perft, eval 0.000000, 46 tests, tactics 24/24. NOTE: landed after the 2529 anchor; next anchor captures it."
   }
 ]

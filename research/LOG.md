@@ -68,6 +68,17 @@ chain and the anchor methodology (now reproducible via
 `python -m research.ladder_anchor`, which refits every committed historical
 anchor exactly). Timeline updated: research/elo_report.html.
 
+**exp7 — magic bitboards (KEPT, −28% time, the second-biggest speed win).**
+slide()'s ray-walking loops — the primitive under in_check/legality tests,
+SEE, movegen, and eval mobility — replaced by one multiply + table lookup.
+Magics are found at init by seeded deterministic search (<0.5s once per
+process); the tables are built FROM slide() and verified injective, so attack
+sets are identical **by construction**. cttd 2.46 → 1.79s; nodes EXACTLY
+3,418,463 again. **Session speed total: 3.12 → 1.79s (−43%), all
+byte-identical.** Benchmark: 3.76M NPS (2.04M pre-magics; 38k at v0 — a 100×
+project journey). Landed *after* the 2529 anchor, so the next anchor captures
+its fixed-movetime Elo.
+
 ---
 
 ## 2026-07-15 — Session 10: post-core search cleanups (hashing, SEE ordering, two bug fixes)
