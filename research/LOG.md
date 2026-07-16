@@ -1,5 +1,31 @@
 ---
 
+## 2026-07-15/16 — Session 11: search-quality experiments on the C core
+
+**exp1 — "search-quality v2" batch (REJECTED, −29 Elo).** Three standard
+search-quality upgrades bundled (session-5 style batch gate): (a) log(depth)×
+log(movenum) LMR reduction table replacing the 2/3 tiers — tuned to be *more*
+aggressive (up to −5 on deep/late quiets), −10% nodes to depth 10; (b) history
+malus/gravity — quiets tried before a beta cutoff get −depth² so ordering
+learns from failures too; (c) countermove heuristic — quiet reply that refuted
+the previous move gets an ordering slot just under killers. Screens all passed
+(tactics 24/24, 46 tests green). **Match gate vs session-10 HEAD: +6 =43 −11
+(46%), −29 Elo (95% −121..+59); SPRT stopped at H0 after 60 games.** Reverted;
+full diff kept in research/searchv2.patch.
+
+The suspect is the aggressive LMR table: reductions of 4–5 plies on late quiets
+discard too much at this engine's depths (~10–12) — the same shape as every
+"do less per node" rejection in this project's history (RFP, LMP, tuned-weight
+magnitudes). The 24-position tactics screen can't see it; only games can.
+
+**exp2 — ablation: history malus + countermove only, baseline LMR (gating).**
+Isolates the ordering-quality half of the batch from the reduction-aggression
+half. Screens pass (tactics 24/24, tests green; +10% nodes on the 4-position
+cttd — same weak proxy that mispredicted SEE ordering's +53). Match gate
+running.
+
+---
+
 ## 2026-07-15 — Session 10: post-core search cleanups (hashing, SEE ordering, two bug fixes)
 
 First session on top of the compiled core. Theme: squeeze the C search and fix

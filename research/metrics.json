@@ -268,5 +268,19 @@
       "elo_ladder_mle": 2495
     },
     "explanation": "Deterministic metric said NO (+5% time / +7% nodes to depth 9), but the match said YES: +15 =39 -6 (58%, +53 Elo, 95% -35..+147) over 60 games at 0.3s/move vs the pre-SEE core. 15 wins vs 6 losses. Ordering quality beats raw node count; the match is ground truth. Estimated ladder position ~2495 (2442 + 53 head-to-head; fresh SF re-anchor pending)."
+  },
+  {
+    "experiment": 18,
+    "date": "2026-07-16",
+    "rev": null,
+    "title": "Session 11 exp1: search-quality v2 batch (LMR log table + history malus + countermove)",
+    "hypothesis": "Three standard search-quality upgrades (aggressive log-log LMR table, history gravity, countermove heuristic) batched and gated together add strength on the C core.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "tactics_pct_1s": 100.0,
+      "elo_vs_s10": -29,
+      "gate_score_pct": 46
+    },
+    "explanation": "Gate vs session-10 HEAD: +6 =43 -11 (46%), -29 Elo (95% -121..+59), SPRT H0 after 60 games. Suspect: LMR reductions of 4-5 plies on late quiets discard too much at depth ~10-12 (same shape as the RFP/LMP rejections). Screens (tactics, tests, nodes-to-depth) all passed - only the match caught it. Diff preserved in research/searchv2.patch; ablation of the ordering-only half gating next."
   }
 ]

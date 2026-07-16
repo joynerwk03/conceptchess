@@ -1,0 +1,164 @@
+diff --git a/core/csearch.c b/core/csearch.c
+index 693dbed..e479175 100644
+--- a/core/csearch.c
++++ b/core/csearch.c
+@@ -7,6 +7,7 @@
+  * Uses the perft-validated board/movegen and the cross-checked eval above.
+  */
+ #include <time.h>
++#include <math.h>
+ 
+ #define S_MATE 100000
+ #define S_MATE_TH 90000
+@@ -32,6 +33,7 @@ typedef struct {
+     int stopped;
+     Move killers[MAXPLY][2];
+     int history[2][64][64];
++    Move counter[2][64][64];  /* countermove: reply-by-side indexed by prev from/to */
+     U64 path[MAXPLY+256];   /* game history hashes + current search path */
+     int path_len;
+ } Search;
+@@ -40,6 +42,20 @@ static Search SS;
+ static double now_sec(void){ struct timespec ts; clock_gettime(CLOCK_MONOTONIC,&ts);
+     return ts.tv_sec + ts.tv_nsec*1e-9; }
+ 
++/* Late-move-reduction table: reduction as a function of (depth, move index),
++ * replacing the old crude two-tier (i>=3 -> 2, i>=12 -> 3). A smooth log*log
++ * table reduces early quiets less (they are more likely to matter) and deep
++ * quiets more, buying depth. All reductions are re-searched at full depth on a
++ * fail-high, so this reorders effort without discarding lines. */
++static int LMR_TAB[64][64];
++static void lmr_init(void){
++    for(int d=0; d<64; d++) for(int m=0; m<64; m++){
++        if(d<1 || m<1){ LMR_TAB[d][m]=0; continue; }
++        double r = 1.45 + log((double)d) * log((double)m) / 2.05;
++        LMR_TAB[d][m] = (int)r;
++    }
++}
++
+ static int is_capture(const Board *b, Move m){
+     int to=MV_TO(m);
+     if(MV_FLAG(m)==1) return 1; /* ep */
+@@ -107,7 +123,7 @@ static int mvv_lva(const Board *b, Move m){
+     return victim*10 - (att>=0?SEEV[att]:0);
+ }
+ 
+-static void order(const Board *b, Move *mv, int n, Move ttm, int ply){
++static void order(const Board *b, Move *mv, int n, Move ttm, int ply, Move cm){
+     int sc[256];
+     Move k0=ply<MAXPLY?SS.killers[ply][0]:0, k1=ply<MAXPLY?SS.killers[ply][1]:0;
+     for(int i=0;i<n;i++){
+@@ -125,6 +141,7 @@ static void order(const Board *b, Move *mv, int n, Move ttm, int ply){
+         else if(MV_PROMO(m)==QUEEN) sc[i]=90000;
+         else if(m==k0) sc[i]=80000;
+         else if(m==k1) sc[i]=79000;
++        else if(cm && m==cm) sc[i]=78000;  /* countermove: quiet that refuted this prev move before */
+         else sc[i]=SS.history[b->side][MV_FROM(m)][MV_TO(m)];
+     }
+     for(int i=1;i<n;i++){ Move m=mv[i]; int s=sc[i]; int j=i-1;
+@@ -143,7 +160,7 @@ static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
+     if(checked){
+         Move mv[256]; int n=gen_legal(b,mv);
+         if(!n) return -S_MATE+ply;
+-        order(b,mv,n,0,ply<MAXPLY?ply:MAXPLY-1);
++        order(b,mv,n,0,ply<MAXPLY?ply:MAXPLY-1,0);
+         int best=-S_MATE-1;
+         for(int i=0;i<n;i++){ Board c=*b; make(&c,mv[i]);
+             int sc=-qsearch(&c,-beta,-alpha,ply+1,qd+1);
+@@ -187,7 +204,7 @@ static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
+     return alpha;
+ }
+ 
+-static int negamax(Board *b, int depth, int alpha, int beta, int ply){
++static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev){
+     SS.nodes++;
+     if(!(SS.nodes&2047) && now_sec()>SS.stop_time){ SS.stopped=1; return 0; }
+     U64 h=b->hash;
+@@ -220,7 +237,7 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply){
+         if(b->ep>=0) c.hash ^= Z_EP[b->ep&7];
+         c.side=!c.side; c.ep=-1;
+         int r = depth>=6?4:3;
+-        int sc=-negamax(&c,depth-r,-beta,-beta+1,ply+1);
++        int sc=-negamax(&c,depth-r,-beta,-beta+1,ply+1,0);
+         if(SS.stopped){ SS.path_len--; return 0; }
+         if(sc>=beta){ SS.path_len--; return beta; }
+     }
+@@ -233,20 +250,27 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply){
+         int st=(int)eval_core(b->bb,b->side); if(b->side==BLACK)st=-st;
+         futile = st + (depth==1?150:300) <= alpha;
+     }
+-    order(b,mv,n,ttm,ply<MAXPLY?ply:MAXPLY-1);
++    Move cm = prev ? SS.counter[b->side][MV_FROM(prev)][MV_TO(prev)] : 0;
++    order(b,mv,n,ttm,ply<MAXPLY?ply:MAXPLY-1,cm);
+     int best=-S_MATE-1, orig_alpha=alpha; Move bestm=0;
++    Move quiets[64]; int nq=0;   /* quiets tried before a cutoff, for history malus */
+     for(int i=0;i<n;i++){
+         Move m=mv[i];
+         int quiet = !is_capture(b,m) && MV_PROMO(m)==0;
+         Board c=*b; make(&c,m);
+         if(futile && quiet && bestm && !in_check(&c,c.side)){ continue; }
+         int sc;
+-        if(i==0){ sc=-negamax(&c,depth-1,-beta,-alpha,ply+1); }
++        if(i==0){ sc=-negamax(&c,depth-1,-beta,-alpha,ply+1,m); }
+         else {
+             int red=1;
+-            if(depth>=3 && quiet && !checked){ if(i>=12)red=3; else if(i>=3)red=2; }
+-            sc=-negamax(&c,depth-red,-alpha-1,-alpha,ply+1);
+-            if(sc>alpha && (red>1 || beta>alpha+1)) sc=-negamax(&c,depth-1,-beta,-alpha,ply+1);
++            if(depth>=3 && quiet && !checked && i>=3){
++                int dd=depth<63?depth:63, mm=i<63?i:63;
++                red = LMR_TAB[dd][mm];
++                if(red<1) red=1;
++                if(red>depth-1) red=depth-1;
++            }
++            sc=-negamax(&c,depth-red,-alpha-1,-alpha,ply+1,m);
++            if(sc>alpha && (red>1 || beta>alpha+1)) sc=-negamax(&c,depth-1,-beta,-alpha,ply+1,m);
+         }
+         if(SS.stopped){ SS.path_len--; return 0; }
+         if(sc>best){ best=sc; bestm=m; }
+@@ -254,10 +278,17 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply){
+         if(alpha>=beta){
+             if(quiet && ply<MAXPLY){
+                 if(SS.killers[ply][0]!=m){ SS.killers[ply][1]=SS.killers[ply][0]; SS.killers[ply][0]=m; }
+-                SS.history[b->side][MV_FROM(m)][MV_TO(m)] += depth*depth;
++                int bonus=depth*depth;
++                SS.history[b->side][MV_FROM(m)][MV_TO(m)] += bonus;
++                /* history gravity: the quiets tried before this cutoff didn't
++                 * work here, so penalize them so ordering learns from failures too. */
++                for(int q=0;q<nq;q++)
++                    SS.history[b->side][MV_FROM(quiets[q])][MV_TO(quiets[q])] -= bonus;
++                if(prev) SS.counter[b->side][MV_FROM(prev)][MV_TO(prev)] = m;
+             }
+             break;
+         }
++        if(quiet && nq<64) quiets[nq++]=m;
+     }
+     int flag = best<=orig_alpha?TT_UPPERF : best>=beta?TT_LOWERF : TT_EXACTF;
+     TTEntry *e=&TT[h&TT_MASK];
+@@ -282,7 +313,7 @@ int c_search(const char *startfen, const char *moves, double movetime, int max_d
+              char *uci_out, char *second_out, int *depth_out, long *nodes_out){
+     if(max_depth<=0) max_depth=64;
+     if(!g_init){ init_tables(); g_init=1; }
+-    if(!g_search_init){ TT=calloc(TT_SIZE,sizeof(TTEntry)); g_search_init=1; }
++    if(!g_search_init){ TT=calloc(TT_SIZE,sizeof(TTEntry)); lmr_init(); g_search_init=1; }
+     Board b; if(set_fen(&b,startfen)){ uci_out[0]=0; return 0; }
+     /* replay moves to build the board + repetition history */
+     memset(&SS,0,sizeof(SS));
+@@ -314,13 +345,13 @@ int c_search(const char *startfen, const char *moves, double movetime, int max_d
+     Move best=root[0], second=0; int score=0, cd=0;
+     for(int depth=1; depth<=max_depth; depth++){
+         int a=-S_MATE, bt=S_MATE, bm_found=0; Move bm=0, sm=0; int bs=-S_MATE-1, ss=-S_MATE-1;
+-        order(&b,root,rn,best,0);
++        order(&b,root,rn,best,0,0);
+         for(int i=0;i<rn;i++){
+             Board c=b; make(&c,root[i]);
+             int sc;
+-            if(i==0) sc=-negamax(&c,depth-1,-bt,-a,1);
+-            else { sc=-negamax(&c,depth-1,-a-1,-a,1);
+-                   if(sc>a) sc=-negamax(&c,depth-1,-bt,-a,1); }
++            if(i==0) sc=-negamax(&c,depth-1,-bt,-a,1,root[i]);
++            else { sc=-negamax(&c,depth-1,-a-1,-a,1,root[i]);
++                   if(sc>a) sc=-negamax(&c,depth-1,-bt,-a,1,root[i]); }
+             if(SS.stopped) break;
+             if(sc>bs){ ss=bs; sm=bm; bs=sc; bm=root[i]; bm_found=1; }
+             else if(sc>ss){ ss=sc; sm=root[i]; }
