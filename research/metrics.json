@@ -282,5 +282,20 @@
       "gate_score_pct": 46
     },
     "explanation": "Gate vs session-10 HEAD: +6 =43 -11 (46%), -29 Elo (95% -121..+59), SPRT H0 after 60 games. Suspect: LMR reductions of 4-5 plies on late quiets discard too much at depth ~10-12 (same shape as the RFP/LMP rejections). Screens (tactics, tests, nodes-to-depth) all passed - only the match caught it. Diff preserved in research/searchv2.patch; ablation of the ordering-only half gating next."
+  },
+  {
+    "experiment": 19,
+    "date": "2026-07-16",
+    "rev": "f0525a6",
+    "title": "Session 11 exp2: history malus + countermove ordering (ablation of the v2 batch)",
+    "hypothesis": "The ordering-quality half of the rejected batch (history gravity + countermove) is positive on its own with the baseline LMR tiers.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "tactics_pct_1s": 100.0,
+      "elo_vs_s10": 35,
+      "gate_score_pct": 55,
+      "elo_chained_est": 2530
+    },
+    "explanation": "Gate vs session-10 HEAD: +11 =44 -5 (55%, +35 Elo, 95% -53..+128), 60 games at 0.3s/move. Confirms the batch's -29 came from the aggressive LMR table (~-60 implied). Chained estimate ~2530 (2442 anchor +53 SEE +35 this); fresh ladder anchor queued."
   }
 ]

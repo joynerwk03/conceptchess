@@ -18,11 +18,19 @@ discard too much at this engine's depths (~10–12) — the same shape as every
 "do less per node" rejection in this project's history (RFP, LMP, tuned-weight
 magnitudes). The 24-position tactics screen can't see it; only games can.
 
-**exp2 — ablation: history malus + countermove only, baseline LMR (gating).**
-Isolates the ordering-quality half of the batch from the reduction-aggression
-half. Screens pass (tactics 24/24, tests green; +10% nodes on the 4-position
-cttd — same weak proxy that mispredicted SEE ordering's +53). Match gate
-running.
+**exp2 — ablation: history malus + countermove only, baseline LMR (ACCEPTED,
++35 Elo).** Isolates the ordering-quality half of the batch from the
+reduction-aggression half. Screens passed (tactics 24/24, tests green; +10%
+nodes on the 4-position cttd — same weak proxy that mispredicted SEE
+ordering's +53). **Match gate vs session-10 HEAD: +11 =44 −5 (55%), +35 Elo
+(95% −53..+128)** over 60 games at 0.3s/move; 2.2:1 decisive ratio. Kept
+(f0525a6). Clean ablation story: better ordering helps (+35); 4–5-ply LMR
+reductions on top of it were worth ≈−60 and sank the batch. One more entry
+for "ordering quality > doing less per node" — and for never trusting a batch
+verdict without ablating.
+
+**State after s11 so far:** s10 + malus/countermove ≈ **2530 Elo** (chained:
+2442 anchor +53 +35; two chained hops now, fresh ladder anchor queued).
 
 ---
 
