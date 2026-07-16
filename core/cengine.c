@@ -59,6 +59,8 @@ static inline U64 pop_lsb(U64 *b){ U64 x=*b; *b&=*b-1; return x&(~x+1); }
 static const int KNIGHT_D[8][2]={{1,2},{2,1},{2,-1},{1,-2},{-1,-2},{-2,-1},{-2,1},{-1,2}};
 static const int KING_D[8][2]={{0,1},{1,1},{1,0},{1,-1},{0,-1},{-1,-1},{-1,0},{-1,1}};
 
+static void magic_init(void);   /* defined with the slider-attack code below */
+
 static void init_tables(void){
     for(int sq=0; sq<64; sq++){
         int r=sq/8, f=sq%8;
@@ -78,6 +80,7 @@ static void init_tables(void){
         PAWN_ATK[WHITE][sq]=wp; PAWN_ATK[BLACK][sq]=bp;
     }
     zobrist_init();
+    magic_init();
 }
 
 /* Full recompute — used only to seed Board.hash in set_fen() and to verify
@@ -108,8 +111,73 @@ static U64 slide(int sq, U64 occ, const int dirs[4][2]){
     }
     return a;
 }
-static inline U64 bishop_atk(int sq,U64 occ){ return slide(sq,occ,BISHOP_D); }
-static inline U64 rook_atk(int sq,U64 occ){ return slide(sq,occ,ROOK_D); }
+/* Magic bitboards: slider attacks become one multiply + table lookup instead
+ * of walking rays. Attack sets are IDENTICAL to slide() by construction (the
+ * tables are built from slide() and verified injective at init), so search,
+ * eval mobility, SEE and perft are all byte-identical — this is pure speed.
+ * Magics are found at init by seeded xorshift search (deterministic, ~100ms
+ * once per process); constructive collisions (same attack set) are allowed. */
+static U64 M_MASK[2][64];          /* relevant occupancy (edges excluded) */
+static U64 M_MAGIC[2][64];
+static int M_SHIFT[2][64];
+static U64 *M_ATT[2][64];          /* [0]=bishop, [1]=rook */
+
+static U64 magic_rand(U64 *s){     /* xorshift64*, fixed seed => deterministic */
+    *s ^= *s >> 12; *s ^= *s << 25; *s ^= *s >> 27;
+    return *s * 2685821657736338717ULL;
+}
+static U64 mask_relevant(int sq, const int dirs[4][2]){
+    U64 m=0; int r=sq/8, f=sq%8;
+    for(int d=0;d<4;d++){
+        int nf=f, nr=r;
+        for(;;){
+            int pf=nf+dirs[d][0], pr=nr+dirs[d][1];
+            if(pf<0||pf>=8||pr<0||pr>=8) break;      /* pf,pr off board */
+            int qf=pf+dirs[d][0], qr=pr+dirs[d][1];
+            if(qf<0||qf>=8||qr<0||qr>=8) break;      /* pf,pr is the edge: exclude */
+            m|=1ULL<<(pr*8+pf); nf=pf; nr=pr;
+        }
+    }
+    return m;
+}
+static void magic_init(void){
+    U64 seed=0x9e3779b97f4a7c15ULL;
+    for(int bi=0;bi<2;bi++){
+        const int (*dirs)[2] = bi==0?BISHOP_D:ROOK_D;
+        for(int sq=0;sq<64;sq++){
+            U64 mask=mask_relevant(sq,dirs);
+            int bits=popcnt(mask), size=1<<bits;
+            M_MASK[bi][sq]=mask; M_SHIFT[bi][sq]=64-bits;
+            /* enumerate all occupancy subsets + reference attacks */
+            U64 occs[4096], refs[4096];
+            U64 sub=0; int n=0;
+            do { occs[n]=sub; refs[n]=slide(sq,sub,dirs); n++;
+                 sub=(sub-mask)&mask; } while(sub);
+            U64 *tab=malloc((size_t)size*sizeof(U64));
+            for(;;){
+                U64 magic=magic_rand(&seed)&magic_rand(&seed)&magic_rand(&seed);
+                if(popcnt((mask*magic)>>56)<6) continue;   /* need dense high bits */
+                memset(tab,0,(size_t)size*sizeof(U64));
+                int ok=1;
+                for(int i=0;i<n&&ok;i++){
+                    unsigned idx=(unsigned)((occs[i]*magic)>>M_SHIFT[bi][sq]);
+                    if(tab[idx]==0) tab[idx]=refs[i]?refs[i]:1;   /* 1 = "empty attack" sentinel */
+                    else if(tab[idx]!=(refs[i]?refs[i]:1)) ok=0;  /* destructive collision */
+                }
+                if(ok){ M_MAGIC[bi][sq]=magic; break; }
+            }
+            /* decode sentinel back to 0 */
+            for(int i=0;i<size;i++) if(tab[i]==1) tab[i]=0;
+            M_ATT[bi][sq]=tab;
+        }
+    }
+}
+static inline U64 bishop_atk(int sq,U64 occ){
+    return M_ATT[0][sq][(unsigned)(((occ&M_MASK[0][sq])*M_MAGIC[0][sq])>>M_SHIFT[0][sq])];
+}
+static inline U64 rook_atk(int sq,U64 occ){
+    return M_ATT[1][sq][(unsigned)(((occ&M_MASK[1][sq])*M_MAGIC[1][sq])>>M_SHIFT[1][sq])];
+}
 
 static void refresh(Board *b){
     b->occ[WHITE]=b->occ[BLACK]=0;
