@@ -1,5 +1,51 @@
 ---
 
+## 2026-07-15 — Session 10: post-core search cleanups (hashing, SEE ordering, two bug fixes)
+
+First session on top of the compiled core. Theme: squeeze the C search and fix
+correctness debt, gating strength changes against the pre-change core.
+
+**exp1 — incremental Zobrist hashing (KEPT).** `Board.hash` is now maintained
+incrementally by `make()` (XOR exactly what changed) instead of every negamax
+node recomputing it from scratch. First attempt was *slower* (1.28→1.33s to
+depth 9) because `gen_legal()`'s throwaway legality-test copies were paying for
+hash upkeep they never use; added `make_light()` (piece placement only, no
+hash/castle/ep/side) for that path. Net **1.28→1.22s to depth 9 (−5%), node
+count BYTE-IDENTICAL** (1,401,527) so search shape is unchanged — no match gate
+needed, same reasoning as the session-5 eval cache. Verified: perft unchanged,
+a hash-verify walk over 350k+ positions finds zero mismatches vs from-scratch
+recompute (`tests/test_core.py`), eval cross-check still 0.000000, 46 tests pass.
+
+**Bug fix — promotion moves reported the WRONG piece (since session 9).** A
+critical correctness bug in the C move encoding surfaced in coach output;
+fixed and committed (`61ce8a2`). Lesson logged: the promo-piece index table is
+`" nbrq"` (index 0 unused), easy to off-by-one.
+
+**exp2 — SEE-based capture ordering in the main search (ACCEPTED, +53 Elo).**
+`order()` now ranks captures by static-exchange value (actual material outcome),
+demoting losing captures (SEE<0) below quiet-move history — still searched, just
+not explored first. This mirrors the signal qsearch already prunes on.
+- Deterministic metric said **NO**: +7% nodes / +5% time to depth 9. Node-count
+  is a weak proxy (this project has repeatedly seen it mislead), so it was
+  gated with real games rather than trusting the metric.
+- **Match gate vs the pre-SEE core: +15 =39 −6 (58%), +53 Elo** (95% −35..+147)
+  over 60 games at 0.3s/move. Clearly positive (15 wins vs 6 losses, 2.5:1)
+  despite the metric's verdict — searching better moves first wins even at a
+  small per-node cost. Kept.
+- **Reinforces the core methodology:** ordering quality > raw node count; the
+  match is ground truth. The one metric that *is* reliable (byte-identical node
+  count for shape-neutral speedups, exp1) still held.
+
+**Bug fix — SPRT crashed on high draw rates** (math domain error in the
+trinomial LLR when the draw fraction dominated); fixed (`aec23e9`).
+
+**State after session 10:** compiled core + incremental hashing + SEE ordering.
+Estimated **≈2495 Elo** (2442 anchor + 53 head-to-head; re-anchor on a fresh SF
+ladder pending). Interpretability untouched — all changes are in search/hashing;
+C eval still == Python concept eval to 0.000000.
+
+---
+
 ## 2026-07-14 — Learning-tool session: from "engine that explains" to "coach"
 
 Full session on interpretability + the app as a teaching tool (engine strength

@@ -239,5 +239,34 @@
       "depth_at_1s": 9
     },
     "explanation": "Ported board+movegen+search+eval to C (clang->dylib, ctypes). Perft matches python-chess exactly (43x faster movegen). C eval == Python eval to 0.000000 on 6204 positions (interpretability guarantee: fast search optimizes exactly what the explanation shows). C search reaches depth 9 vs Python's 4 at 1s. Head-to-head: +24=6-0 (90%, +382 Elo) vs the ~2018 Python engine. Ladder-anchored at 2442 (2305-2582). Python explanation layer unchanged and still exact."
+  },
+  {
+    "experiment": 16,
+    "date": "2026-07-15",
+    "rev": "a9f4f91",
+    "title": "Session 10 exp1: incremental Zobrist hashing",
+    "hypothesis": "Recomputing Board.hash from scratch at every negamax node is wasteful; maintain it incrementally in make() (XOR only what changed), with a hash-free make_light() for legality-test copies.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "time_to_d9": 1.22,
+      "nodes_d9": 1401527,
+      "tactics_pct_1s": 100.0,
+      "elo_ladder_mle": 2442
+    },
+    "explanation": "1.28->1.22s to depth 9 (-5%); node count BYTE-IDENTICAL (1,401,527) so search shape unchanged (no match gate, like the s5 eval cache). make_light() added because gen_legal()'s throwaway copies were paying for hash upkeep they never use (first attempt was slower). Perft unchanged, 350k+ hash-verify positions zero mismatches, eval cross-check 0.000000, 46 tests pass."
+  },
+  {
+    "experiment": 17,
+    "date": "2026-07-15",
+    "rev": "a5aeda9",
+    "title": "Session 10 exp2: SEE-based capture ordering in the main search",
+    "hypothesis": "Ordering captures by static-exchange value (real material outcome), demoting losing captures below quiet history, beats MVV-LVA even though it costs SEE compute per node.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "tactics_pct_1s": 100.0,
+      "elo_vs_pre_see": 53,
+      "elo_ladder_mle": 2495
+    },
+    "explanation": "Deterministic metric said NO (+5% time / +7% nodes to depth 9), but the match said YES: +15 =39 -6 (58%, +53 Elo, 95% -35..+147) over 60 games at 0.3s/move vs the pre-SEE core. 15 wins vs 6 losses. Ordering quality beats raw node count; the match is ground truth. Estimated ladder position ~2495 (2442 + 53 head-to-head; fresh SF re-anchor pending)."
   }
 ]
