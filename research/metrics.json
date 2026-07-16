@@ -455,5 +455,20 @@
       "elo_vs_head": -12
     },
     "explanation": "Gate +17 =24 -19 (48%, -12, 95% -102..+78) -- below the >=50% bar. Suspected cost: TT entries cached under high-clock contexts (draw-scored) reused in low-clock contexts. Reverted per protocol; refined variant (skip TT stores near the clock) queued. The rep fix already restored KBN/KBB conversion."
+  },
+  {
+    "experiment": 31,
+    "date": "2026-07-16",
+    "rev": "HEAD",
+    "title": "Session 12 ladder anchor: 2654",
+    "hypothesis": "The rep fix + king-race concept move even the conservative SF-ladder instrument.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "elo_ladder_mle": 2654,
+      "elo_ladder_lo": 2505,
+      "elo_ladder_hi": 2794,
+      "elo_chain_est": 2790
+    },
+    "explanation": "30 games vs SF 2600/2800/3000: 40%/30%/30% (2800 and 3000 identical -- UCI_Elo compression at 0.3s/move). +140 measured over s11b's 2514; chain (~2790) inside the upper CI."
   }
 ]
