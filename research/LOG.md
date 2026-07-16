@@ -68,6 +68,23 @@ chain and the anchor methodology (now reproducible via
 `python -m research.ladder_anchor`, which refits every committed historical
 anchor exactly). Timeline updated: research/elo_report.html.
 
+**Session 11 close — the speed batch is worth +108 Elo head-to-head, and the
+SF ladder can't see it.** Two measurements of the same engine state:
+- Fresh ladder anchor (30 games, SF 2400/2600/2800): **2514 (2372–2652)** —
+  statistically identical to the pre-speed-batch 2529.
+- Direct head-to-head vs the pre-speed-batch state (f0525a6, same strength
+  features, −48% time): **+21 =36 −3 (65%), +108 Elo (95% +20..+211)** over
+  60 games. CI excludes zero; 7:1 decisive ratio.
+
+Interpretation: UCI_Elo-limited Stockfish plays with deliberate mistakes; once
+our depth suffices to refute them, additional depth converts poorly *against
+that opponent* — but converts fully against an equal engine. Lesson for the
+Elo timeline: the ladder anchors are a conservative, internally-consistent
+scale, but chained head-to-heads are the sensitive instrument for recent
+gains. Both are recorded; the chain now places the engine ≈**2620–2640** on
+the project scale while the anchor says ~2514 — the gap is the instrument,
+not the engine.
+
 **exp10 — null-move static-eval guard (ACCEPTED, 51%, −11% nodes).** Only try
 null move when `eval_stm(b) >= beta`: statically-below-beta positions almost
 never fail high on a pass, so the reduced search was wasted; skipping also

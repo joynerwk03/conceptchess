@@ -396,5 +396,20 @@
       "time_to_d10_cttd": 1.45
     },
     "explanation": "Board tracks hm (FEN field 5 + make() resets); is_rep O(hm) instead of O(game length) per node. Byte-identical nodes. Real benefit appears in long games (80-160 path entries), not cttd. Also unlocks future 50-move detection (engine currently has none)."
+  },
+  {
+    "experiment": 27,
+    "date": "2026-07-16",
+    "rev": null,
+    "title": "Session 11 close: speed batch measured at +108 Elo head-to-head; ladder blind to it",
+    "hypothesis": "The byte-identical speed batch (-48% time) converts to real Elo at fixed movetime.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "elo_vs_pre_speed_batch": 108,
+      "h2h_score_pct": 65,
+      "elo_ladder_mle": 2514,
+      "elo_chain_est": 2630
+    },
+    "explanation": "60-game h2h vs f0525a6 (same strength features, pre eval-hash/captures-gen/magics/is_legal/guard/hm): +21 =36 -3 (65%, +108 Elo, 95% +20..+211). The fresh SF ladder (2514, 2372-2652) is statistically identical to the pre-batch 2529 -- UCI_Elo-limited opponents saturate: once their deliberate mistakes are refuted, extra depth converts poorly against THEM but fully against an equal engine. Chain places the engine ~2620-2640 on the project scale; anchors are the conservative instrument."
   }
 ]
