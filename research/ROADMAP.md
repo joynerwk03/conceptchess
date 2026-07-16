@@ -42,9 +42,9 @@ entry reference; add new ideas as they come up.
 
 ## Test/benchmark infrastructure
 
-- [ ] Harder tactics suites: v1 has been saturated at 100% since session 1 — it
-      no longer discriminates. Mine quiet-move and deeper suites (`--depth 20+`,
-      exclude bm-is-capture positions) sized for the C core's depth 10–12
+- [x] Harder tactics suite v2 (s11: 30 pos @ SF depth 22, gap ≥250; gate runs at
+      0.25s where baseline is 29/30 — at 1s even v2 is saturated). Next iteration
+      needs multi-move quiet tactics, not deeper verification of 1-move wins
 - [x] ~~Eval agreement with Stockfish~~ (session 2: built as eval-loss metric; good concept
       screen, bad tuning target) — [ ] move-agreement-at-fixed-nodes metric instead
 - [x] Ladder-anchor MLE fit is now a script (research/ladder_anchor.py, reproduces
