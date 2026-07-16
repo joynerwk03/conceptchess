@@ -341,5 +341,32 @@
       "tactics_pct_1s": 100.0
     },
     "explanation": "Magics found at init (seeded, deterministic, <0.5s); tables built FROM slide() and verified injective, so attack sets identical by construction. cttd 2.46->1.79s (-28%); session speed total 3.12->1.79s (-43%), all byte-identical. Benchmark 3.76M NPS (2.04M pre-magics). Perft, eval 0.000000, 46 tests, tactics 24/24. NOTE: landed after the 2529 anchor; next anchor captures it."
+  },
+  {
+    "experiment": 23,
+    "date": "2026-07-16",
+    "rev": "75c7732",
+    "title": "Session 11 exp8: is_legal() bitboard-surgery legality test",
+    "hypothesis": "make_light (20% of profile) can be eliminated: legality only needs post-move attack probes from the king square.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "time_to_d10_cttd": 1.61,
+      "nodes_d10_cttd": 3418463,
+      "tactics_pct_1s": 100.0
+    },
+    "explanation": "Direct bitboard surgery (occ2, captured-piece removal, magic lookups from king sq) replaces copy+make_light+in_check at all legality sites. Perft exact, nodes byte-identical, 1.79->1.61s. Session speed total 3.12->1.61s (-48%)."
+  },
+  {
+    "experiment": 24,
+    "date": "2026-07-16",
+    "rev": null,
+    "title": "Session 11 exp9: lazy best-move selection",
+    "hypothesis": "On-demand max-pick beats a full sort at cutoff nodes.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "time_to_d10_cttd": 1.62,
+      "nodes_d10_cttd": 3418463
+    },
+    "explanation": "Byte-identical (orig-index tie-break) but zero time gain: sorting isn't the hot part of order() (see/history scoring is) and illegal moves each newly paid an O(n) pick scan. Reverted for simplicity."
   }
 ]

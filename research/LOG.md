@@ -68,6 +68,22 @@ chain and the anchor methodology (now reproducible via
 `python -m research.ladder_anchor`, which refits every committed historical
 anchor exactly). Timeline updated: research/elo_report.html.
 
+**exp8 — is_legal() bitboard surgery (KEPT, −10% time).** Profiling (macOS
+`sample` on a 12s search) showed make_light at 20% of time — every legality
+test copied the Board + mutated + refreshed occupancy. is_legal() instead
+builds the post-move occupancy and captured-piece removal in locals and
+probes attacks from the (possibly moved) king square via magic lookups —
+handles ep double-removal, castle rook relocation, king moves. Perft exact,
+cttd nodes EXACTLY 3,418,463, 1.79 → 1.61s. **Session speed: 3.12 → 1.61s
+(−48%).**
+
+**exp9 — lazy best-move selection (REJECTED, no gain).** Replaced order()'s
+full insertion sort in negamax with score-once + pick-max-on-demand
+(original-index tie-break for byte-identical order). Nodes identical, time
+unchanged (1.62 vs 1.61s): the sort isn't the hot part of ordering (the
+see()/history scoring is), and each skipped illegal move newly paid an O(n)
+selection scan. Reverted — simplicity wins when the metric says no.
+
 **exp7 — magic bitboards (KEPT, −28% time, the second-biggest speed win).**
 slide()'s ray-walking loops — the primitive under in_check/legality tests,
 SEE, movegen, and eval mobility — replaced by one multiply + table lookup.
