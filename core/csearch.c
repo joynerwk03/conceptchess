@@ -207,8 +207,11 @@ static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
     if(qd==0){ /* first-ply quiet checks */
         for(int i=0;i<n;i++){ Move m=mv[i];
             if(is_capture(b,m)||MV_PROMO(m)) continue;
-            Board c=*b; make(&c,m);
-            if(in_check(&c,c.side)){
+            /* cheap does-it-check test on a light copy (in_check only reads
+             * piece bitboards); pay full make() only for actual checkers */
+            Board t=*b; make_light(&t,m);
+            if(in_check(&t,!b->side)){
+                Board c=*b; make(&c,m);
                 int sc=-qsearch(&c,-beta,-alpha,ply+1,qd+1);
                 if(SS.stopped) return 0;
                 if(sc>=beta) return beta;
