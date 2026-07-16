@@ -1,5 +1,41 @@
 ---
 
+## 2026-07-16 — Session 12: the dead repetition detector (major bug fix)
+
+**Discovery.** While screening a new eval concept, the full test suite (with
+slow tests — which the loop's `-m 'not slow'` gates had been skipping) failed
+KBB/KBN mate conversion. Tracing a KBN game showed the *winning* side walking
+into threefold repetition at ply 48. Bisect: fails identically at the
+learning-tool commit (497c026) — **pre-existing since the session-9 C port**,
+invisible to every match gate because gates only see final scores.
+
+**Root cause.** `is_rep()` scanned `path[path_len-2], path[path_len-4], ...`
+— but the current position sits at `path_len-1`, so the scan only ever
+visited **opposite-side-to-move entries**, which can never match a hash that
+includes Z_SIDE. Repetition detection had been completely dead on the C
+engine. (The step-by-2 idiom was ported off by one; the Python reference is
+correct.)
+
+**Fix.** Scan every entry within the halfmove-clock window (`Board.hm`, added
+in s11 exp11): Z_SIDE already rejects wrong-side entries, and stepping by 1
+is also the only sound option once null moves interleave the path (a second
+latent hole: null-move children now increment `hm` so the clock window covers
+their path entries). **KBB and KBN now convert to CHECKMATE (45/57 plies vs
+50-move-drawn / threefold before).** Full suite 50/50 green; tactics 24/24 +
+29/30 unchanged; conversion tests remain mildly load-flaky (movetime-based).
+
+**Lessons.** (1) Slow tests that gates never run are tests that don't exist —
+the conversion suite would have caught this 2 days earlier. (2) A match gate
+can't see a bug whose symptom is "draws games it should win" unless the
+opponent punishes it; self-play siblings shared the same bug. (3) The s11
+"byte-identical" hm-bound validated cleanly partly *because* is_rep almost
+never fired.
+
+**Match gate vs HEAD:** running (strength-relevant shape change; expect
+positive-ish — wins that were being drawn now convert).
+
+---
+
 ## 2026-07-15/16 — Session 11: search-quality experiments on the C core
 
 **exp1 — "search-quality v2" batch (REJECTED, −29 Elo).** Three standard
