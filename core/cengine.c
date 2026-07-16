@@ -200,6 +200,35 @@ static int attacked(const Board *b, int sq, int by){
 static inline int king_sq(const Board *b, int side){ return lsb(b->bb[side][KING]); }
 static inline int in_check(const Board *b, int side){ return attacked(b,king_sq(b,side),!side); }
 
+/* Is pseudo-legal move m legal (our king safe after it)? Replaces the
+ * copy-board + make_light + in_check pattern with direct bitboard surgery:
+ * build the post-move occupancy and captured-piece removal in locals and
+ * probe attacks from the (possibly moved) king square. Byte-identical
+ * results, no Board copy, no occupancy refresh. */
+static int is_legal(const Board *b, Move m){
+    int from=MV_FROM(m), to=MV_TO(m), flag=MV_FLAG(m);
+    int us=b->side, them=!us;
+    U64 frombb=1ULL<<from, tobb=1ULL<<to;
+    U64 occ2 = (b->all & ~frombb) | tobb;
+    U64 cap = b->occ[them] & tobb;            /* captured piece bit (non-ep) */
+    if(flag==1){ int capsq = us==WHITE ? to-8 : to+8;
+        cap = 1ULL<<capsq; occ2 &= ~cap; }
+    else if(flag==2){                          /* castle: rook moves too */
+        if(to==6){ occ2 = (occ2 & ~(1ULL<<7)) | (1ULL<<5); }
+        else if(to==2){ occ2 = (occ2 & ~(1ULL<<0)) | (1ULL<<3); }
+        else if(to==62){ occ2 = (occ2 & ~(1ULL<<63)) | (1ULL<<61); }
+        else { occ2 = (occ2 & ~(1ULL<<56)) | (1ULL<<59); }
+    }
+    int ksq = (b->bb[us][KING]&frombb) ? to : king_sq(b,us);
+    /* their attackers, with any captured piece removed */
+    if(PAWN_ATK[us][ksq] & (b->bb[them][PAWN] & ~cap)) return 0;
+    if(KNIGHT_ATK[ksq] & (b->bb[them][KNIGHT] & ~cap)) return 0;
+    if(KING_ATK[ksq] & b->bb[them][KING]) return 0;
+    if(bishop_atk(ksq,occ2) & ((b->bb[them][BISHOP]|b->bb[them][QUEEN]) & ~cap)) return 0;
+    if(rook_atk(ksq,occ2) & ((b->bb[them][ROOK]|b->bb[them][QUEEN]) & ~cap)) return 0;
+    return 1;
+}
+
 static int piece_at(const Board *b, int sq, int color){
     U64 m=1ULL<<sq;
     for(int p=0;p<6;p++) if(b->bb[color][p]&m) return p;
@@ -352,10 +381,8 @@ static int gen_pseudo(const Board *b, Move *list){
 /* Legal moves: pseudo-legal filtered by own-king safety. */
 int gen_legal(const Board *b, Move *out){
     Move pl[256]; int n=gen_pseudo(b,pl), m=0;
-    for(int i=0;i<n;i++){
-        Board c=*b; make_light(&c,pl[i]);
-        if(!in_check(&c,b->side)) out[m++]=pl[i];
-    }
+    for(int i=0;i<n;i++)
+        if(is_legal(b,pl[i])) out[m++]=pl[i];
     return m;
 }
 
@@ -402,10 +429,8 @@ static int gen_pseudo_captures(const Board *b, Move *list){
 }
 int gen_legal_captures(const Board *b, Move *out){
     Move pl[256]; int n=gen_pseudo_captures(b,pl), m=0;
-    for(int i=0;i<n;i++){
-        Board c=*b; make_light(&c,pl[i]);
-        if(!in_check(&c,b->side)) out[m++]=pl[i];
-    }
+    for(int i=0;i<n;i++)
+        if(is_legal(b,pl[i])) out[m++]=pl[i];
     return m;
 }
 

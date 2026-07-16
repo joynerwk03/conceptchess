@@ -282,7 +282,7 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
     int li=0;                    /* index among LEGAL moves (drives PVS/LMR) */
     for(int pi=0;pi<np;pi++){
         Move m=pl[pi];
-        { Board t=*b; make_light(&t,m); if(in_check(&t,b->side)) continue; }
+        if(!is_legal(b,m)) continue;
         int i=li++;
         int quiet = !is_capture(b,m) && MV_PROMO(m)==0;
         Board c=*b; make(&c,m);
