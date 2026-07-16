@@ -23,7 +23,12 @@ entry reference; add new ideas as they come up.
 - [x] ~~Tune concept weights via eval-loss vs Stockfish~~ (session 2: ANTI-CORRELATED with
       strength — see LOG. Next attempt should target move-agreement or direct Elo)
 - [x] King safety: attack-unit model (session 2, kept)
-- [ ] Passed pawns: blockade detection, king proximity in endgame, connected passers
+- [x] Passed pawns: blockade detection (s2), king proximity in endgame (s12:
+      **+110 marginal Elo, the project's strongest eval change**) —
+      [ ] still todo: connected passers, rook behind passer
+- [ ] Unstoppable passer (square rule): in pawn-only endgames, a passer the
+      defending king can't catch is nearly a queen — interpretable, and would
+      fix the s7 KPvK weakness without a bitbase
 - [ ] New concept: threats/hanging pieces (statically detect en prise material)
 - [ ] New concept: space (advanced-square control behind pawn chains)
 - [ ] Knight outposts (in piece_activity)
@@ -35,8 +40,12 @@ entry reference; add new ideas as they come up.
 - [x] Qsearch: include checks at first ply of quiescence (s5)
 - [x] ~~Aggressive log-log LMR reduction table~~ (s11: REJECTED −29 Elo at 46%; 4–5 ply reductions discard too much at depth ~10–12)
 - [ ] Mate-distance pruning
-- [ ] 50-move-rule detection in the C search (Board.hm now exists — s11 exp11 —
-      but no draw-by-50 check; matters in fortress/shuffling endgames; gate it)
+- [x] ~~50-move-rule detection (plain hm>=100 -> 0)~~ (s12: REJECTED at 48%,
+      −12 — suspected TT pollution across clock contexts) — [ ] refined
+      variant: same draw scoring but skip TT stores when hm>80, so
+      clock-contaminated scores never leak into low-clock contexts
+- [x] Repetition detection actually works now (s12: the port had only ever
+      scanned opposite-side path entries — dead since s9; fix gated +47)
 - [ ] Aspiration windows, third attempt — only after root scores prove stable at C-core depths (failed at depth ~7 twice; the C core reaches 10–12 where swings may be smaller)
 - [ ] Singular / TT-move extensions
 - [ ] Repetition-aware TT (avoid TT cutoffs masking repetition draws)
