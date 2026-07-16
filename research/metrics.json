@@ -442,5 +442,18 @@
       "tactics_v2_pct": 96.7
     },
     "explanation": "Gate +24 =19 -4 (71%, +158, 95% +59..+291), SPRT H1 at 47 games. Baseline was pre-rep-fix so +158 bundles that +47; marginal ~+110 -- still the project's strongest eval change. Weight 4cp/square by chess prior. C mirror exact. Interpretable items in the GUI breakdown."
+  },
+  {
+    "experiment": 30,
+    "date": "2026-07-16",
+    "rev": null,
+    "title": "Session 12 exp2: 50-move-rule awareness in search",
+    "hypothesis": "Scoring hm>=100 as a draw gives the search urgency near the clock and avoids losing wins to 50-move claims.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_score_pct": 48,
+      "elo_vs_head": -12
+    },
+    "explanation": "Gate +17 =24 -19 (48%, -12, 95% -102..+78) -- below the >=50% bar. Suspected cost: TT entries cached under high-clock contexts (draw-scored) reused in low-clock contexts. Reverted per protocol; refined variant (skip TT stores near the clock) queued. The rep fix already restored KBN/KBB conversion."
   }
 ]
