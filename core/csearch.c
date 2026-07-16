@@ -246,8 +246,12 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
     }
     if(done){ SS.path_len--; return ret; }
 
-    /* null move */
-    if(depth>=3 && !checked && beta<S_MATE_TH && has_non_pawn(b)){
+    /* null move — only when the static eval already beats beta: if we're
+     * statically below beta, "passing" almost never fails high, so the
+     * reduced search is wasted; and skipping it avoids some wrong cutoffs
+     * where the eval overestimates (near-zugzwang). eval_stm is ~free via
+     * the eval hash. */
+    if(depth>=3 && !checked && beta<S_MATE_TH && has_non_pawn(b) && eval_stm(b)>=beta){
         Board c=*b;
         /* c is not built via make(), so its hash must be fixed up by hand for
          * the side flip + ep clear (same terms make() would apply). */
