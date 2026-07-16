@@ -35,6 +35,28 @@ never fired.
 (8c39103). Wins that were being drawn now convert; 2:1 decisive ratio. Chain
 estimate ≈**2680** on the project scale (2529 anchor +108 speed +47 this).
 
+**exp1 — passed-pawn king race (ACCEPTED, 71%, ~+110 marginal Elo — the
+project's strongest eval change).** Per passer:
+`W × (1−phase) × (chebyshev(enemyK, front) − chebyshev(ownK, front))` —
+escort your own passer, catch theirs, endgame-scaled, weight 4cp/square set
+by chess prior (per the s2/s3 rule: metrics screen concepts, priors set
+magnitudes). Interpretable items: "e5 passer escorted by king" / "outrun by
+enemy king". Lives outside the pawn-keyed cache (kings move); C mirror exact
+(eval_check 0.000000 on 6,204 positions). **Gate: +24 =19 −4 (71%), +158 Elo
+(95% +59..+291), SPRT stopped early on H1 at 47 games.** Measurement note,
+recorded honestly: the baseline worktree was still pre-rep-fix, so +158
+bundles the rep fix's +47 — the concept's marginal effect is ≈+110. 6:1
+decisive ratio either way (7611e3b).
+
+**exp2 — 50-move-rule awareness (gating).** `Board.hm >= 100` now scores 0 in
+negamax — the search finally feels the clock, so dawdling lines near the
+limit stop looking like wins. Found via KBN conversions timing out at ply 99
+by FIFTY_MOVES with zero urgency. cttd nodes unchanged (positions there never
+approach the clock); the effect is match-play-only. Test infra: conversion
+budget bumped 100→120 plies (KBN takes ~80 under best defence; 0.2s/move
+searches made 100 load-flaky — a drawing bug still fails at 120 since the
+50-move rule bites at ply 100 of shuffling regardless).
+
 ---
 
 ## 2026-07-15/16 — Session 11: search-quality experiments on the C core

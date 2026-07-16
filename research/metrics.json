@@ -427,5 +427,20 @@
       "nodes_d10_cttd": 3007230
     },
     "explanation": "Found via slow KBN/KBB conversion tests the gates had been skipping; winning side walked into threefold at ply 48. Scan now covers every entry in the halfmove-clock window (Z_SIDE rejects wrong-side; null-move children increment hm). Gate vs HEAD: +16 =36 -8 (57%, +47 Elo). Chain estimate now ~2680 on the project scale."
+  },
+  {
+    "experiment": 29,
+    "date": "2026-07-16",
+    "rev": "7611e3b",
+    "title": "Session 12 exp1: passed-pawn king race concept",
+    "hypothesis": "Escorting your passer / catching theirs (Chebyshev distance to the front square, endgame-scaled) is the biggest missing eval term for the known-weak endgame phase.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "gate_score_pct": 71,
+      "elo_gate_measured": 158,
+      "elo_marginal_est": 110,
+      "tactics_v2_pct": 96.7
+    },
+    "explanation": "Gate +24 =19 -4 (71%, +158, 95% +59..+291), SPRT H1 at 47 games. Baseline was pre-rep-fix so +158 bundles that +47; marginal ~+110 -- still the project's strongest eval change. Weight 4cp/square by chess prior. C mirror exact. Interpretable items in the GUI breakdown."
   }
 ]
