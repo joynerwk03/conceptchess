@@ -23,6 +23,7 @@ typedef struct {
     int side;         /* side to move */
     int ep;           /* en-passant target square, or -1 */
     int castle;       /* bits: 1=WK 2=WQ 4=BK 8=BQ */
+    int hm;           /* halfmove clock (plies since pawn move/capture) */
     U64 hash;          /* Zobrist hash, maintained incrementally by make() */
 } Board;
 
@@ -247,14 +248,16 @@ static void make(Board *b, Move mv){
 
     b->bb[us][pc]&=~frombb;
     b->hash ^= Z_PIECE[us][pc][from];
+    b->hm = (pc==PAWN) ? 0 : b->hm+1;   /* halfmove clock; captures reset below */
     /* captures */
     if(flag==1){ /* en passant */
         int capsq = us==WHITE ? to-8 : to+8;
         b->bb[them][PAWN]&=~(1ULL<<capsq);
         b->hash ^= Z_PIECE[them][PAWN][capsq];
+        b->hm=0;
     } else {
         int cap=piece_at(b,to,them);
-        if(cap>=0){ b->bb[them][cap]&=~tobb; b->hash ^= Z_PIECE[them][cap][to]; }
+        if(cap>=0){ b->bb[them][cap]&=~tobb; b->hash ^= Z_PIECE[them][cap][to]; b->hm=0; }
     }
     if(promo){ b->bb[us][promo]|=tobb; b->hash ^= Z_PIECE[us][promo][to]; }
     else { b->bb[us][pc]|=tobb; b->hash ^= Z_PIECE[us][pc][to]; }
@@ -460,6 +463,10 @@ int set_fen(Board *b, const char *fen){
     }
     while(*s==' ')s++;
     if(*s && *s!='-'){ int f=s[0]-'a', r=s[1]-'1'; b->ep=r*8+f; }
+    while(*s && *s!=' ')s++;         /* skip ep token */
+    while(*s==' ')s++;
+    b->hm=0;
+    while(*s>='0'&&*s<='9'){ b->hm = b->hm*10 + (*s-'0'); s++; }
     refresh(b);
     b->hash = compute_hash_full(b);
     return 0;

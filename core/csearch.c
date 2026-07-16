@@ -106,8 +106,12 @@ static int insufficient(const Board *b){
     int minors = popcnt(b->bb[WHITE][KNIGHT]|b->bb[WHITE][BISHOP]|b->bb[BLACK][KNIGHT]|b->bb[BLACK][BISHOP]);
     return minors<=1;
 }
-static int is_rep(U64 h){
-    for(int i=SS.path_len-2;i>=0;i-=2) if(SS.path[i]==h) return 1;
+static int is_rep(U64 h, int hm){
+    /* positions older than the halfmove clock are unreachable again (a pawn
+     * move or capture is irreversible), so bound the scan — same answers,
+     * O(hm) instead of O(game length) per node */
+    int lo = SS.path_len-1-hm; if(lo<0) lo=0;
+    for(int i=SS.path_len-2;i>=lo;i-=2) if(SS.path[i]==h) return 1;
     return 0;
 }
 
@@ -228,7 +232,7 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
     U64 h=b->hash;
     SS.path[SS.path_len++]=h;
     int ret, done=0;
-    if(is_rep(h)||insufficient(b)){ ret=0; done=1; }
+    if(is_rep(h,b->hm)||insufficient(b)){ ret=0; done=1; }
     int checked = done?0:in_check(b,b->side);
     if(!done && checked) depth++;
     if(!done && depth<=0){ ret=qsearch(b,alpha,beta,ply,0); done=1; }
