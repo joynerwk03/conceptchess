@@ -368,5 +368,33 @@
       "nodes_d10_cttd": 3418463
     },
     "explanation": "Byte-identical (orig-index tie-break) but zero time gain: sorting isn't the hot part of order() (see/history scoring is) and illegal moves each newly paid an O(n) pick scan. Reverted for simplicity."
+  },
+  {
+    "experiment": 25,
+    "date": "2026-07-16",
+    "rev": "7082a25",
+    "title": "Session 11 exp10: null-move static-eval guard",
+    "hypothesis": "Skip null-move attempts when static eval < beta: the pass almost never fails high there, and skipping avoids some wrong cutoffs.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "nodes_d10_cttd": 3047093,
+      "time_to_d10_cttd": 1.52,
+      "gate_score_pct": 51,
+      "elo_vs_pre_guard": 6
+    },
+    "explanation": "-11% nodes / -6% time on the deterministic screen; match gate +9 =43 -8 (51%, +6 Elo, 95% -84..+96) over 60 games -- neutral strength, free speed. Nearly zero cost via the eval hash."
+  },
+  {
+    "experiment": 26,
+    "date": "2026-07-16",
+    "rev": "HEAD",
+    "title": "Session 11 exp11: halfmove-clock repetition-scan bound",
+    "hypothesis": "is_rep only needs to scan back to the last irreversible move; the halfmove clock bounds it with identical answers.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "nodes_d10_cttd": 3047093,
+      "time_to_d10_cttd": 1.45
+    },
+    "explanation": "Board tracks hm (FEN field 5 + make() resets); is_rep O(hm) instead of O(game length) per node. Byte-identical nodes. Real benefit appears in long games (80-160 path entries), not cttd. Also unlocks future 50-move detection (engine currently has none)."
   }
 ]

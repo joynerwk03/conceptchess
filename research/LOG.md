@@ -68,6 +68,29 @@ chain and the anchor methodology (now reproducible via
 `python -m research.ladder_anchor`, which refits every committed historical
 anchor exactly). Timeline updated: research/elo_report.html.
 
+**exp10 — null-move static-eval guard (ACCEPTED, 51%, −11% nodes).** Only try
+null move when `eval_stm(b) >= beta`: statically-below-beta positions almost
+never fail high on a pass, so the reduced search was wasted; skipping also
+avoids some wrong cutoffs where the eval overestimates (near-zugzwang).
+Nearly free via the eval hash. Deterministic screen: 3,418k → 3,047k nodes to
+depth 10 (−11%), −6% time. **Match gate vs HEAD: +9 =43 −8 (51%, +6 Elo)** —
+neutral strength, free speed. Kept (7082a25).
+
+**exp11 — halfmove-clock repetition bound (KEPT, byte-identical).** Board now
+tracks the halfmove clock (set_fen parses FEN field 5; make() resets on pawn
+moves/captures); is_rep scans only back to the last irreversible move —
+identical answers, O(hm) instead of O(game length) per node. Invisible in
+cttd (short search paths) but real in games, where the path carries 80–160
+entries. Also unlocks proper 50-move detection as future work (currently the
+engine has none — the doc header overstated it).
+
+**Infrastructure — tactics suite v2.** 30 positions mined at SF depth 22 with
+a ≥250cp best-vs-second gap. The engine saturates it at 1s (30/30 — modern
+depth solves any verified 1-move tactic), so the regression gate runs at
+0.25s where baseline is 29/30. Lesson: harder suites for a 2500+ engine need
+multi-move quiet tactics, not deeper verification of 1-move wins.
+tests/test_tactics.py::test_tactics_suite_v2 gates at 90%.
+
 **exp8 — is_legal() bitboard surgery (KEPT, −10% time).** Profiling (macOS
 `sample` on a 12s search) showed make_light at 20% of time — every legality
 test copied the Board + mutated + refreshed occupancy. is_legal() instead
