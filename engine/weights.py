@@ -29,6 +29,7 @@ W = {
     "pawn.passed_scale": 1,     # multiplier on the per-rank passed bonus
     "pawn.passed_eg_scale": 1.5,
     "pawn.blocked_passer": 0.5,  # multiplier when the square in front is occupied  # passed pawns matter more in the endgame
+    "pawn.passer_king_dist": 4,  # cp per square of net king distance to the passer's front square (endgame-scaled)
     # king safety
     "king.shield_gap": 12,
     "king.open_file": 15,

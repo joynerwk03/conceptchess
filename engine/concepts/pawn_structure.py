@@ -34,11 +34,20 @@ class PawnStructure:
         scale = phase + (1 - phase) * W["pawn.passed_eg_scale"]
         occupied = ctx.board.occupied
         blocked_mult = W["pawn.blocked_passer"]
+        # king race: escorting your passer / catching theirs (endgame-scaled;
+        # depends on king squares, so applied outside the pawn-keyed cache)
+        kd_w = W["pawn.passer_king_dist"] * (1 - phase)
+        wk = ctx.board.king(chess.WHITE)
+        bk = ctx.board.king(chess.BLACK)
         s = base
         for sign, sq, raw in passers:
             front = sq + 8 if sign > 0 else sq - 8
             mult = blocked_mult if (0 <= front <= 63 and (occupied >> front) & 1) else 1.0
             s += raw * mult * scale
+            if kd_w and 0 <= front <= 63:
+                ok, ek = (wk, bk) if sign > 0 else (bk, wk)
+                s += sign * kd_w * (chess.square_distance(ek, front)
+                                    - chess.square_distance(ok, front))
         return s
 
     def _compute(self, ctx):
@@ -94,6 +103,18 @@ class PawnStructure:
                         items.append((f"{cname} passed pawn on {chess.square_name(sq)}{tag}",
                                       sign * PASSED_BONUS[rel_rank] * mult
                                       * W["pawn.passed_scale"] * passed_scale))
+                        # king race (same arithmetic as score(); omit when 0)
+                        kd_w = W["pawn.passer_king_dist"] * (1 - phase)
+                        if kd_w and 0 <= front <= 63:
+                            wk = ctx.board.king(chess.WHITE)
+                            bk = ctx.board.king(chess.BLACK)
+                            ok, ek = (wk, bk) if sign > 0 else (bk, wk)
+                            race = sign * kd_w * (chess.square_distance(ek, front)
+                                                  - chess.square_distance(ok, front))
+                            if race:
+                                who = "escorted by king" if race * sign > 0 else "outrun by enemy king"
+                                items.append((f"{cname} {chess.square_name(sq)} passer {who}",
+                                              race))
         return items
 
     @staticmethod

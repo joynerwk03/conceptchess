@@ -73,6 +73,7 @@ double eval_core(U64 bb[2][6], int side){
 
     /* pawn structure */
     double passed_scale = phase + (1-phase)*W_PAWN_PASSED_EG_SCALE;
+    double kd_w = W_PAWN_PASSER_KING_DIST*(1-phase);  /* king race, endgame-scaled */
     for(int c=0;c<2;c++){
         int sign=c==WHITE?1:-1;
         U64 ownp=bb[c][PAWN], enp=bb[!c][PAWN];
@@ -87,6 +88,17 @@ double eval_core(U64 bb[2][6], int side){
                     int r=sq/8, rel=c==WHITE?r:7-r, front=c==WHITE?sq+8:sq-8;
                     double mult=(front>=0&&front<64&&(all&(1ULL<<front)))?W_PAWN_BLOCKED_PASSER:1.0;
                     s += sign*PASSED_BONUS[rel]*W_PAWN_PASSED_SCALE*mult*passed_scale;
+                    if(kd_w!=0.0 && front>=0 && front<64){
+                        /* mirror of pawn_structure.py: escort your passer /
+                         * catch theirs (Chebyshev distance to the front sq) */
+                        int ok=lsb(bb[c][KING]), ek=lsb(bb[!c][KING]);
+                        int dfo=ok%8-front%8, dro=ok/8-front/8;
+                        int dfe=ek%8-front%8, dre=ek/8-front/8;
+                        if(dfo<0)dfo=-dfo; if(dro<0)dro=-dro;
+                        if(dfe<0)dfe=-dfe; if(dre<0)dre=-dre;
+                        int dok=dfo>dro?dfo:dro, dek=dfe>dre?dfe:dre;
+                        s += sign*kd_w*(dek-dok);
+                    }
                 }
             }
         }

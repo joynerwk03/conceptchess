@@ -111,6 +111,7 @@ static const double PASSED_BONUS[8] = {
 #define W_PAWN_PASSED_SCALE (1)
 #define W_PAWN_PASSED_EG_SCALE (1.5)
 #define W_PAWN_BLOCKED_PASSER (0.5)
+#define W_PAWN_PASSER_KING_DIST (4)
 #define W_KING_SHIELD_GAP (12)
 #define W_KING_OPEN_FILE (15)
 #define W_KATTACK_SCALE (2.5)
