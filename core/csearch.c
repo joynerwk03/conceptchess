@@ -179,11 +179,20 @@ static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
     int stand = eval_stm(b);
     if(stand>=beta) return beta;
     if(stand>alpha) alpha=stand;
-    Move mv[256]; int n=gen_legal(b,mv), cn=0; Move caps[256]; int cs[256];
-    for(int i=0;i<n;i++){ Move m=mv[i];
-        if(is_capture(b,m) || MV_PROMO(m)==QUEEN){
+    Move mv[256]; int n=0, cn=0; Move caps[256]; int cs[256];
+    if(qd==0){ /* full legal list needed below for first-ply quiet checks */
+        n=gen_legal(b,mv);
+        for(int i=0;i<n;i++){ Move m=mv[i];
+            if(is_capture(b,m) || MV_PROMO(m)==QUEEN){
+                if(is_capture(b,m) && see(b,m)<0) continue;   /* SEE prune losing caps */
+                caps[cn]=m; cs[cn]=mvv_lva(b,m); cn++; } }
+    } else { /* deeper qsearch only ever searches captures/queen promos:
+                generate just those (same order), skip the wasted legality tax */
+        Move cl[256]; int ncl=gen_legal_captures(b,cl);
+        for(int i=0;i<ncl;i++){ Move m=cl[i];
             if(is_capture(b,m) && see(b,m)<0) continue;   /* SEE prune losing caps */
-            caps[cn]=m; cs[cn]=mvv_lva(b,m); cn++; } }
+            caps[cn]=m; cs[cn]=mvv_lva(b,m); cn++; }
+    }
     for(int i=1;i<cn;i++){ Move m=caps[i]; int s=cs[i]; int j=i-1;
         while(j>=0&&cs[j]<s){cs[j+1]=cs[j];caps[j+1]=caps[j];j--;} cs[j+1]=s; caps[j+1]=m; }
     for(int i=0;i<cn;i++){ Move m=caps[i];

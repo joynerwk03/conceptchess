@@ -291,6 +291,56 @@ int gen_legal(const Board *b, Move *out){
     return m;
 }
 
+/* Captures + queen promotions only, for quiescence: exactly the moves the
+ * qsearch filter kept from gen_legal (all capture-promos, quiet promos to
+ * queen only), generated in the SAME relative order so the search tree is
+ * byte-identical — this just skips the copy+in_check legality tax on the
+ * ~90% of pseudo-legal moves qsearch was about to throw away. */
+static int gen_pseudo_captures(const Board *b, Move *list){
+    int n=0, us=b->side, them=!us;
+    U64 own=b->occ[us], opp=b->occ[them], all=b->all;
+    (void)own;
+    U64 pawns=b->bb[us][PAWN];
+    int up = us==WHITE ? 8 : -8;
+    U64 rank_promo = us==WHITE ? 0xFF00000000000000ULL : 0x00000000000000FFULL;
+    U64 p=pawns;
+    while(p){
+        U64 one=pop_lsb(&p); int from=lsb(one);
+        int to=from+up;
+        if(to>=0&&to<64&&!(all&(1ULL<<to))&&((1ULL<<to)&rank_promo))
+            list[n++]=MK_MOVE(from,to,QUEEN,0);   /* quiet queen promo */
+        U64 atk=PAWN_ATK[us][from]&(opp|(b->ep>=0?(1ULL<<b->ep):0));
+        while(atk){
+            U64 a=pop_lsb(&atk); int t=lsb(a);
+            if(t==b->ep){ list[n++]=MK_MOVE(from,t,0,1); }
+            else if((1ULL<<t)&rank_promo){
+                for(int pr=QUEEN;pr>=KNIGHT;pr--) list[n++]=MK_MOVE(from,t,pr,0);
+            } else list[n++]=MK_MOVE(from,t,0,0);
+        }
+    }
+    U64 kn=b->bb[us][KNIGHT];
+    while(kn){ int from=lsb(pop_lsb(&kn)); U64 t=KNIGHT_ATK[from]&opp;
+        while(t){ list[n++]=MK_MOVE(from,lsb(pop_lsb(&t)),0,0);} }
+    U64 bq=b->bb[us][BISHOP]|b->bb[us][QUEEN];
+    while(bq){ int from=lsb(pop_lsb(&bq)); U64 t=bishop_atk(from,all)&opp;
+        while(t){ list[n++]=MK_MOVE(from,lsb(pop_lsb(&t)),0,0);} }
+    U64 rq=b->bb[us][ROOK]|b->bb[us][QUEEN];
+    while(rq){ int from=lsb(pop_lsb(&rq)); U64 t=rook_atk(from,all)&opp;
+        while(t){ list[n++]=MK_MOVE(from,lsb(pop_lsb(&t)),0,0);} }
+    int ks=king_sq(b,us);
+    U64 kt=KING_ATK[ks]&opp;
+    while(kt){ list[n++]=MK_MOVE(ks,lsb(pop_lsb(&kt)),0,0);}
+    return n;
+}
+int gen_legal_captures(const Board *b, Move *out){
+    Move pl[256]; int n=gen_pseudo_captures(b,pl), m=0;
+    for(int i=0;i<n;i++){
+        Board c=*b; make_light(&c,pl[i]);
+        if(!in_check(&c,b->side)) out[m++]=pl[i];
+    }
+    return m;
+}
+
 /* FEN -> Board */
 int set_fen(Board *b, const char *fen){
     memset(b,0,sizeof(*b)); b->ep=-1;
