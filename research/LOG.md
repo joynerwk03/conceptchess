@@ -61,6 +61,13 @@ Net: 3.12s → 2.46s to depth 10 on the cttd suite; benchmark now ~2.0M NPS,
 depth 10–11 middlegames @2s (vs 9 at the s9 port). Perft + eval cross-check
 (0.000000 on 6,204) + 46 tests + tactics 24/24 green throughout.
 
+**Fresh ladder anchor: 2529 Elo (95% 2388–2666)** — 30 games vs SF 2400/2600/
+2800 at 0.3s/move (60% / 50% / 15%). The independent measurement lands within
+1 Elo of the chained estimate (2442 + 53 + 35 ≈ 2530), validating both the
+chain and the anchor methodology (now reproducible via
+`python -m research.ladder_anchor`, which refits every committed historical
+anchor exactly). Timeline updated: research/elo_report.html.
+
 ---
 
 ## 2026-07-15 — Session 10: post-core search cleanups (hashing, SEE ordering, two bug fixes)

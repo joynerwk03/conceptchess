@@ -312,5 +312,19 @@
       "tactics_pct_1s": 100.0
     },
     "explanation": "Four KEPT speedups, each with cttd nodes EXACTLY 3,418,463 (byte-identical search): eval hash by Board.hash (-4%), captures-only generation in deep qsearch (-7%), quiet-check test on a make_light copy (-2%), lazy legality on an up-front-ordered pseudo list (-10%; first-move cutoffs skip ~35 legality tests). Net 3.12->2.46s (-21%). Benchmark ~2.0M NPS. Perft, eval cross-check, 46 tests, tactics all green."
+  },
+  {
+    "experiment": 21,
+    "date": "2026-07-16",
+    "rev": null,
+    "title": "Session 11 ladder re-anchor: 2529 Elo",
+    "hypothesis": "The chained estimate (~2530 = 2442 + 53 SEE + 35 countermove) matches a fresh direct SF-ladder measurement.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "elo_ladder_mle": 2529,
+      "elo_ladder_lo": 2388,
+      "elo_ladder_hi": 2666
+    },
+    "explanation": "30 games vs SF 2400/2600/2800 at 0.3s/move: 60%/50%/15%. MLE 2529 (2388-2666) vs chained ~2530 -- agreement within 1 Elo validates both. Anchored post speed-batch (the -21% time matters at fixed movetime)."
   }
 ]
