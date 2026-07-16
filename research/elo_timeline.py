@@ -30,6 +30,7 @@ S6, S6_LO, S6_HI = ANCHORS["session6"]["mle"]
 CC, CC_LO, CC_HI = ANCHORS["compiled"]["mle"]
 S11, S11_LO, S11_HI = ANCHORS["session11"]["mle"]
 S11B, S11B_LO, S11B_HI = ANCHORS["session11b"]["mle"]
+S12, S12_LO, S12_HI = ANCHORS["session12"]["mle"]
 CHAIN_ERR = 220  # ± for delta-chained points (10-20 game matches)
 
 POINTS = [
@@ -75,6 +76,10 @@ POINTS = [
     # SF-limited opponents is inside 30-game anchor noise)
     {"label": "session 11 close — magics, is_legal, nm-guard", "exps": 110,
      "elo": S11B, "lo": S11B_LO, "hi": S11B_HI, "kind": "measured"},
+    # session 12: dead repetition detector fixed (+47), passed-pawn king
+    # race concept (~+110 marginal) — anchored (30 games vs SF2600-3000)
+    {"label": "session 12 — rep fix + king-race concept", "exps": 116,
+     "elo": S12, "lo": S12_LO, "hi": S12_HI, "kind": "measured"},
 ]
 
 
@@ -125,13 +130,14 @@ def build_html():
                        ("session 6", ANCHORS["session6"]),
                        ("compiled core (session 9)", ANCHORS["compiled"]),
                        ("session 11", ANCHORS["session11"]),
-                       ("session 11 close (current)", ANCHORS["session11b"])):
+                       ("session 11 close", ANCHORS["session11b"]),
+                       ("session 12 (current)", ANCHORS["session12"])):
         for opp, (w, d, l) in sorted(data["results"].items()):
             rows += (f"<tr><td>{name}</td><td>Stockfish {opp}</td>"
                      f"<td class='num'>+{w} ={d} −{l}</td>"
                      f"<td class='num'>{100 * (w + 0.5 * d) / (w + d + l):.0f}%</td></tr>")
     HTML_OUT.write_text(TEMPLATE.replace("{{SVG}}", svg).replace("{{ROWS}}", rows)
-                        .replace("{{CUR}}", f"{S11B} (95% {S11B_LO}–{S11B_HI})"))
+                        .replace("{{CUR}}", f"{S12} (95% {S12_LO}–{S12_HI})"))
     print(f"wrote {HTML_OUT}")
 
 

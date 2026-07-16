@@ -48,7 +48,14 @@ recorded honestly: the baseline worktree was still pre-rep-fix, so +158
 bundles the rep fix's +47 — the concept's marginal effect is ≈+110. 6:1
 decisive ratio either way (7611e3b).
 
-**exp2 — 50-move-rule awareness (gating).** `Board.hm >= 100` now scores 0 in
+**Session 12 close — ladder anchor 2654 (95% 2505–2794),** 30 games vs SF
+2600/2800/3000 at 0.3s/move (40% / 30% / 30% — note 2800 and 3000 scored
+identically: UCI_Elo compression at fast TC again). **+140 measured over the
+s11b anchor** — the rep fix + king race are visible even on the conservative
+instrument; the chain estimate (~2790) sits inside the upper CI. Timeline
+updated: research/elo_report.html.
+
+**exp2 — 50-move-rule awareness (REJECTED, 48%).** `Board.hm >= 100` now scores 0 in
 negamax — the search finally feels the clock, so dawdling lines near the
 limit stop looking like wins. Found via KBN conversions timing out at ply 99
 by FIFTY_MOVES with zero urgency. cttd nodes unchanged (positions there never
