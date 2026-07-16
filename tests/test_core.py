@@ -64,3 +64,20 @@ def test_incremental_hash_matches_full_recompute():
         ok, n, fail_fen = core.verify_hash(fen, depth)
         assert ok, f"hash mismatch at/under {fail_fen!r} (from {fen}, depth {depth})"
         assert n > 100, f"verify_hash checked suspiciously few positions ({n})"
+
+
+def test_long_game_history_no_overflow():
+    """A very long game must not overflow the search's path buffer.
+
+    The path array (game history + search stack) was 384 entries until a
+    500+ ply endgame grind segfaulted mid-match (found 2026-07-16 during the
+    connected-passers gate). 700 plies of shuffling exercises the overflow
+    guard: c_search drops the oldest history entries, which is_rep never
+    needs (it only looks back one halfmove-clock window).
+    """
+    b = chess.Board()
+    seq = ["g1f3", "g8f6", "f3g1", "f6g8"]
+    for i in range(700):
+        b.push(chess.Move.from_uci(seq[i % 4]))
+    move, score, depth, nodes, pv, _ = core.search(b, movetime=0.2)
+    assert move is not None

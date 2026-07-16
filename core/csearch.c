@@ -45,10 +45,18 @@ typedef struct {
     Move killers[MAXPLY][2];
     int history[2][64][64];
     Move counter[2][64][64];  /* countermove: reply-by-side indexed by prev from/to */
-    U64 path[MAXPLY+256];   /* game history hashes + current search path */
+    /* Game-history hashes + current search path. Sized for the longest
+     * realistic game (the match harness alone allows 250 moves = 500 plies)
+     * plus MAXPLY of search; the old MAXPLY+256 (=384) overflowed on long
+     * endgame grinds and segfaulted mid-match — more common since the
+     * repetition fix stopped winners from shuffling into threefold. c_search
+     * additionally drops the oldest entries if a game somehow approaches the
+     * cap (is_rep only ever looks back one halfmove-clock window). */
+    U64 path[4096];
     int path_len;
 } Search;
 static Search SS;
+#define PATH_CAP ((int)(sizeof(SS.path)/sizeof(SS.path[0])))
 
 static double now_sec(void){ struct timespec ts; clock_gettime(CLOCK_MONOTONIC,&ts);
     return ts.tv_sec + ts.tv_nsec*1e-9; }
@@ -375,6 +383,12 @@ int c_search(const char *startfen, const char *moves, double movetime, int max_d
             if(mover==KING && abs(tf-ff)==2) flag=2;
             Move m=MK_MOVE(from,to,promo,flag);
             make(&b,m);
+            if(SS.path_len >= PATH_CAP-(MAXPLY+64)){
+                /* absurdly long game: drop the oldest history (is_rep only
+                 * ever looks back one halfmove-clock window) */
+                memmove(SS.path, SS.path+256, (SS.path_len-256)*sizeof(U64));
+                SS.path_len -= 256;
+            }
             SS.path[SS.path_len++]=b.hash;
             p+=4; while(*p&&*p!=' ')p++;
         }
