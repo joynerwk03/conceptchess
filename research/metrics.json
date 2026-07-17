@@ -483,5 +483,18 @@
       "elo_vs_head": 12
     },
     "explanation": "+15cp per connected passer (chess prior), blockade-multiplied, endgame-scaled, pawn-cached. Gate +18 =26 -16 (52%, +12). First gate attempt exposed the path-buffer segfault (fixed separately, bb5f0d6)."
+  },
+  {
+    "experiment": 33,
+    "date": "2026-07-16",
+    "rev": null,
+    "title": "Session 13 exp2: rook behind passer (Tarrasch rule)",
+    "hypothesis": "Own rook behind own passer on the same file (+12cp) is textbook and should gate positive.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_score_pct": 45,
+      "elo_vs_head": -35
+    },
+    "explanation": "Gate +16 =22 -22 (45%, -35, 95% -128..+53). Textbook chess that doesn't survive measurement here: the bonus likely rewards parking the rook passively where the engine's activity terms (open file, 7th) matter more, and at 0.3s/move the tactical payoff of the Tarrasch setup rarely materializes. Reverted."
   }
 ]
