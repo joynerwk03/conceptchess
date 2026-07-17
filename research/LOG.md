@@ -1,5 +1,33 @@
 ---
 
+## 2026-07-17 — Session 14: unbalanced openings + the tuning rematch
+
+**Infrastructure — UHO unbalanced openings for gates (William's suggestion).**
+Gates at 2600+ were running 60–70% draws, starving the SPRT of signal. The
+match harness now takes `--book <epd>`: TCEC-style ~+1.0-for-White starts,
+each played from both colors (pair scoring stays fair). Sourced
+UHO_Lichess_4852_v1 (the book Stockfish's own testing framework uses; 2.6M
+positions), committed a deterministic 1,000-position sample. **Validated
+immediately: the first UHO gate ran 28% draws vs ~65% on the balanced list**
+— more than double the decisive games per gate.
+
+**exp1 — continuation history, plain ordering (REJECTED, 51%, +6).** CMH
+(quiet quality indexed by previous (piece,to) × current (piece,to)) is the
+strongest ordering signal in modern engines — but there it pays through
+LMR/pruning modulation, not raw ordering. Ours: neutral strength for +12%
+nodes, a 590KB table, and per-quiet piece lookups in order(). +22 =17 −21
+over 60 UHO games. Reverted for simplicity; retry when reductions consume it.
+
+**exp2 — Texel-style outcome tuning (in progress).** The rematch of s2's
+failed tuning, with the target fixed: logistic loss against OUR self-play
+game outcomes (what eval is for), not eval-MSE vs Stockfish (what it isn't).
+Guardrails from the s2 lesson: material/tempo anchored, every tuned weight
+bounded to a chess-prior interval (±25% default), and adoption requires a
+UHO match gate regardless of loss improvement. Generating 400 fast self-play
+games (0.04s/move ≈ depth 8–9 at current engine speed) from UHO starts.
+
+---
+
 ## 2026-07-16 — Session 13: passer-structure concepts (+ a segfault hunt)
 
 **exp1 — connected passers (gating).** Passers with a friendly passer on an
