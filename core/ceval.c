@@ -49,6 +49,25 @@ double eval_core(U64 bb[2][6], int side){
     double phase = ph>=24 ? 1.0 : (double)ph/24.0;
     double s=0.0;
 
+    /* one pass of slider/knight attacks per piece: king attack, mobility and
+     * threats all need them, and were each recomputing the magic lookups.
+     * Iteration order matches the per-section loops (c, then piece type,
+     * then lsb), so consumers see identical sequences — byte-identical. */
+    U64 pat[2][6][10]; int pna[2][6];
+    for(int c=0;c<2;c++)
+        for(int p=KNIGHT;p<=QUEEN;p++){
+            int n=0; U64 x=bb[c][p];
+            while(x){ int sq=lsb(x); x&=x-1;
+                U64 atk;
+                if(p==KNIGHT) atk=KNIGHT_ATK[sq];
+                else if(p==BISHOP) atk=bishop_atk(sq,all);
+                else if(p==ROOK) atk=rook_atk(sq,all);
+                else atk=bishop_atk(sq,all)|rook_atk(sq,all);
+                pat[c][p][n++]=atk;
+            }
+            pna[c][p]=n;
+        }
+
     /* material */
     static const double MATV[5]={W_MATERIAL_PAWN,W_MATERIAL_KNIGHT,W_MATERIAL_BISHOP,W_MATERIAL_ROOK,W_MATERIAL_QUEEN};
     for(int p=0;p<5;p++) s += MATV[p]*(popcnt(bb[WHITE][p])-popcnt(bb[BLACK][p]));
@@ -136,17 +155,11 @@ double eval_core(U64 bb[2][6], int side){
             int sign=c==WHITE?1:-1, eksq=lsb(bb[!c][KING]);
             U64 zone=KING_ATK[eksq]|(1ULL<<eksq);
             int units=0, attackers=0;
-            for(int p=KNIGHT;p<=QUEEN;p++){
-                U64 x=bb[c][p];
-                while(x){ int sq=lsb(x); x&=x-1; U64 atk;
-                    if(p==KNIGHT) atk=KNIGHT_ATK[sq];
-                    else if(p==BISHOP) atk=bishop_atk(sq,all);
-                    else if(p==ROOK) atk=rook_atk(sq,all);
-                    else atk=bishop_atk(sq,all)|rook_atk(sq,all);
-                    int hits=popcnt(atk&zone);
+            for(int p=KNIGHT;p<=QUEEN;p++)
+                for(int i=0;i<pna[c][p];i++){
+                    int hits=popcnt(pat[c][p][i]&zone);
                     if(hits){ units+=UNIT[p]*hits; attackers++; }
                 }
-            }
             if(attackers>=2) s += sign*W_KATTACK_SCALE*units*units/10.0*phase;
             /* proximity gradient (mirrors king_attack.py): pieces closing in
              * on the king matter before they attack the zone */
@@ -170,17 +183,11 @@ double eval_core(U64 bb[2][6], int side){
     for(int c=0;c<2;c++){
         int sign=c==WHITE?1:-1; U64 own=occ[c];
         U64 unsafe = c==WHITE ? BPAWN_ATK(bb[BLACK][PAWN]) : WPAWN_ATK(bb[WHITE][PAWN]);
-        for(int p=KNIGHT;p<=QUEEN;p++){
-            U64 x=bb[c][p];
-            while(x){ int sq=lsb(x); x&=x-1; U64 atk;
-                if(p==KNIGHT) atk=KNIGHT_ATK[sq];
-                else if(p==BISHOP) atk=bishop_atk(sq,all);
-                else if(p==ROOK) atk=rook_atk(sq,all);
-                else atk=bishop_atk(sq,all)|rook_atk(sq,all);
-                int n=popcnt(atk&~own&~unsafe);
+        for(int p=KNIGHT;p<=QUEEN;p++)
+            for(int i=0;i<pna[c][p];i++){
+                int n=popcnt(pat[c][p][i]&~own&~unsafe);
                 s += sign*MOBW[p]*(n-TYP[p]);
             }
-        }
     }
 
     /* piece activity */
@@ -203,9 +210,9 @@ double eval_core(U64 bb[2][6], int side){
         U64 atkby[2];
         for(int c=0;c<2;c++){
             U64 a = c==WHITE ? WPAWN_ATK(bb[WHITE][PAWN]) : BPAWN_ATK(bb[BLACK][PAWN]);
-            U64 kn=bb[c][KNIGHT]; while(kn){int sq=lsb(kn);kn&=kn-1;a|=KNIGHT_ATK[sq];}
-            U64 bp=bb[c][BISHOP]|bb[c][QUEEN]; while(bp){int sq=lsb(bp);bp&=bp-1;a|=bishop_atk(sq,all);}
-            U64 rq=bb[c][ROOK]|bb[c][QUEEN]; while(rq){int sq=lsb(rq);rq&=rq-1;a|=rook_atk(sq,all);}
+            /* union of the precomputed per-piece attacks (order-free: OR) */
+            for(int p=KNIGHT;p<=QUEEN;p++)
+                for(int i=0;i<pna[c][p];i++) a|=pat[c][p][i];
             a|=KING_ATK[lsb(bb[c][KING])];
             atkby[c]=a;
         }
