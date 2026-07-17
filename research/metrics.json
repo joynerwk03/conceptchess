@@ -705,5 +705,18 @@
       "elo_vs_head": -23
     },
     "explanation": "+19 =18 -23 (47%, -23, 95% -115..+65). First information-reuse loss. Likely: 4M entries vs ~300k nodes/move means no real TT pressure -- depth-preferred slots pin STALE entries from earlier moves in the game (TT persists per process) that always-replace used to evict. Reverted."
+  },
+  {
+    "experiment": 49,
+    "date": "2026-07-17",
+    "rev": "HEAD",
+    "title": "Session 16 exp3: eval speed audit (attack unification + pawn-cache trial)",
+    "hypothesis": "eval_core's 32% profile share has reducible duplication.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "nodes_d10_cttd": 2452037,
+      "time_to_d10_cttd": 1.26
+    },
+    "explanation": "Attack unification kept (byte-identical, structural, flat speed). C pawn cache: values still 0.000000 vs Python but a 1-ulp summation reorder shifted 4 nodes for ~1% -- dropped. CONCLUSION: exact-eval speed is tapped out; the eval's cost is the measured price of the faithfulness invariant. Future speed must come from search shape or hardware, not eval shortcuts."
   }
 ]
