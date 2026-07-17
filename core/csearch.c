@@ -43,6 +43,7 @@ typedef struct {
     double stop_time;
     int stopped;
     Move killers[MAXPLY][2];
+    int seval[MAXPLY];   /* static eval per ply, for the improving heuristic */
     int history[2][64][64];
     Move counter[2][64][64];  /* countermove: reply-by-side indexed by prev from/to */
     /* Game-history hashes + current search path. Sized for the longest
@@ -290,6 +291,17 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
         int st=eval_stm(b);
         futile = st + (depth==1?150:300) <= alpha;
     }
+    /* improving: is the static eval better than 2 plies ago (same side)?
+     * Non-improving nodes get one extra ply of late-quiet reduction — the
+     * position is trending down, so late quiets are even less likely to
+     * save it. eval_stm is ~free via the eval hash; in-check nodes record
+     * a sentinel and count as not-improving. */
+    int improving=0;
+    if(ply<MAXPLY){
+        int se = checked ? -S_MATE : eval_stm(b);
+        SS.seval[ply]=se;
+        improving = !checked && ply>=2 && se > SS.seval[ply-2];
+    }
 
     /* Lazy legality: order the PSEUDO-legal list up front (stable sort +
      * per-move scores, so the legal moves' relative order is exactly what
@@ -316,7 +328,8 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
         if(i==0){ sc=-negamax(&c,depth-1,-beta,-alpha,ply+1,m); }
         else {
             int red=1;
-            if(depth>=3 && quiet && !checked){ if(i>=12)red=3; else if(i>=3)red=2; }
+            if(depth>=3 && quiet && !checked){ if(i>=12)red=3; else if(i>=3)red=2;
+                if(red>1 && !improving) red++; }
             sc=-negamax(&c,depth-red,-alpha-1,-alpha,ply+1,m);
             if(sc>alpha && (red>1 || beta>alpha+1)) sc=-negamax(&c,depth-1,-beta,-alpha,ply+1,m);
         }
