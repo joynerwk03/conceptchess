@@ -470,5 +470,18 @@
       "elo_chain_est": 2790
     },
     "explanation": "30 games vs SF 2600/2800/3000: 40%/30%/30% (2800 and 3000 identical -- UCI_Elo compression at 0.3s/move). +140 measured over s11b's 2514; chain (~2790) inside the upper CI."
+  },
+  {
+    "experiment": 32,
+    "date": "2026-07-16",
+    "rev": "0844500",
+    "title": "Session 13 exp1: connected passers",
+    "hypothesis": "Adjacent-file passer pairs are worth a bonus beyond their individual values.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "gate_score_pct": 52,
+      "elo_vs_head": 12
+    },
+    "explanation": "+15cp per connected passer (chess prior), blockade-multiplied, endgame-scaled, pawn-cached. Gate +18 =26 -16 (52%, +12). First gate attempt exposed the path-buffer segfault (fixed separately, bb5f0d6)."
   }
 ]
