@@ -624,5 +624,18 @@
       "nodes_d10_cttd": 1705901
     },
     "explanation": "+22 =14 -24 (48%, -12, 95% -102..+78). The family taxonomy sharpens: eval-trend modulation of RECOVERABLE decisions (reductions, re-searched on surprise) gained +53; the same signal on DISCARDS (futility skips) loses, like every other discard-family change (RFP, LMP, aggressive margins). Reverted."
+  },
+  {
+    "experiment": 43,
+    "date": "2026-07-17",
+    "rev": null,
+    "title": "Session 15 exp3: continuation history steering LMR",
+    "hypothesis": "CMH pays via reduction modulation (its home in strong engines) even though plain-ordering CMH was neutral.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_score_pct": 51,
+      "elo_vs_head": 6
+    },
+    "explanation": "+20 =21 -19 (51%, +6, 95% -84..+96). Neutral in both homes now (ordering s14, reductions s15). At depth ~12 with per-move table resets, the signal is too sparse to matter; in top engines it pays at depth 30+ with persistent tables. CMH closed for this engine. Reverted (590KB + threading complexity for noise)."
   }
 ]
