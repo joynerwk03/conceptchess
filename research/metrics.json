@@ -539,5 +539,19 @@
       "samples": 9984
     },
     "explanation": "Gate +16 =23 -21 (46%, -29, 95% -121..+59). Two identified flaws: (1) 10k positions from 400 games is ~100x less data than working Texel setups; many weights slammed into their prior bounds, a classic overfit sign. (2) Labels confounded by the UHO openings: White wins because of the +1.0 start, and the tuner attributes that to whatever features correlate. Fix for the retry: generate from BALANCED starts, quiet-filter positions (qsearch-stable), 5-10x more games. Weights reverted; harness + data pipeline committed and reusable."
+  },
+  {
+    "experiment": 37,
+    "date": "2026-07-17",
+    "rev": null,
+    "title": "Session 14 exp3: aspiration windows, third attempt",
+    "hypothesis": "Root scores at depth 12+ are stable enough for a +/-40cp aspiration window (prior failures were at depth ~7 with a noisier eval).",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_score_pct": 43,
+      "elo_vs_head": -47,
+      "nodes_d10_cttd": 2984249
+    },
+    "explanation": "Gate +18 =16 -26 (43%, -47, 95% -141..+41) despite the deterministic screen being mildly positive (-1.5% nodes) for the first time. Three attempts (s2, s8, s14), three rejections: this eval's iteration-to-iteration swings blow the window and re-searches cost more than the narrow window saves. CLOSED permanently for this engine."
   }
 ]
