@@ -509,5 +509,19 @@
       "elo_vs_head": -23
     },
     "explanation": "Gate +20 =16 -24 (47%, -23, 95% -115..+65). The C core already searches 12+ plies: it resolves promotion races tactically, so the static bonus mostly added misjudged edge cases (defended promotion squares, mutual races). Square-rule logic itself was truth-table verified; the concept just doesn't pay at this depth. Reverted. Third textbook-endgame term rejected this session; only king-race (+110) survived, suggesting distance-gradient terms help where discrete rules don't."
+  },
+  {
+    "experiment": 35,
+    "date": "2026-07-17",
+    "rev": null,
+    "title": "Session 14 exp1: continuation history (plain ordering)",
+    "hypothesis": "CMH (quiet quality indexed by prev (piece,to) x cur (piece,to)) is the strongest ordering signal in modern engines.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_score_pct": 51,
+      "elo_vs_head": 6,
+      "draw_rate_pct": 28
+    },
+    "explanation": "First UHO-book gate: +22 =17 -21 (51%, +6, 95% -84..+96). Draw rate 28% vs ~65% on balanced openings -- the unbalanced book works. CMH itself: neutral strength for +12% nodes, a 590KB table, and piece_on cost per quiet in ordering. In top engines CMH pays via LMR/pruning modulation, not plain ordering; retry it if/when reductions consume it. Reverted for simplicity."
   }
 ]
