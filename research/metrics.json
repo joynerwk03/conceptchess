@@ -679,5 +679,18 @@
       "elo_anchor_chain_est": 2795
     },
     "explanation": "30 games vs SF 2600/2800/3000: 50%/25%/35%; held SF3000 to 7 draws. +31 measured over s14's 2654; chain ~2795 inside upper CI as usual."
+  },
+  {
+    "experiment": 47,
+    "date": "2026-07-17",
+    "rev": null,
+    "title": "Session 16 exp1: history-modulated LMR",
+    "hypothesis": "Plain history (dense where cont history was sparse) can steer reductions like the improving signal did.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_score_pct": 43,
+      "elo_vs_head": -47
+    },
+    "explanation": "+15 =22 -23 (43%, -47, 95% -141..+41). Taxonomy refinement: history already sets the move ORDER, so late quiets are already index-reduced -- modulating reduction by the same signal double-counts it. The improving signal won because it is ORTHOGONAL to ordering. Recoverable-family modulation needs an independent signal. Reverted."
   }
 ]
