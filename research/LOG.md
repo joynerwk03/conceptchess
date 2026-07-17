@@ -21,7 +21,33 @@ byte-identical for normal games; committed without a gate (bb5f0d6).
 Pattern note: this is the second bug this week whose exposure was CAUSED by
 fixing another one — correctness work uncovers correctness work.
 
-Gate re-running against a baseline that includes the overflow fix.
+**exp1 verdict: ACCEPTED (52%, +12).** Re-run gate vs the overflow-fixed
+baseline: +18 =26 −16. Modest, near-free (pawn-cached), kept (0844500).
+
+**exp2 — rook behind passer, Tarrasch rule (REJECTED, 45%, −35).** Textbook
+chess that doesn't survive measurement: +16 =22 −22. The +12cp bonus likely
+rewards parking the rook passively where this engine's activity terms (open
+file, 7th rank) matter more, and at 0.3s/move the long-run Tarrasch payoff
+rarely materializes. Reverted.
+
+**exp3 — unstoppable passer, square rule (REJECTED, 47%, −23).** +20 =16 −24.
+The square-rule logic itself was verified against a hand-analyzed truth table
+(the first draft had a real off-by-one: a defender king entering the square
+on its move, or capturing the fresh queen, was being scored as too late — the
+sanity probe caught it before any game was played). The verified version
+still lost its gate: the C core searches 12+ plies and resolves promotion
+races tactically, so the static bonus mostly added misjudged edge cases
+(defended promotion squares, mutual races). Reverted.
+
+**Session 13 pattern:** three passer terms tried, one kept. The distance-
+gradient term (s12 king race, +110) crushed both discrete-rule terms
+(Tarrasch, square rule). Hypothesis for future eval work: smooth gradients
+give the search direction; binary rules duplicate what 12-ply search already
+computes and misfire at the boundaries.
+
+**State at session close:** anchor 2654 (2505–2794), chain ≈2790. Engine =
+king race + connected passers + all s10–12 search/speed work. 121 gated
+experiments total across 13 sessions.
 
 ---
 
