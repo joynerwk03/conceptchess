@@ -637,5 +637,18 @@
       "elo_vs_head": 6
     },
     "explanation": "+20 =21 -19 (51%, +6, 95% -84..+96). Neutral in both homes now (ordering s14, reductions s15). At depth ~12 with per-move table resets, the signal is too sparse to matter; in top engines it pays at depth 30+ with persistent tables. CMH closed for this engine. Reverted (590KB + threading complexity for noise)."
+  },
+  {
+    "experiment": 44,
+    "date": "2026-07-17",
+    "rev": null,
+    "title": "Session 15 exp4: space concept",
+    "hypothesis": "Safe-center-square count (gradient style) adds positional judgment like the king-distance gradients did.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_score_pct": 46,
+      "elo_vs_head": -29
+    },
+    "explanation": "+20 =15 -25 (46%, -29, 95% -121..+59). Refines the gradient thesis: the two winners are distance gradients toward CONCRETE mechanisms (promotion square, enemy king); an abstract positional count loses -- likely double-counting mobility while diluting sharper terms. Reverted."
   }
 ]
