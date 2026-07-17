@@ -38,29 +38,60 @@ BOOK = ROOT / "research" / "books" / "uho_1000.epd"
 
 
 # ------------------------------------------------------------------ gen
+def _balanced_starts(count, seed=7):
+    """Random 6-ply walks screened by Stockfish to |eval| < 50cp: balanced,
+    diverse starts. The v1 data used UHO (+1.0 for White) starts, which
+    CONTAMINATED the outcome labels — White won because of the opening, and
+    the tuner attributed that to whatever features correlated."""
+    import shutil
+    import chess.engine
+    sf = chess.engine.SimpleEngine.popen_uci(shutil.which("stockfish"))
+    rng = random.Random(seed)
+    starts, seen = [], set()
+    try:
+        while len(starts) < count:
+            b = chess.Board()
+            for _ in range(6):
+                ms = list(b.legal_moves)
+                b.push(rng.choice(ms))
+            if b.is_game_over() or b.fen() in seen:
+                continue
+            seen.add(b.fen())
+            info = sf.analyse(b, chess.engine.Limit(depth=12))
+            cp = info["score"].white().score(mate_score=10000)
+            if cp is not None and abs(cp) < 50:
+                starts.append(b.fen())
+    finally:
+        sf.quit()
+    return starts
+
+
 def gen(games, movetime, out):
     from engine.engine import Engine
-    rng = random.Random(41)
-    fens = [" ".join(l.split()[:4]) for l in BOOK.read_text().splitlines() if l.strip()]
-    rng.shuffle(fens)
+    print("screening balanced starts with Stockfish...", flush=True)
+    starts = _balanced_starts(max(200, games // 3))
+    print(f"{len(starts)} balanced starts ready", flush=True)
     samples = 0
     with open(out, "w") as f:
         for g in range(games):
-            board = chess.Board(fens[g % len(fens)])
+            board = chess.Board(starts[g % len(starts)])
             positions = []
             while not board.is_game_over(claim_draw=True) and len(board.move_stack) < 300:
                 r = Engine(use_book=False).best_move(board, movetime=movetime)
                 if r.move is None:
                     break
                 board.push(r.move)
-                # sample quiet-ish positions: not in check, past the opening
-                if len(board.move_stack) >= 6 and not board.is_check():
+                # quiet filter: not in check AND the last two plies were
+                # reversible (halfmove clock >= 2 means no capture/pawn move
+                # just happened — cheap stand-in for qsearch-stability)
+                if (len(board.move_stack) >= 8 and not board.is_check()
+                        and board.halfmove_clock >= 2):
                     positions.append(board.fen())
             o = board.outcome(claim_draw=True)
             res = 0.5 if (o is None or o.winner is None) else (1.0 if o.winner else 0.0)
-            # subsample: at most 25 positions per game to limit correlation
+            # subsample: at most 20 positions per game to limit correlation
             random.Random(g).shuffle(positions)
-            for fen in positions[:25]:
+            for fen in positions[:20]:
                 f.write(json.dumps({"fen": fen, "res": res}) + "\n")
                 samples += 1
             if (g + 1) % 20 == 0:
