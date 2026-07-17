@@ -1,5 +1,34 @@
 ---
 
+## 2026-07-17 — Session 16: taxonomy stress-tests + the faithfulness tax
+
+**exp1 — history-modulated LMR (REJECTED, 43%, −47).** Sharpened the
+recoverable-family rule: history already sets the move ORDER, so late quiets
+are already index-reduced — modulating reductions by the same signal
+double-counts it. The improving signal won because it is ORTHOGONAL to
+ordering. Recoverable modulation needs an independent signal.
+
+**exp2 — TT two-bucket replacement (REJECTED, 47%, −23).** First
+information-reuse loss: with 4M entries and ~300k nodes/move there is no TT
+pressure, so depth-preferred slots just pin STALE entries from earlier game
+moves that always-replace used to evict.
+
+**exp3 — eval speed audit (structural).** Re-profiled: eval_core is 32% of
+time. Unified the triplicated per-piece attack computation (byte-identical,
+kept, flat speed — magic lookups were already ~free). Trialed a C pawn cache
+mirroring Python's: values stayed 0.000000 vs Python but a 1-ulp summation
+reorder shifted 4 cttd nodes for ~1% — dropped. **Conclusion: exact-eval
+speed is tapped out. The eval's 32% is the measured price of
+explanation == evaluation — the faithfulness tax.** Future speed comes from
+search shape or hardware, not eval shortcuts.
+
+**exp4 — Texel-XL (generating).** The one remaining big swing with an
+identified mechanism: v2's failure pointed at data scale (O(10–20k) samples
+vs the ~100k+ real Texel setups use). 3,000 balanced games generating
+(~60k quiet samples, 3× v2); tune + UHO gate when it lands.
+
+---
+
 ## 2026-07-17 — Session 15: the improving family + a taxonomy that predicts
 
 **exp1 — improving heuristic (ACCEPTED, 58%, +53 Elo, −31% nodes).** Static
