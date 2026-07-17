@@ -194,6 +194,17 @@ static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
             if(alpha>=beta) break; }
         return best;
     }
+    /* TT probe: any stored depth is >= qsearch's depth 0, so search-backed
+     * scores cut off here directly — information reuse, same family as the
+     * TT/eval caches. */
+    {
+        TTEntry *e=&TT[b->hash&TT_MASK];
+        if(e->key==b->hash){
+            if(e->flag==TT_EXACTF) return e->score;
+            if(e->flag==TT_LOWERF && e->score>=beta) return e->score;
+            if(e->flag==TT_UPPERF && e->score<=alpha) return e->score;
+        }
+    }
     int stand = eval_stm(b);
     if(stand>=beta) return beta;
     if(stand>alpha) alpha=stand;
