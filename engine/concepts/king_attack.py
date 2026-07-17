@@ -49,4 +49,20 @@ class KingAttack:
                                   f"({attackers} attackers, {units} units)", v))
                 else:
                     items.append((None, v))
+            # proximity gradient: pieces closing in on the king matter before
+            # they attack the zone (smooth, like the s12 passer king race —
+            # gradients give the search direction where discrete rules don't)
+            prox = 0
+            for pt, w in _UNIT.items():
+                for sq in ctx.pieces[color][pt]:
+                    d = chess.square_distance(sq, ksq)
+                    if d < 4:
+                        prox += w * (4 - d)
+            if prox:
+                pv = sign * W["kattack.proximity"] * prox * phase
+                if labels:
+                    items.append((f"{cname} pieces near the enemy king "
+                                  f"({prox} closeness units)", pv))
+                else:
+                    items.append((None, pv))
         return items

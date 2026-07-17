@@ -148,6 +148,19 @@ double eval_core(U64 bb[2][6], int side){
                 }
             }
             if(attackers>=2) s += sign*W_KATTACK_SCALE*units*units/10.0*phase;
+            /* proximity gradient (mirrors king_attack.py): pieces closing in
+             * on the king matter before they attack the zone */
+            int prox=0;
+            for(int p=KNIGHT;p<=QUEEN;p++){
+                U64 x=bb[c][p];
+                while(x){ int sq=lsb(x); x&=x-1;
+                    int df=sq%8-eksq%8, dr=sq/8-eksq/8;
+                    if(df<0)df=-df; if(dr<0)dr=-dr;
+                    int d=df>dr?df:dr;
+                    if(d<4) prox += UNIT[p]*(4-d);
+                }
+            }
+            if(prox) s += sign*W_KATTACK_PROXIMITY*prox*phase;
         }
     }
 

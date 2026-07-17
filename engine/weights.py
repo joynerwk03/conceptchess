@@ -35,6 +35,7 @@ W = {
     "king.shield_gap": 12,
     "king.open_file": 15,
     "kattack.scale": 2.5,   # cp per weighted attack unit on the enemy king zone
+    "kattack.proximity": 2,  # cp per weighted closeness unit of pieces near the enemy king (phase-scaled)
     # mobility (cp per square above/below typical)
     "mob.knight": 3.394,
     "mob.bishop": 3.507,

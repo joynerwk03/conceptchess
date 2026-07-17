@@ -116,6 +116,7 @@ static const double PASSED_BONUS[8] = {
 #define W_KING_SHIELD_GAP (12)
 #define W_KING_OPEN_FILE (15)
 #define W_KATTACK_SCALE (2.5)
+#define W_KATTACK_PROXIMITY (2)
 #define W_MOB_KNIGHT (3.394)
 #define W_MOB_BISHOP (3.507)
 #define W_MOB_ROOK (2.338)
