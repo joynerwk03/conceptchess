@@ -1,5 +1,33 @@
 ---
 
+## 2026-07-17 — Session 15: the improving family + a taxonomy that predicts
+
+**exp1 — improving heuristic (ACCEPTED, 58%, +53 Elo, −31% nodes).** Static
+eval vs 2 plies ago (same side, ~free via the eval hash); late quiets in
+non-improving nodes get one extra ply of LMR. In-check plies record a
+sentinel and count as not-improving. **The first "search less" change ever
+to survive a gate here** — and it fits a taxonomy the whole project record
+supports: it deepens REDUCTIONS (recoverable — re-searched on fail-high),
+never DISCARDS (futility/RFP/LMP family, all rejected).
+
+**exp2 — futility margins by improving (REJECTED, 48%, −12).** The same
+signal applied to a discard mechanism immediately failed, right on script.
+The taxonomy now *predicts*: recoverable modulation pays, discard modulation
+doesn't, independent of which signal drives it.
+
+**exp3 — continuation history steering LMR (REJECTED, 51%, neutral).** CMH's
+proper home in strong engines — but neutral here, like the s14 plain-ordering
+variant. At depth ~12 with per-move table resets the signal is too sparse;
+top engines harvest it at depth 30+ with persistent tables. CMH closed for
+this engine, both homes tried honestly.
+
+**exp4 — space concept (gating).** Safe center squares on your own side
+(files c–f, ranks 2–4, unattacked by enemy pawns), phase-scaled, 2cp each —
+a smooth count in the gradient style that keeps winning (king race +110,
+king pressure +41). C mirror exact.
+
+---
+
 ## 2026-07-17 — Session 14: unbalanced openings + the tuning rematch
 
 **Infrastructure — UHO unbalanced openings for gates (William's suggestion).**
