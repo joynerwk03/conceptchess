@@ -566,5 +566,20 @@
       "elo_vs_head": 41
     },
     "explanation": "UNIT-weighted closeness within 3 squares, phase-scaled, 2cp/unit. Gate +25 =17 -18 (56%, +41, 95% -47..+134). Second gradient concept accepted (king race +110 was first) vs three discrete-rule rejections -- the gradients-beat-rules pattern now has 5 data points. Fixes the s4 divergence motif."
+  },
+  {
+    "experiment": 39,
+    "date": "2026-07-17",
+    "rev": null,
+    "title": "Session 14 exp5: Texel v2 (balanced starts, quiet filter, 17.8k samples)",
+    "hypothesis": "With the v1 label confound removed and 1.8x more data, outcome tuning beats hand-set priors.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_score_pct": 51,
+      "elo_vs_head": 6,
+      "loss_before": 0.096677,
+      "loss_after": 0.094609
+    },
+    "explanation": "Gate +19 =23 -18 (51%, +6, 95% -84..+96): statistically neutral despite a clean -2.1% loss. Tellingly, v2's deltas REVERSED v1's passer inflation (confound confirmed) and raised mobility coherently -- the pipeline works mechanically. Conclusion after two attempts: this eval's hand-set priors are already at a local optimum for outcome-tuning at O(10-20k) samples. Keeping the documented priors as the source of truth; the pipeline remains for tuning FUTURE concepts with guessed weights at larger data scales."
   }
 ]
