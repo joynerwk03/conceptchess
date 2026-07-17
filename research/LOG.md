@@ -18,13 +18,39 @@ LMR/pruning modulation, not raw ordering. Ours: neutral strength for +12%
 nodes, a 590KB table, and per-quiet piece lookups in order(). +22 =17 −21
 over 60 UHO games. Reverted for simplicity; retry when reductions consume it.
 
-**exp2 — Texel-style outcome tuning (in progress).** The rematch of s2's
+**exp3 — aspiration windows, third attempt (REJECTED, 43%, −47 — CLOSED).**
+Best-conditioned attempt yet (depth 12+ root scores, mildly positive
+deterministic screen for the first time at −1.5% nodes) and still lost the
+gate decisively: +18 =16 −26. Three attempts across three engine generations
+(s2, s8, s14), three rejections: this eval's iteration-to-iteration swings
+blow any useful window, and re-searches cost more than the narrow window
+saves. Closed permanently for this engine.
+
+**exp4 — king-pressure proximity gradient (ACCEPTED, 56%, +41).** Pieces
+closing in on the enemy king credited `UNIT[piece] × (4 − chebyshev)`,
+phase-scaled, 2cp/unit: the swarm matters before it touches the attack zone.
+Fixes the s4 divergence motif (center-stuck kings under attack) that three
+static terms failed to fix back then. Gate: +25 =17 −18. **The
+gradients-beat-rules pattern now has five data points**: king race +110 and
+this +41 accepted; Tarrasch rook, square-rule passer, and 50-move rule all
+rejected. Smooth distance terms give the search direction; discrete rules
+duplicate what 12-ply search already computes and misfire at the boundaries.
+
+**exp2 — Texel-style outcome tuning (v1 REJECTED, retry running).** The rematch of s2's
 failed tuning, with the target fixed: logistic loss against OUR self-play
 game outcomes (what eval is for), not eval-MSE vs Stockfish (what it isn't).
 Guardrails from the s2 lesson: material/tempo anchored, every tuned weight
 bounded to a chess-prior interval (±25% default), and adoption requires a
-UHO match gate regardless of loss improvement. Generating 400 fast self-play
-games (0.04s/move ≈ depth 8–9 at current engine speed) from UHO starts.
+UHO match gate regardless of loss improvement.
+
+v1 verdict: **REJECTED (46%, −29)** despite loss improving 0.0975 → 0.0964.
+Two flaws diagnosed: (1) 10k positions from 400 games is ~100× less than
+working Texel setups — many weights slammed into their bounds, a classic
+overfit sign; (2) **the labels were contaminated by the UHO starts**: White
+wins because of the +1.0 opening, and the tuner attributes that to whatever
+features correlate. The v2 retry fixes both: balanced starts (random 6-ply
+walks screened by Stockfish to |eval| < 50cp), a quiet filter (halfmove
+clock ≥ 2, not in check), and 900 games. Generation running.
 
 ---
 
