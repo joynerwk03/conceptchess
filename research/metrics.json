@@ -596,5 +596,19 @@
       "elo_anchor_chain_est": 2707
     },
     "explanation": "30 games vs SF 2600/2800/3000: 60%/20%/20%. MLE identical to s12 -- +53 is inside the ladder's ~\u00b1140; the established compression. Chain remains the sensitive instrument."
+  },
+  {
+    "experiment": 41,
+    "date": "2026-07-17",
+    "rev": "HEAD",
+    "title": "Session 15 exp1: improving heuristic (eval trend -> LMR modulation)",
+    "hypothesis": "Non-improving nodes (static eval worse than 2 plies ago) deserve deeper late-quiet reductions.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "gate_score_pct": 58,
+      "elo_vs_head": 53,
+      "nodes_d10_cttd": 2095462
+    },
+    "explanation": "+25 =19 -16 (58%, +53, 95% -35..+147), -31% nodes to depth 10. First accepted 'search less' change: it deepens reductions (recoverable via re-search) rather than discarding (RFP/LMP family, all rejected). Anchor-chain ~2760."
   }
 ]
