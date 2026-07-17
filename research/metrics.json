@@ -664,5 +664,20 @@
       "nodes_d10_cttd": 2452037
     },
     "explanation": "+25 =16 -19 (55%, +35, 95% -53..+128). Anchor-chain ~2795. Information-reuse family (TT, eval hash, this) remains 3-for-3."
+  },
+  {
+    "experiment": 46,
+    "date": "2026-07-17",
+    "rev": "HEAD",
+    "title": "Session 15 ladder anchor: 2685",
+    "hypothesis": "The +88 of s15 gate gains shows on the ladder.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "elo_ladder_mle": 2685,
+      "elo_ladder_lo": 2539,
+      "elo_ladder_hi": 2823,
+      "elo_anchor_chain_est": 2795
+    },
+    "explanation": "30 games vs SF 2600/2800/3000: 50%/25%/35%; held SF3000 to 7 draws. +31 measured over s14's 2654; chain ~2795 inside upper CI as usual."
   }
 ]

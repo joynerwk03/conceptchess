@@ -21,7 +21,20 @@ variant. At depth ~12 with per-move table resets the signal is too sparse;
 top engines harvest it at depth 30+ with persistent tables. CMH closed for
 this engine, both homes tried honestly.
 
-**exp4 — space concept (gating).** Safe center squares on your own side
+**Session 15 close — anchor 2685 (2539–2823), +31 measured over s14.** 30
+games vs SF 2600/2800/3000 at 0.3s/move (50% / 25% / 35% — held SF 3000 to
+seven draws). Gate-measured gains this session: improving +53, qsearch TT
++35; anchor-chain ≈2795. Session record: 2 accepted, 4 rejected, and the
+taxonomy that now *predicts* outcomes: recoverable-decision modulation and
+information reuse pay; discard modulation and abstract positional counts
+don't; CMH closed in both homes.
+
+**exp5 — qsearch TT probe (ACCEPTED, 55%, +35).** Any stored TT depth ≥
+qsearch's depth 0, so search-backed scores cut off at qsearch entry. The
+node-count proxy misled in the OTHER direction this time (+17% nodes, match
+won anyway). Information reuse: 3-for-3.
+
+**exp4 — space concept (REJECTED, 46%, −29).** Safe center squares on your own side
 (files c–f, ranks 2–4, unattacked by enemy pawns), phase-scaled, 2cp each —
 a smooth count in the gradient style that keeps winning (king race +110,
 king pressure +41). C mirror exact.
