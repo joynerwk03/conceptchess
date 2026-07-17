@@ -553,5 +553,18 @@
       "nodes_d10_cttd": 2984249
     },
     "explanation": "Gate +18 =16 -26 (43%, -47, 95% -141..+41) despite the deterministic screen being mildly positive (-1.5% nodes) for the first time. Three attempts (s2, s8, s14), three rejections: this eval's iteration-to-iteration swings blow the window and re-searches cost more than the narrow window saves. CLOSED permanently for this engine."
+  },
+  {
+    "experiment": 38,
+    "date": "2026-07-17",
+    "rev": "30740ce",
+    "title": "Session 14 exp4: king-pressure proximity gradient",
+    "hypothesis": "Pieces closing on the enemy king matter before they attack the zone; a smooth Chebyshev gradient (like the s12 king race) gives the search direction.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "gate_score_pct": 56,
+      "elo_vs_head": 41
+    },
+    "explanation": "UNIT-weighted closeness within 3 squares, phase-scaled, 2cp/unit. Gate +25 =17 -18 (56%, +41, 95% -47..+134). Second gradient concept accepted (king race +110 was first) vs three discrete-rule rejections -- the gradients-beat-rules pattern now has 5 data points. Fixes the s4 divergence motif."
   }
 ]
