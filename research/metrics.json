@@ -610,5 +610,19 @@
       "nodes_d10_cttd": 2095462
     },
     "explanation": "+25 =19 -16 (58%, +53, 95% -35..+147), -31% nodes to depth 10. First accepted 'search less' change: it deepens reductions (recoverable via re-search) rather than discarding (RFP/LMP family, all rejected). Anchor-chain ~2760."
+  },
+  {
+    "experiment": 42,
+    "date": "2026-07-17",
+    "rev": null,
+    "title": "Session 15 exp2: futility margins by improving",
+    "hypothesis": "The improving signal that paid on LMR also pays on futility margins (tighter when declining).",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_score_pct": 48,
+      "elo_vs_head": -12,
+      "nodes_d10_cttd": 1705901
+    },
+    "explanation": "+22 =14 -24 (48%, -12, 95% -102..+78). The family taxonomy sharpens: eval-trend modulation of RECOVERABLE decisions (reductions, re-searched on surprise) gained +53; the same signal on DISCARDS (futility skips) loses, like every other discard-family change (RFP, LMP, aggressive margins). Reverted."
   }
 ]
