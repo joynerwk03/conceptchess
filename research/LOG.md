@@ -43,6 +43,19 @@ Guardrails from the s2 lesson: material/tempo anchored, every tuned weight
 bounded to a chess-prior interval (±25% default), and adoption requires a
 UHO match gate regardless of loss improvement.
 
+**Session 14 close.** Texel v2 (balanced starts, quiet filter, 17.8k
+samples): **REJECTED at 51% (+6, neutral)** — the clean-label version proved
+the pipeline mechanically (v2's deltas reversed v1's confound-driven passer
+inflation) but couldn't beat the hand-set priors. Two-attempt conclusion:
+this eval's priors are at a local optimum for outcome-tuning at O(10–20k)
+samples; the pipeline stays for tuning future concepts with guessed weights.
+**Ladder anchor: 2654 (2505–2794), identical to s12** — the +53 of
+gate-measured gains since (connected +12, king-pressure +41) is inside the
+30-game ladder's noise, the known compression. Chain: ≈2707 on the anchor
+chain. Net session: UHO gate infra (permanent, 2.3× decisive rate),
+king-pressure +41, and four rigorous negatives (CMH, Texel ×2, aspiration
+closed for good).
+
 v1 verdict: **REJECTED (46%, −29)** despite loss improving 0.0975 → 0.0964.
 Two flaws diagnosed: (1) 10k positions from 400 games is ~100× less than
 working Texel setups — many weights slammed into their bounds, a classic

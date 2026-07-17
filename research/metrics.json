@@ -581,5 +581,20 @@
       "loss_after": 0.094609
     },
     "explanation": "Gate +19 =23 -18 (51%, +6, 95% -84..+96): statistically neutral despite a clean -2.1% loss. Tellingly, v2's deltas REVERSED v1's passer inflation (confound confirmed) and raised mobility coherently -- the pipeline works mechanically. Conclusion after two attempts: this eval's hand-set priors are already at a local optimum for outcome-tuning at O(10-20k) samples. Keeping the documented priors as the source of truth; the pipeline remains for tuning FUTURE concepts with guessed weights at larger data scales."
+  },
+  {
+    "experiment": 40,
+    "date": "2026-07-17",
+    "rev": "HEAD",
+    "title": "Session 14 ladder anchor: 2654 (unchanged from s12)",
+    "hypothesis": "The +53 of gate gains since s12 shows on the ladder.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "elo_ladder_mle": 2654,
+      "elo_ladder_lo": 2505,
+      "elo_ladder_hi": 2794,
+      "elo_anchor_chain_est": 2707
+    },
+    "explanation": "30 games vs SF 2600/2800/3000: 60%/20%/20%. MLE identical to s12 -- +53 is inside the ladder's ~\u00b1140; the established compression. Chain remains the sensitive instrument."
   }
 ]

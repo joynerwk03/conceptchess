@@ -1,0 +1,140 @@
+9984 samples
+K=1.2  baseline loss 0.097542
+  pass 1: pst.pawn -> 0.950  loss 0.097506
+  pass 1: pst.knight -> 0.950  loss 0.097493
+  pass 1: pst.bishop -> 1.050  loss 0.097475
+  pass 1: pst.rook -> 1.050  loss 0.097475
+  pass 1: pst.queen -> 0.950  loss 0.097473
+  pass 1: pst.king -> 1.050  loss 0.097471
+  pass 1: pawn.doubled -> 15.750  loss 0.097464
+  pass 1: pawn.isolated -> 12.600  loss 0.097452
+  pass 1: pawn.passed_scale -> 1.050  loss 0.097422
+  pass 1: pawn.passed_eg_scale -> 1.575  loss 0.097384
+  pass 1: pawn.passer_king_dist -> 4.200  loss 0.097377
+  pass 1: pawn.connected_passer -> 14.250  loss 0.097374
+  pass 1: king.shield_gap -> 12.600  loss 0.097365
+  pass 1: king.open_file -> 15.750  loss 0.097364
+  pass 1: kattack.scale -> 2.625  loss 0.097338
+  pass 1: mob.knight -> 3.224  loss 0.097334
+  pass 1: mob.bishop -> 3.682  loss 0.097316
+  pass 1: mob.rook -> 2.455  loss 0.097298
+  pass 1: mob.queen -> 1.227  loss 0.097298
+  pass 1: act.bishop_pair -> 31.500  loss 0.097290
+  pass 1: act.rook_open -> 21.000  loss 0.097276
+  pass 1: act.rook_semi -> 10.500  loss 0.097265
+  pass 1: act.rook_seventh -> 21.000  loss 0.097260
+  pass 1: pawn.blocked_passer -> 0.550  loss 0.097259
+  pass 2: pst.pawn -> 0.900  loss 0.097222
+  pass 2: pst.knight -> 0.900  loss 0.097211
+  pass 2: pst.bishop -> 1.100  loss 0.097193
+  pass 2: pst.rook -> 1.000  loss 0.097193
+  pass 2: pst.queen -> 0.900  loss 0.097192
+  pass 2: pst.king -> 1.100  loss 0.097191
+  pass 2: pawn.doubled -> 16.500  loss 0.097185
+  pass 2: pawn.isolated -> 13.200  loss 0.097173
+  pass 2: pawn.passed_scale -> 1.100  loss 0.097150
+  pass 2: pawn.passed_eg_scale -> 1.650  loss 0.097117
+  pass 2: pawn.passer_king_dist -> 4.400  loss 0.097110
+  pass 2: pawn.connected_passer -> 13.500  loss 0.097106
+  pass 2: king.shield_gap -> 13.200  loss 0.097098
+  pass 2: king.open_file -> 16.500  loss 0.097097
+  pass 2: kattack.scale -> 2.750  loss 0.097072
+  pass 2: mob.knight -> 3.055  loss 0.097068
+  pass 2: mob.bishop -> 3.858  loss 0.097052
+  pass 2: mob.rook -> 2.572  loss 0.097035
+  pass 2: mob.queen -> 1.286  loss 0.097034
+  pass 2: act.bishop_pair -> 33.000  loss 0.097026
+  pass 2: act.rook_open -> 22.000  loss 0.097013
+  pass 2: act.rook_semi -> 11.000  loss 0.097003
+  pass 2: act.rook_seventh -> 22.000  loss 0.096998
+  pass 3: pst.pawn -> 0.850  loss 0.096961
+  pass 3: pst.knight -> 0.850  loss 0.096952
+  pass 3: pst.bishop -> 1.150  loss 0.096935
+  pass 3: pst.rook -> 0.950  loss 0.096935
+  pass 3: pst.queen -> 0.850  loss 0.096934
+  pass 3: pawn.doubled -> 17.250  loss 0.096928
+  pass 3: pawn.isolated -> 13.800  loss 0.096917
+  pass 3: pawn.passed_scale -> 1.150  loss 0.096900
+  pass 3: pawn.passed_eg_scale -> 1.725  loss 0.096873
+  pass 3: pawn.passer_king_dist -> 4.600  loss 0.096866
+  pass 3: pawn.connected_passer -> 12.750  loss 0.096861
+  pass 3: king.shield_gap -> 13.800  loss 0.096854
+  pass 3: king.open_file -> 17.250  loss 0.096853
+  pass 3: kattack.scale -> 2.875  loss 0.096829
+  pass 3: mob.knight -> 2.885  loss 0.096826
+  pass 3: mob.bishop -> 4.033  loss 0.096810
+  pass 3: mob.rook -> 2.689  loss 0.096793
+  pass 3: mob.queen -> 1.344  loss 0.096793
+  pass 3: act.bishop_pair -> 34.500  loss 0.096785
+  pass 3: act.rook_open -> 23.000  loss 0.096773
+  pass 3: act.rook_semi -> 11.500  loss 0.096763
+  pass 3: act.rook_seventh -> 23.000  loss 0.096758
+  pass 4: pst.pawn -> 0.800  loss 0.096720
+  pass 4: pst.knight -> 0.800  loss 0.096714
+  pass 4: pst.bishop -> 1.200  loss 0.096698
+  pass 4: pst.rook -> 0.900  loss 0.096698
+  pass 4: pst.queen -> 0.800  loss 0.096697
+  pass 4: pawn.doubled -> 18.000  loss 0.096691
+  pass 4: pawn.isolated -> 14.400  loss 0.096681
+  pass 4: pawn.passed_scale -> 1.200  loss 0.096671
+  pass 4: pawn.passed_eg_scale -> 1.800  loss 0.096651
+  pass 4: pawn.passer_king_dist -> 4.800  loss 0.096643
+  pass 4: pawn.connected_passer -> 12.000  loss 0.096638
+  pass 4: king.shield_gap -> 14.400  loss 0.096631
+  pass 4: king.open_file -> 18.000  loss 0.096631
+  pass 4: kattack.scale -> 3.000  loss 0.096607
+  pass 4: mob.knight -> 2.715  loss 0.096604
+  pass 4: mob.bishop -> 4.208  loss 0.096589
+  pass 4: mob.rook -> 2.806  loss 0.096573
+  pass 4: mob.queen -> 1.403  loss 0.096573
+  pass 4: act.bishop_pair -> 36.000  loss 0.096566
+  pass 4: act.rook_open -> 24.000  loss 0.096555
+  pass 4: act.rook_semi -> 12.000  loss 0.096544
+  pass 4: act.rook_seventh -> 24.000  loss 0.096540
+  pass 5: pst.pawn -> 0.750  loss 0.096501
+  pass 5: pst.knight -> 0.750  loss 0.096497
+  pass 5: pst.bishop -> 1.250  loss 0.096482
+  pass 5: pst.rook -> 0.850  loss 0.096482
+  pass 5: pst.queen -> 0.750  loss 0.096481
+  pass 5: pawn.doubled -> 18.750  loss 0.096476
+  pass 5: pawn.isolated -> 15.000  loss 0.096466
+  pass 5: pawn.passed_scale -> 1.250  loss 0.096463
+  pass 5: pawn.passer_king_dist -> 5.000  loss 0.096456
+  pass 5: pawn.connected_passer -> 11.250  loss 0.096450
+  pass 5: king.shield_gap -> 15.000  loss 0.096444
+  pass 5: kattack.scale -> 3.125  loss 0.096421
+  pass 5: mob.knight -> 2.546  loss 0.096419
+  pass 5: mob.bishop -> 4.384  loss 0.096404
+  pass 5: mob.rook -> 2.923  loss 0.096389
+  pass 5: mob.queen -> 1.461  loss 0.096389
+  pass 5: act.bishop_pair -> 37.500  loss 0.096382
+  pass 5: act.rook_open -> 25.000  loss 0.096373
+  pass 5: act.rook_semi -> 12.500  loss 0.096362
+  pass 5: act.rook_seventh -> 25.000  loss 0.096358
+  pass 6: pst.rook -> 0.800  loss 0.096357
+  pass 6: pawn.passer_king_dist -> 5.200  loss 0.096350
+final loss 0.096350 (baseline 0.097542); wrote /Users/williamjoyner/mission-control/projects/conceptchess/research/data/texel_weights.json
+  pst.pawn: 1 -> 0.75
+  pst.knight: 1 -> 0.75
+  pst.bishop: 1 -> 1.25
+  pst.rook: 1 -> 0.8
+  pst.queen: 1 -> 0.75
+  pst.king: 1 -> 1.1
+  pawn.doubled: 15 -> 18.75
+  pawn.isolated: 12 -> 15.0
+  pawn.passed_scale: 1 -> 1.25
+  pawn.passed_eg_scale: 1.5 -> 1.8
+  pawn.passer_king_dist: 4 -> 5.2
+  pawn.connected_passer: 15 -> 11.25
+  king.shield_gap: 12 -> 15.0
+  king.open_file: 15 -> 18.0
+  kattack.scale: 2.5 -> 3.125
+  mob.knight: 3.394 -> 2.546
+  mob.bishop: 3.507 -> 4.384
+  mob.rook: 2.338 -> 2.923
+  mob.queen: 1.169 -> 1.461
+  act.bishop_pair: 30 -> 37.5
+  act.rook_open: 20 -> 25.0
+  act.rook_semi: 10 -> 12.5
+  act.rook_seventh: 20 -> 25.0
+  pawn.blocked_passer: 0.5 -> 0.55

@@ -31,6 +31,7 @@ CC, CC_LO, CC_HI = ANCHORS["compiled"]["mle"]
 S11, S11_LO, S11_HI = ANCHORS["session11"]["mle"]
 S11B, S11B_LO, S11B_HI = ANCHORS["session11b"]["mle"]
 S12, S12_LO, S12_HI = ANCHORS["session12"]["mle"]
+S14, S14_LO, S14_HI = ANCHORS["session14"]["mle"]
 CHAIN_ERR = 220  # ± for delta-chained points (10-20 game matches)
 
 POINTS = [
@@ -80,6 +81,10 @@ POINTS = [
     # race concept (~+110 marginal) — anchored (30 games vs SF2600-3000)
     {"label": "session 12 — rep fix + king-race concept", "exps": 116,
      "elo": S12, "lo": S12_LO, "hi": S12_HI, "kind": "measured"},
+    # sessions 13-14: connected passers (+12), king-pressure gradient (+41),
+    # UHO gate infra; anchor statistically identical to s12 (ladder compression)
+    {"label": "sessions 13–14 — passer + king gradients", "exps": 128,
+     "elo": S14, "lo": S14_LO, "hi": S14_HI, "kind": "measured"},
 ]
 
 
@@ -131,13 +136,14 @@ def build_html():
                        ("compiled core (session 9)", ANCHORS["compiled"]),
                        ("session 11", ANCHORS["session11"]),
                        ("session 11 close", ANCHORS["session11b"]),
-                       ("session 12 (current)", ANCHORS["session12"])):
+                       ("session 12", ANCHORS["session12"]),
+                       ("session 14 (current)", ANCHORS["session14"])):
         for opp, (w, d, l) in sorted(data["results"].items()):
             rows += (f"<tr><td>{name}</td><td>Stockfish {opp}</td>"
                      f"<td class='num'>+{w} ={d} −{l}</td>"
                      f"<td class='num'>{100 * (w + 0.5 * d) / (w + d + l):.0f}%</td></tr>")
     HTML_OUT.write_text(TEMPLATE.replace("{{SVG}}", svg).replace("{{ROWS}}", rows)
-                        .replace("{{CUR}}", f"{S12} (95% {S12_LO}–{S12_HI})"))
+                        .replace("{{CUR}}", f"{S14} (95% {S14_LO}–{S14_HI})"))
     print(f"wrote {HTML_OUT}")
 
 
