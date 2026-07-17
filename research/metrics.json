@@ -523,5 +523,21 @@
       "draw_rate_pct": 28
     },
     "explanation": "First UHO-book gate: +22 =17 -21 (51%, +6, 95% -84..+96). Draw rate 28% vs ~65% on balanced openings -- the unbalanced book works. CMH itself: neutral strength for +12% nodes, a 590KB table, and piece_on cost per quiet in ordering. In top engines CMH pays via LMR/pruning modulation, not plain ordering; retry it if/when reductions consume it. Reverted for simplicity."
+  },
+  {
+    "experiment": 36,
+    "date": "2026-07-17",
+    "rev": null,
+    "title": "Session 14 exp2: Texel-style outcome tuning (prior-bounded)",
+    "hypothesis": "Fitting weights to self-play game outcomes (logistic loss), with chess-prior bounds, fixes what s2's eval-MSE tuning got wrong.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_score_pct": 46,
+      "elo_vs_head": -29,
+      "loss_before": 0.097542,
+      "loss_after": 0.09635,
+      "samples": 9984
+    },
+    "explanation": "Gate +16 =23 -21 (46%, -29, 95% -121..+59). Two identified flaws: (1) 10k positions from 400 games is ~100x less data than working Texel setups; many weights slammed into their prior bounds, a classic overfit sign. (2) Labels confounded by the UHO openings: White wins because of the +1.0 start, and the tuner attributes that to whatever features correlate. Fix for the retry: generate from BALANCED starts, quiet-filter positions (qsearch-stable), 5-10x more games. Weights reverted; harness + data pipeline committed and reusable."
   }
 ]
