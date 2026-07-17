@@ -650,5 +650,19 @@
       "elo_vs_head": -29
     },
     "explanation": "+20 =15 -25 (46%, -29, 95% -121..+59). Refines the gradient thesis: the two winners are distance gradients toward CONCRETE mechanisms (promotion square, enemy king); an abstract positional count loses -- likely double-counting mobility while diluting sharper terms. Reverted."
+  },
+  {
+    "experiment": 45,
+    "date": "2026-07-17",
+    "rev": "HEAD",
+    "title": "Session 15 exp5: qsearch TT probing",
+    "hypothesis": "Search-backed TT scores beat static stand-pat approximations at qsearch entry.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "gate_score_pct": 55,
+      "elo_vs_head": 35,
+      "nodes_d10_cttd": 2452037
+    },
+    "explanation": "+25 =16 -19 (55%, +35, 95% -53..+128). Anchor-chain ~2795. Information-reuse family (TT, eval hash, this) remains 3-for-3."
   }
 ]
