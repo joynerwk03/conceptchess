@@ -6,3 +6,5 @@ __pycache__/
 *.pgn
 research/worktrees/
 core/libcengine.dylib
+research/books/uho.zip
+research/books/UHO_Lichess_4852_v1.epd

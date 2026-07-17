@@ -61,9 +61,12 @@ def open_opponent(spec, cwd):
 
 
 def play_game(white, black, opening, movetime, max_moves=250):
-    board = chess.Board()
-    for uci in opening:
-        board.push(chess.Move.from_uci(uci))
+    if isinstance(opening, str):
+        board = chess.Board(opening)      # EPD/FEN start (unbalanced book)
+    else:
+        board = chess.Board()
+        for uci in opening:
+            board.push(chess.Move.from_uci(uci))
     limit = chess.engine.Limit(time=movetime)
     while not board.is_game_over(claim_draw=True) and board.fullmove_number < max_moves:
         engine = white if board.turn == chess.WHITE else black
@@ -98,6 +101,11 @@ def main():
     p.add_argument("--opponent-cwd", default=None)
     p.add_argument("--opening-offset", type=int, default=0,
                    help="start at this index in the opening list (for batched matches)")
+    p.add_argument("--book", default=None,
+                   help="EPD file of unbalanced opening positions (e.g. UHO): each "
+                        "line's FEN is played twice, both colors, replacing the "
+                        "built-in balanced opening list. Cuts the draw rate so "
+                        "gates discriminate better at high strength.")
     p.add_argument("--pgn-out", default=None, help="optional PGN dump for analysis")
     p.add_argument("--sprt", action="store_true",
                    help="stop early via SPRT (H0 elo=0 vs H1 elo=+35)")
@@ -109,13 +117,21 @@ def main():
         from research.sprt import SPRT
         sprt = SPRT(elo0=0, elo1=args.sprt_elo1)
 
+    openings = OPENINGS
+    if args.book:
+        lines = [ln.strip() for ln in Path(args.book).read_text().splitlines() if ln.strip()]
+        # EPD lines may carry opcodes after the 4 FEN fields; python-chess
+        # Board() accepts 4-field FENs, so keep just those.
+        openings = [" ".join(ln.split()[:4]) for ln in lines]
+        print(f"book: {len(openings)} unbalanced openings from {args.book}")
+
     wins = draws = losses = 0
     pgns = []
     for g in range(args.games):
         ours = open_ours()
         opp = open_opponent(args.opponent, args.opponent_cwd)
         try:
-            opening = OPENINGS[(args.opening_offset + g // 2) % len(OPENINGS)]
+            opening = openings[(args.opening_offset + g // 2) % len(openings)]
             we_are_white = g % 2 == 0
             white, black = (ours, opp) if we_are_white else (opp, ours)
             white_score, board = play_game(white, black, opening, args.movetime)
