@@ -77,6 +77,10 @@ double eval_core(U64 bb[2][6], int side){
     for(int c=0;c<2;c++){
         int sign=c==WHITE?1:-1;
         U64 ownp=bb[c][PAWN], enp=bb[!c][PAWN];
+        /* passer set for this color (mirrors pawn_structure.py's pfiles) */
+        U64 passers=0;
+        { U64 x=ownp; while(x){ int sq=lsb(x); x&=x-1;
+            if(!(enp&PASSED_FRONT[c][sq])) passers|=1ULL<<sq; } }
         for(int f=0; f<8; f++){
             U64 onfile=ownp&FILEBB[f]; int cnt=popcnt(onfile);
             if(!cnt) continue;
@@ -88,6 +92,8 @@ double eval_core(U64 bb[2][6], int side){
                     int r=sq/8, rel=c==WHITE?r:7-r, front=c==WHITE?sq+8:sq-8;
                     double mult=(front>=0&&front<64&&(all&(1ULL<<front)))?W_PAWN_BLOCKED_PASSER:1.0;
                     s += sign*PASSED_BONUS[rel]*W_PAWN_PASSED_SCALE*mult*passed_scale;
+                    if(passers&ADJ_FILES[f])
+                        s += sign*W_PAWN_CONNECTED_PASSER*mult*passed_scale;
                     if(kd_w!=0.0 && front>=0 && front<64){
                         /* mirror of pawn_structure.py: escort your passer /
                          * catch theirs (Chebyshev distance to the front sq) */

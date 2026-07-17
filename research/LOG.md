@@ -1,5 +1,30 @@
 ---
 
+## 2026-07-16 — Session 13: passer-structure concepts (+ a segfault hunt)
+
+**exp1 — connected passers (gating).** Passers with a friendly passer on an
+adjacent file get +15cp (chess prior), blockade-multiplied and
+endgame-scaled like the base passer bonus. Pawn-only fact → lives inside the
+pawn-keyed cache (near-zero cost). Interpretable item: "connected passer on
+e5". C mirror exact (eval_check 0.000000). First gate attempt **segfaulted
+at game 40** (+13 =16 −10 through 39 — discarded):
+
+**Bug fix — path-buffer overflow on 500+ ply games.** `SS.path` (game
+history + search stack) was 384 entries, but the match harness allows
+250-move games = 500 plies. Long endgame grinds got *more common* after the
+s12 repetition fix (winners no longer shuffle into threefold — they play
+on), and game 40 ran long enough to overflow → SIGSEGV (exit −11). Now 4096
+entries plus a drop-oldest guard in c_search (is_rep only ever looks back
+one halfmove-clock window, so ancient history is dead weight). Regression
+test: a 700-ply game searches cleanly (tests/test_core.py). cttd
+byte-identical for normal games; committed without a gate (bb5f0d6).
+Pattern note: this is the second bug this week whose exposure was CAUSED by
+fixing another one — correctness work uncovers correctness work.
+
+Gate re-running against a baseline that includes the overflow fix.
+
+---
+
 ## 2026-07-16 — Session 12: the dead repetition detector (major bug fix)
 
 **Discovery.** While screening a new eval concept, the full test suite (with

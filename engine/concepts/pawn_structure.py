@@ -40,10 +40,12 @@ class PawnStructure:
         wk = ctx.board.king(chess.WHITE)
         bk = ctx.board.king(chess.BLACK)
         s = base
-        for sign, sq, raw in passers:
+        for sign, sq, raw, connected in passers:
             front = sq + 8 if sign > 0 else sq - 8
             mult = blocked_mult if (0 <= front <= 63 and (occupied >> front) & 1) else 1.0
             s += raw * mult * scale
+            if connected:
+                s += sign * W["pawn.connected_passer"] * mult * scale
             if kd_w and 0 <= front <= 63:
                 ok, ek = (wk, bk) if sign > 0 else (bk, wk)
                 s += sign * kd_w * (chess.square_distance(ek, front)
@@ -58,6 +60,13 @@ class PawnStructure:
         for color, sign in ((chess.WHITE, 1), (chess.BLACK, -1)):
             own = ctx.pawn_files[color]
             enemy = ctx.pawn_files[not color]
+            # passer files for this color (pawn-only fact -> cacheable),
+            # for connected-passer detection below
+            pfiles = set()
+            for f in range(8):
+                for r in own[f]:
+                    if is_passed(color, f, r, enemy):
+                        pfiles.add(f)
             for f in range(8):
                 ranks = own[f]
                 if not ranks:
@@ -70,8 +79,10 @@ class PawnStructure:
                 for r in ranks:
                     if is_passed(color, f, r, enemy):
                         rel_rank = r if color == chess.WHITE else 7 - r
+                        connected = (f - 1 in pfiles) or (f + 1 in pfiles)
                         passers.append((sign, chess.square(f, r),
-                                        sign * PASSED_BONUS[rel_rank] * W["pawn.passed_scale"]))
+                                        sign * PASSED_BONUS[rel_rank] * W["pawn.passed_scale"],
+                                        connected))
         return base, passers
 
     def details(self, ctx):
@@ -81,6 +92,11 @@ class PawnStructure:
         for color, sign, cname in ((chess.WHITE, 1, "White"), (chess.BLACK, -1, "Black")):
             own = ctx.pawn_files[color]
             enemy = ctx.pawn_files[not color]
+            pfiles = set()
+            for f in range(8):
+                for r in own[f]:
+                    if self._is_passed(color, f, r, enemy):
+                        pfiles.add(f)
             for f in range(8):
                 ranks = own[f]
                 if not ranks:
@@ -103,6 +119,9 @@ class PawnStructure:
                         items.append((f"{cname} passed pawn on {chess.square_name(sq)}{tag}",
                                       sign * PASSED_BONUS[rel_rank] * mult
                                       * W["pawn.passed_scale"] * passed_scale))
+                        if (f - 1 in pfiles) or (f + 1 in pfiles):
+                            items.append((f"{cname} connected passer on {chess.square_name(sq)}",
+                                          sign * W["pawn.connected_passer"] * mult * passed_scale))
                         # king race (same arithmetic as score(); omit when 0)
                         kd_w = W["pawn.passer_king_dist"] * (1 - phase)
                         if kd_w and 0 <= front <= 63:
