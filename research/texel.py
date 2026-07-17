@@ -53,6 +53,8 @@ def _balanced_starts(count, seed=7):
             b = chess.Board()
             for _ in range(6):
                 ms = list(b.legal_moves)
+                if not ms:      # random walk stumbled into mate/stalemate
+                    break
                 b.push(rng.choice(ms))
             if b.is_game_over() or b.fen() in seen:
                 continue
