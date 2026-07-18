@@ -835,5 +835,18 @@
       "elo_vs_head": -17
     },
     "explanation": "+17 =23 -20 (48%, -17, 95% -109..+71). First real match trial confirms the s2 discard. Pattern firm: static positional features (space, outposts) lose; concrete-goal distance gradients (king race, king pressure, mop-up) win. The 12-ply search already prices piece placement via mobility+PST; static bonuses double-count. Reverted."
+  },
+  {
+    "experiment": 58,
+    "date": "2026-07-18",
+    "rev": null,
+    "title": "Session 18 exp3: 50-move rule v2 (TT-store guard)",
+    "hypothesis": "v1's diagnosed TT pollution was the cost; guarding stores at hm>80 makes clock-awareness pay.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_score_pct": 46,
+      "elo_vs_head": -29
+    },
+    "explanation": "+17 =21 -22 (46%, -29, 95% -121..+59). The guard removed the pollution and it STILL loses: skipping TT stores in long endgames throws away useful entries, and hm>=100 rarely bites at 0.3s/move. Two mechanisms tried, two failures -- closed at blitz TC. (May differ at classical TC; not worth further blitz gates.)"
   }
 ]
