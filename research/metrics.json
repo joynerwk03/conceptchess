@@ -822,5 +822,18 @@
       "elo_vs_head": 29
     },
     "explanation": "+25 =15 -20 (54%, +29, 95% -59..+121). Concrete-goal gradient family 4-for-5. Chain crosses 2800 (~2807)."
+  },
+  {
+    "experiment": 57,
+    "date": "2026-07-18",
+    "rev": null,
+    "title": "Session 18 exp2: knight-outpost gradient",
+    "hypothesis": "Graded, eviction-proof outposts pay where the binary s2 version was (wrongly) screened out.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_score_pct": 48,
+      "elo_vs_head": -17
+    },
+    "explanation": "+17 =23 -20 (48%, -17, 95% -109..+71). First real match trial confirms the s2 discard. Pattern firm: static positional features (space, outposts) lose; concrete-goal distance gradients (king race, king pressure, mop-up) win. The 12-ply search already prices piece placement via mobility+PST; static bonuses double-count. Reverted."
   }
 ]
