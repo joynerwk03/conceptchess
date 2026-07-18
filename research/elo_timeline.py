@@ -35,6 +35,7 @@ S14, S14_LO, S14_HI = ANCHORS["session14"]["mle"]
 S15, S15_LO, S15_HI = ANCHORS["session15"]["mle"]
 S16, S16_LO, S16_HI = ANCHORS["session16"]["mle"]
 S17P, S17P_LO, S17P_HI = ANCHORS["session17_pooled"]["mle"]
+S18P, S18P_LO, S18P_HI = ANCHORS["session18_pooled"]["mle"]
 CHAIN_ERR = 220  # ± for delta-chained points (10-20 game matches)
 
 POINTS = [
@@ -101,6 +102,10 @@ POINTS = [
     # bounce ~±140 at this level
     {"label": "session 17 — flywheel parked (pooled anchor)", "exps": 156,
      "elo": S17P, "lo": S17P_LO, "hi": S17P_HI, "kind": "measured"},
+    # session 18: mop-up +29; deep-TC +223 @1s validated; winner's-curse
+    # reconciliation adopted (pooled anchors = headline, chain = upper bound)
+    {"label": "session 18 — mop-up, deep-TC check (pooled)", "exps": 163,
+     "elo": S18P, "lo": S18P_LO, "hi": S18P_HI, "kind": "measured"},
 ]
 
 
@@ -156,13 +161,14 @@ def build_html():
                        ("session 14", ANCHORS["session14"]),
                        ("session 15", ANCHORS["session15"]),
                        ("session 16", ANCHORS["session16"]),
-                       ("session 17 pooled (current)", ANCHORS["session17_pooled"])):
+                       ("session 17 pooled", ANCHORS["session17_pooled"]),
+                       ("session 18 pooled (current)", ANCHORS["session18_pooled"])):
         for opp, (w, d, l) in sorted(data["results"].items()):
             rows += (f"<tr><td>{name}</td><td>Stockfish {opp}</td>"
                      f"<td class='num'>+{w} ={d} −{l}</td>"
                      f"<td class='num'>{100 * (w + 0.5 * d) / (w + d + l):.0f}%</td></tr>")
     HTML_OUT.write_text(TEMPLATE.replace("{{SVG}}", svg).replace("{{ROWS}}", rows)
-                        .replace("{{CUR}}", f"{S17P} (95% {S17P_LO}–{S17P_HI})"))
+                        .replace("{{CUR}}", f"{S18P} (95% {S18P_LO}–{S18P_HI})"))
     print(f"wrote {HTML_OUT}")
 
 
