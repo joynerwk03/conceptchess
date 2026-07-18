@@ -778,5 +778,21 @@
       "flywheel_total": 88
     },
     "explanation": "+19 =24 -17 (52%, +12). Sequence +53/+23/+12 halves per spin; 4th projects to noise. Parked. Anchor-chain ~2778."
+  },
+  {
+    "experiment": 54,
+    "date": "2026-07-18",
+    "rev": "HEAD",
+    "title": "Session 17 anchors: 2606 single / 2677 pooled (s16+s17, 60 games)",
+    "hypothesis": "Anchor tracking at the 2700+ level.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "elo_ladder_single": 2606,
+      "elo_ladder_pooled": 2677,
+      "pooled_lo": 2575,
+      "pooled_hi": 2776,
+      "elo_chain_est": 2778
+    },
+    "explanation": "Single 30-game anchors bounce \u00b1140 (2654->2685->2743->2606) while the gate chain climbs monotonically. Pooled 60-game fit adopted as the reported point; chain remains the sensitive instrument."
   }
 ]

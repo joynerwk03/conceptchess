@@ -11,7 +11,17 @@ compounded geometrically (bishop pair 30 → 37.5 → 46.9 across two spins) —
 exactly the s2 escape route in slow motion. Tuning bounds are now hard-capped
 to a 0.5–1.6× envelope of the frozen original hand priors.
 
-**exp2 — flywheel iteration 3 (generating, drift-guarded).** If it gates
+**Session 17 close — flywheel parked with +88 banked; pooled anchor 2677
+(2575–2776).** Iteration 3 gated +12 (52%, +19 =24 −17) with the drift guard
+pinning several weights at the 0.5–1.6× envelope. Spin sequence +53/+23/+12:
+halving per iteration, fourth projects to noise — parked until new concepts
+join the eval. Anchor honesty note: single 30-game ladders bounced
+2654→2685→2743→2606 across four sessions while the gate chain climbed
+monotonically; the s16+s17 POOLED 60-game fit (2677, CI 2575–2776) is the
+reported point, and 30-game anchors are hereafter treated as ±140
+instruments. Chain ≈2778.
+
+**exp2 — flywheel iteration 3 (ACCEPTED, 52%, +12 — see close above).** If it gates
 ≥50% the loop keeps spinning; below, the fixed point is measured and the
 flywheel parks until the eval gains new concepts to tune.
 
