@@ -1,5 +1,22 @@
 ---
 
+## 2026-07-18 — Session 17: the flywheel compounds
+
+**exp1 — flywheel iteration 2 (ACCEPTED, 53%, +23).** 98,464 quiet samples
+from 5,000 balanced games played BY the XL-tuned engine, retuned from the
+accepted weights. +22 =20 −18. The self-improvement loop is real and
+converging: +53 (iter 1) → +23 (iter 2). **Drift guard added before iter 3:**
+per-spin bounds were relative to *current* weights, so repeated spins
+compounded geometrically (bishop pair 30 → 37.5 → 46.9 across two spins) —
+exactly the s2 escape route in slow motion. Tuning bounds are now hard-capped
+to a 0.5–1.6× envelope of the frozen original hand priors.
+
+**exp2 — flywheel iteration 3 (generating, drift-guarded).** If it gates
+≥50% the loop keeps spinning; below, the fixed point is measured and the
+flywheel parks until the eval gains new concepts to tune.
+
+---
+
 ## 2026-07-17 — Session 16: taxonomy stress-tests + the faithfulness tax
 
 **exp1 — history-modulated LMR (REJECTED, 43%, −47).** Sharpened the
