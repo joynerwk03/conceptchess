@@ -848,5 +848,21 @@
       "elo_vs_head": -29
     },
     "explanation": "+17 =21 -22 (46%, -29, 95% -121..+59). The guard removed the pollution and it STILL loses: skipping TT stores in long endgames throws away useful entries, and hm>=100 rarely bites at 0.3s/move. Two mechanisms tried, two failures -- closed at blitz TC. (May differ at classical TC; not worth further blitz gates.)"
+  },
+  {
+    "experiment": 59,
+    "date": "2026-07-18",
+    "rev": "HEAD",
+    "title": "Session 18 anchors + winner's-curse correction",
+    "hypothesis": "Reconciling the persistent chain-vs-anchor gap (~2810 vs ~2670).",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "elo_ladder_single": 2670,
+      "elo_ladder_pooled_s17s18": 2639,
+      "pooled_lo": 2533,
+      "pooled_hi": 2739,
+      "elo_chain_est": 2807
+    },
+    "explanation": "The gap is now persistent and has a known cause: WINNER'S CURSE. Gates accept at >=50%, so accepted deltas are noise-biased upward; summing them into a chain overstates cumulative gain. The pooled anchors (~2650-2680) are the unbiased estimate; the chain is an optimistic upper bound. Both reported going forward, with the anchor as the headline number."
   }
 ]

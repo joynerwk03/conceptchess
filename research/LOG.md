@@ -23,6 +23,16 @@ diagnosed TT pollution was engineered out (store guard at hm>80) and it
 still lost: the guard discards useful long-endgame entries, and hm≥100
 rarely bites at 0.3s/move. Two mechanisms, two failures.
 
+**Anchors and the winner's curse (methodology close-out).** s18 ladder:
+2670 (2523–2809); s17+s18 pooled: 2639 (2533–2739). The chain (~2810) now
+sits persistently ~150 above the anchors, and the cause is textbook
+**winner's curse**: gates accept at ≥50%, so accepted deltas carry upward
+noise-bias, and summing them overstates cumulative gain. Going forward the
+pooled anchor (~2650–2680) is the headline number and the chain is labeled
+an optimistic upper bound. (The deep-TC head-to-head, +223 over the whole
+run in one 30-game measurement, sits between the two — consistent with
+both.)
+
 **Session 18 net: +29, and an honest capacity note.** The last ten gates
 produced +29 net — the standard-ideas backlog is harvested. Remaining
 marginal value: periodic pooled anchors, flywheel re-spins after eval
