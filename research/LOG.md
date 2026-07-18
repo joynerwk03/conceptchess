@@ -22,7 +22,20 @@ speed is tapped out. The eval's 32% is the measured price of
 explanation == evaluation — the faithfulness tax.** Future speed comes from
 search shape or hardware, not eval shortcuts.
 
-**exp4 — Texel-XL (generating).** The one remaining big swing with an
+**Session 16 close — Texel-XL lands (+53) and the anchor agrees: 2743
+(2603–2880) vs chain 2738.** The 2800 ladder level jumped 25% → 45%. Run
+total since the compiled core (s10–16): **2442 → 2743 anchored, +301 across
+~150 gated experiments**, with the interpretability invariant intact the
+whole way (C eval == Python eval to 0.000000 on every accepted state).
+
+**exp4 — Texel-XL (ACCEPTED, 58%, +53).** 59,189 quiet samples from 3,000
+balanced SF-screened self-play games. Gate +27 =15 −18. **The four-attempt
+tuning arc is the run's cleanest science:** eval-MSE target −130 (s2) →
+outcome target, confounded labels −29 (s14 v1) → clean labels, 17k samples
++6 (s14 v2) → clean labels, 59k samples **+53**. Each failure was diagnosed
+in the LOG and the diagnosis confirmed by the next attempt. Deltas moderated
+as data grew (noise shrinkage), all inside chess-prior bounds. The retune
+flywheel (more games → better weights) is now a standing tool. The one remaining big swing with an
 identified mechanism: v2's failure pointed at data scale (O(10–20k) samples
 vs the ~100k+ real Texel setups use). 3,000 balanced games generating
 (~60k quiet samples, 3× v2); tune + UHO gate when it lands.

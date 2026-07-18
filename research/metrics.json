@@ -734,5 +734,20 @@
       "loss_after": 0.093513
     },
     "explanation": "+27 =15 -18 (58%, +53). Vindicates the method after -130 (wrong target), -29 (confounded labels), +6 (too little data). Anchor-chain ~2848; project chain ~2983."
+  },
+  {
+    "experiment": 51,
+    "date": "2026-07-17",
+    "rev": "HEAD",
+    "title": "Session 16 ladder anchor: 2743 \u2014 chain and ladder agree",
+    "hypothesis": "The Texel-XL +53 shows on the ladder.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "elo_ladder_mle": 2743,
+      "elo_ladder_lo": 2603,
+      "elo_ladder_hi": 2880,
+      "elo_anchor_chain_est": 2738
+    },
+    "explanation": "30 games vs SF 2600/2800/3000: 50%/45%/35% -- the 2800 level jumped from 25% to 45%. Anchor 2743 vs chain 2738: agreement within 5 Elo. Run total (s10-16): 2442 -> 2743 anchored, +301."
   }
 ]
