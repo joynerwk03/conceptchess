@@ -1,12 +1,22 @@
 # ConceptChess
 
-A chess **coach** that shows its work. The engine plays at roughly 2400 Elo
-(a fast compiled core), but its evaluation is deliberately a sum of named,
-human-meaningful concepts — material, piece placement, pawn structure, king
-safety, king attack, mobility, activity, threats, tempo — so every judgment can
-be explained. Tests enforce that the displayed breakdown is *exactly* the
-evaluation the search maximized (even the compiled eval is verified identical
-to the readable Python one), so nothing shown is a post-hoc summary.
+A chess **coach** that shows its work. The engine plays around **2650–2700 Elo**
+(compiled C core; Stockfish-ladder-anchored), but its evaluation is deliberately
+a sum of named, human-meaningful concepts — material, piece placement, pawn
+structure (incl. passed-pawn king races and connected passers), king safety,
+king attack, king pressure, mobility, piece activity, threats, tempo, and
+endgame mating technique — so every judgment can be explained. Tests enforce
+that the displayed breakdown is *exactly* the evaluation the search maximized
+(even the compiled eval is verified identical to the readable Python one on
+6,204 positions), so nothing shown is a post-hoc summary.
+
+The engine is built by an **automated research loop**: each idea is implemented
+as a single-hypothesis change, screened against invariants, and gated by a
+60-game match before it's kept — negative results are logged, not hidden. Over
+~160 gated experiments the engine rose from ~1570 to its current strength
+(measured +223 Elo at 1 s/move against its own four-days-earlier self). See
+`research/LOG.md` for the full experiment record and `research/elo_report.html`
+for the Elo timeline.
 
 ## Play & learn
 
@@ -38,12 +48,18 @@ The engine also speaks UCI (`python -m engine.uci`) for your own GUI.
 
 | Path | What |
 |---|---|
-| `engine/concepts/` | one module per evaluation concept |
-| `engine/search.py` | iterative-deepening alpha-beta (TT, quiescence, null move) |
+| `engine/concepts/` | one module per evaluation concept (the readable reference eval) |
+| `engine/search.py` | readable reference search (iterative-deepening alpha-beta) |
+| `core/` | compiled C core that actually plays: bitboard movegen + magic sliders, search, and an eval verified identical to the Python concept eval (`core/eval_check.py`) |
 | `engine/explain.py` | concept deltas → natural-language explanations |
 | `gui/` | local web interface |
-| `tests/` | invariants (faithfulness, symmetry), search correctness, tactics gate |
-| `research/` | benchmark / tactics / match harnesses, research log & roadmap |
+| `tests/` | invariants (faithfulness, symmetry, C-vs-Python eval), search correctness, tactics gate |
+| `research/` | benchmark / tactics / match / tuning harnesses, research log, roadmap, Elo timeline |
+
+Any change to the concept eval requires regenerating the C constants
+(`python core/gen_eval_data.py && sh core/build.sh`) — a test fails by design
+otherwise, so the compiled engine can never silently diverge from the
+explanation.
 
 ## Development
 
