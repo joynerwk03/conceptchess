@@ -17,34 +17,34 @@ W = {
     "material.rook": 500,
     "material.queen": 900,
     # piece-square tables: multiplier per piece type on the (tapered) table value
-    "pst.pawn": 0.5625,
-    "pst.knight": 0.85,
-    "pst.bishop": 1.3125,
-    "pst.rook": 0.7125,
-    "pst.queen": 0.75,
+    "pst.pawn": 0.5125,
+    "pst.knight": 0.75,
+    "pst.bishop": 1.5094,
+    "pst.rook": 0.7625,
+    "pst.queen": 0.5625,
     "pst.king": 0.9,
     # pawn structure
-    "pawn.doubled": 15.9375,
-    "pawn.isolated": 11.25,
-    "pawn.passed_scale": 0.8,     # multiplier on the per-rank passed bonus
-    "pawn.passed_eg_scale": 1.44,
-    "pawn.blocked_passer": 0.5,  # multiplier when the square in front is occupied  # passed pawns matter more in the endgame
+    "pawn.doubled": 19.125,
+    "pawn.isolated": 9.5625,
+    "pawn.passed_scale": 0.9,     # multiplier on the per-rank passed bonus
+    "pawn.passed_eg_scale": 1.728,
+    "pawn.blocked_passer": 0.4,  # multiplier when the square in front is occupied  # passed pawns matter more in the endgame
     "pawn.passer_king_dist": 6.76,  # cp per square of net king distance to the passer's front square (endgame-scaled)
-    "pawn.connected_passer": 8.4375,  # per passer with a friendly passer on an adjacent file
+    "pawn.connected_passer": 7.5,  # per passer with a friendly passer on an adjacent file
     # king safety
-    "king.shield_gap": 13.11,
-    "king.open_file": 14.0625,
-    "kattack.scale": 3.9062,   # cp per weighted attack unit on the enemy king zone
+    "king.shield_gap": 14.421,
+    "king.open_file": 17.5781,
+    "kattack.scale": 4.0,   # cp per weighted attack unit on the enemy king zone
     "kattack.proximity": 2,  # cp per weighted closeness unit of pieces near the enemy king (phase-scaled)
     # mobility (cp per square above/below typical)
-    "mob.knight": 3.1819,
-    "mob.bishop": 5.4798,
-    "mob.rook": 3.6531,
-    "mob.queen": 1.8266,
+    "mob.knight": 3.9774,
+    "mob.bishop": 5.6112,
+    "mob.rook": 3.7408,
+    "mob.queen": 1.8704,
     # piece activity
-    "act.bishop_pair": 46.875,
-    "act.rook_open": 21.25,
-    "act.rook_semi": 15.625,
+    "act.bishop_pair": 44.5312,
+    "act.rook_open": 17.0,
+    "act.rook_semi": 16.0,
     "act.rook_seventh": 22.05,
     # threats
     "threat.hanging": 0.0562,  # fraction of the hanging piece's value
