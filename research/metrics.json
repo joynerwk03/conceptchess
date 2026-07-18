@@ -749,5 +749,19 @@
       "elo_anchor_chain_est": 2738
     },
     "explanation": "30 games vs SF 2600/2800/3000: 50%/45%/35% -- the 2800 level jumped from 25% to 45%. Anchor 2743 vs chain 2738: agreement within 5 Elo. Run total (s10-16): 2442 -> 2743 anchored, +301."
+  },
+  {
+    "experiment": 52,
+    "date": "2026-07-18",
+    "rev": "HEAD",
+    "title": "Session 17: flywheel iteration 2 (98k samples, self-generated)",
+    "hypothesis": "The tuned engine's own games make better training data; retuning compounds.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "gate_score_pct": 53,
+      "elo_vs_head": 23,
+      "samples": 98464
+    },
+    "explanation": "+22 =20 -18 (53%, +23, 95% -65..+115). Gains halving per spin (+53 -> +23). Drift note: bounds are relative to CURRENT weights, so repeated spins compound (bishop pair 30->37.5->46.9); guard added pinning future bounds to the original hand priors."
   }
 ]

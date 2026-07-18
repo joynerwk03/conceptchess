@@ -137,6 +137,26 @@ def _eval_all(boards):
     return [evaluate(b) for b in boards]
 
 
+# Original hand-set priors (frozen 2026-07-18): iterated flywheel spins use
+# bounds relative to THESE, not to the current (already-tuned) values --
+# otherwise +-25%-of-current compounds geometrically per spin and weights
+# escape chess sense the way s2's unbounded tuning did.
+ORIGINAL_PRIORS = {
+    "pst.pawn": 1, "pst.knight": 1, "pst.bishop": 1, "pst.rook": 1,
+    "pst.queen": 1, "pst.king": 1,
+    "pawn.doubled": 15, "pawn.isolated": 12, "pawn.passed_scale": 1,
+    "pawn.passed_eg_scale": 1.5, "pawn.passer_king_dist": 4,
+    "pawn.connected_passer": 15, "pawn.blocked_passer": 0.5,
+    "king.shield_gap": 12, "king.open_file": 15, "kattack.scale": 2.5,
+    "mob.knight": 3.394, "mob.bishop": 3.507, "mob.rook": 2.338,
+    "mob.queen": 1.169,
+    "act.bishop_pair": 30, "act.rook_open": 20, "act.rook_semi": 10,
+    "act.rook_seventh": 20, "threat.hanging": 0.1,
+}
+# widened once-and-for-all envelope vs the ORIGINAL priors
+PRIOR_ENVELOPE = (0.5, 1.6)
+
+
 def tune(data_path, passes):
     from engine import weights as wmod
     W = wmod.W
@@ -162,6 +182,9 @@ def tune(data_path, passes):
         for key in base:
             lo = base[key] * TUNABLE[key][0]
             hi = base[key] * TUNABLE[key][1]
+            if key in ORIGINAL_PRIORS:   # hard envelope vs the hand priors
+                lo = max(lo, ORIGINAL_PRIORS[key] * PRIOR_ENVELOPE[0])
+                hi = min(hi, ORIGINAL_PRIORS[key] * PRIOR_ENVELOPE[1])
             step = max(abs(base[key]) * 0.05, 0.05)
             for cand in (current[key] + step, current[key] - step):
                 cand = min(max(cand, lo), hi)
