@@ -39,6 +39,12 @@ marginal value: periodic pooled anchors, flywheel re-spins after eval
 changes (~+5–10 each), longer-TC re-tests of near-misses, and product/GUI
 work (not Elo). The loop's yield curve is itself now a measured result.
 
+**Deferred:** a flywheel re-spin over the mop-up eval was generated
+(research/data/texel6.jsonl, 98,535 samples from the mop-up engine) but its
+tune was stopped mid-run at session wrap. Resume next session with
+`python -m research.texel tune --data research/data/texel6.jsonl` → apply →
+UHO gate; expected ~+5–10 per the flywheel yield curve.
+
 ---
 
 ## 2026-07-18 — Session 17: the flywheel compounds
