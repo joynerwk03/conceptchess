@@ -763,5 +763,20 @@
       "samples": 98464
     },
     "explanation": "+22 =20 -18 (53%, +23, 95% -65..+115). Gains halving per spin (+53 -> +23). Drift note: bounds are relative to CURRENT weights, so repeated spins compound (bishop pair 30->37.5->46.9); guard added pinning future bounds to the original hand priors."
+  },
+  {
+    "experiment": 53,
+    "date": "2026-07-18",
+    "rev": "HEAD",
+    "title": "Session 17: flywheel iteration 3 \u2014 parked at convergence",
+    "hypothesis": "A third drift-guarded spin still pays.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "gate_score_pct": 52,
+      "elo_vs_head": 12,
+      "samples": 98588,
+      "flywheel_total": 88
+    },
+    "explanation": "+19 =24 -17 (52%, +12). Sequence +53/+23/+12 halves per spin; 4th projects to noise. Parked. Anchor-chain ~2778."
   }
 ]
