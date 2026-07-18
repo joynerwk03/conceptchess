@@ -1,5 +1,36 @@
 ---
 
+## 2026-07-18 — Session 18: deep-TC validation + the backlog thins
+
+**Deep-TC robustness check: +223 Elo at 1s/move (78%, +19 =9 −2)** vs the
+s10 starting point, over UHO starts. The entire run's gains — every one
+gated at 0.3s/move — hold at the coach's real time control. Not
+blitz-overfit; the +336 blitz chain compresses to +223 at depth, which is
+normal TC scaling.
+
+**exp1 — mop-up extension of mating drive (ACCEPTED, 54%, +29).** Pawnless
+defenders dominated by ≥ a rook get the corner-drive gradient at half
+strength. Concrete-goal gradients: 4-for-5. Chain crossed 2800.
+
+**exp2 — knight-outpost gradient (REJECTED, 48%, −17).** First real match
+trial (s2 only screened it on the discredited eval-loss metric) confirms the
+discard. Firm pattern: static positional features (space, outposts) lose —
+12-ply search already prices placement via mobility+PST; concrete-goal
+distance gradients win.
+
+**exp3 — 50-move rule v2 (REJECTED, 46%, −29 — closed at blitz TC).** The
+diagnosed TT pollution was engineered out (store guard at hm>80) and it
+still lost: the guard discards useful long-endgame entries, and hm≥100
+rarely bites at 0.3s/move. Two mechanisms, two failures.
+
+**Session 18 net: +29, and an honest capacity note.** The last ten gates
+produced +29 net — the standard-ideas backlog is harvested. Remaining
+marginal value: periodic pooled anchors, flywheel re-spins after eval
+changes (~+5–10 each), longer-TC re-tests of near-misses, and product/GUI
+work (not Elo). The loop's yield curve is itself now a measured result.
+
+---
+
 ## 2026-07-18 — Session 17: the flywheel compounds
 
 **exp1 — flywheel iteration 2 (ACCEPTED, 53%, +23).** 98,464 quiet samples
