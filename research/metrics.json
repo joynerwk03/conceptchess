@@ -718,5 +718,21 @@
       "time_to_d10_cttd": 1.26
     },
     "explanation": "Attack unification kept (byte-identical, structural, flat speed). C pawn cache: values still 0.000000 vs Python but a 1-ulp summation reorder shifted 4 nodes for ~1% -- dropped. CONCLUSION: exact-eval speed is tapped out; the eval's cost is the measured price of the faithfulness invariant. Future speed must come from search shape or hardware, not eval shortcuts."
+  },
+  {
+    "experiment": 50,
+    "date": "2026-07-17",
+    "rev": "HEAD",
+    "title": "Session 16 exp4: Texel-XL outcome tuning at 59k samples",
+    "hypothesis": "Data scale was the blocker: at ~60k clean samples, outcome tuning beats hand priors.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "gate_score_pct": 58,
+      "elo_vs_head": 53,
+      "samples": 59189,
+      "loss_before": 0.095086,
+      "loss_after": 0.093513
+    },
+    "explanation": "+27 =15 -18 (58%, +53). Vindicates the method after -130 (wrong target), -29 (confounded labels), +6 (too little data). Anchor-chain ~2848; project chain ~2983."
   }
 ]
