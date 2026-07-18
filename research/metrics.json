@@ -794,5 +794,20 @@
       "elo_chain_est": 2778
     },
     "explanation": "Single 30-game anchors bounce \u00b1140 (2654->2685->2743->2606) while the gate chain climbs monotonically. Pooled 60-game fit adopted as the reported point; chain remains the sensitive instrument."
+  },
+  {
+    "experiment": 55,
+    "date": "2026-07-18",
+    "rev": "HEAD",
+    "title": "Session 18: deep-TC robustness check (1s/move, current vs s10 start)",
+    "hypothesis": "The s10-17 gains (all gated at 0.3s/move) hold at the coach's real time control.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "score_pct": 78,
+      "elo_at_1s": 223,
+      "elo_chain_blitz": 336,
+      "games": 30
+    },
+    "explanation": "+19 =9 -2 (78%, +223, 95% +97..+451) at 1.0s/move over UHO starts. The run's improvements are NOT blitz-overfit; the blitz-chain's +336 compresses to +223 at depth (normal TC scaling). The product engine is ~2 classes stronger than 4 days ago at its real operating point."
   }
 ]
