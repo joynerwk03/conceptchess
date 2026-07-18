@@ -809,5 +809,18 @@
       "games": 30
     },
     "explanation": "+19 =9 -2 (78%, +223, 95% +97..+451) at 1.0s/move over UHO starts. The run's improvements are NOT blitz-overfit; the blitz-chain's +336 compresses to +223 at depth (normal TC scaling). The product engine is ~2 classes stronger than 4 days ago at its real operating point."
+  },
+  {
+    "experiment": 56,
+    "date": "2026-07-18",
+    "rev": "HEAD",
+    "title": "Session 18 exp1: mop-up extension of mating drive",
+    "hypothesis": "The drive gradient generalizes from bare-king to pawnless-and-dominated defenders (half strength).",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "gate_score_pct": 54,
+      "elo_vs_head": 29
+    },
+    "explanation": "+25 =15 -20 (54%, +29, 95% -59..+121). Concrete-goal gradient family 4-for-5. Chain crosses 2800 (~2807)."
   }
 ]
