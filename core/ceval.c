@@ -229,16 +229,27 @@ double eval_core(U64 bb[2][6], int side){
         }
     }
 
-    /* mating drive */
+    /* mating drive (+ s18 mop-up: pawnless defender dominated by >= a rook
+     * gets the drive gradient at half strength — KR vs KB, KQ vs KN, ...) */
     for(int win=0; win<2; win++){
         int lose=!win, sign=win==WHITE?1:-1;
-        U64 lm=bb[lose][PAWN]|bb[lose][KNIGHT]|bb[lose][BISHOP]|bb[lose][ROOK]|bb[lose][QUEEN];
-        if(lm) continue;
-        int mating=(bb[win][QUEEN]||bb[win][ROOK])||(popcnt(bb[win][KNIGHT])+popcnt(bb[win][BISHOP])>=2);
-        if(!mating) continue;
+        U64 lp=bb[lose][PAWN];
+        U64 lpieces=bb[lose][KNIGHT]|bb[lose][BISHOP]|bb[lose][ROOK]|bb[lose][QUEEN];
+        int full=0, mopup=0;
+        if(!lp && !lpieces)
+            full=(bb[win][QUEEN]||bb[win][ROOK])||(popcnt(bb[win][KNIGHT])+popcnt(bb[win][BISHOP])>=2);
+        else if(!lp){
+            int lmat=320*popcnt(bb[lose][KNIGHT])+330*popcnt(bb[lose][BISHOP])
+                    +500*popcnt(bb[lose][ROOK])+900*popcnt(bb[lose][QUEEN]);
+            int wmat=320*popcnt(bb[win][KNIGHT])+330*popcnt(bb[win][BISHOP])
+                    +500*popcnt(bb[win][ROOK])+900*popcnt(bb[win][QUEEN]);
+            mopup=(wmat-lmat)>=500;
+        }
+        if(!full && !mopup) continue;
+        double scale=full?1.0:0.5;
         int lk=lsb(bb[lose][KING]), wk=lsb(bb[win][KING]);
         int md=abs((lk%8)-(wk%8))+abs((lk/8)-(wk/8));
-        s += sign*(W_MATE_DRIVE_CORNER*CMD_TBL[lk] + W_MATE_DRIVE_KING_PROX*(14-md));
+        s += sign*(W_MATE_DRIVE_CORNER*CMD_TBL[lk]*scale + W_MATE_DRIVE_KING_PROX*(14-md)*scale);
     }
 
     return s;

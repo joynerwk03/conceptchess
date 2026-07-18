@@ -37,6 +37,25 @@ def _bare_king(ctx, color):
                 or p[chess.ROOK] or p[chess.QUEEN])
 
 
+_PIECE_CP = {chess.KNIGHT: 320, chess.BISHOP: 330, chess.ROOK: 500,
+             chess.QUEEN: 900}
+
+
+def _mopup_target(ctx, loser):
+    """Pawnless defender that the winner dominates by at least a rook:
+    the mop-up case (KR vs KB, KQ vs KN, ...). The drive gradient applies
+    at half strength — the defender's piece can delay but not save it."""
+    p = ctx.pieces[loser]
+    if p[chess.PAWN]:
+        return False
+    lmat = sum(_PIECE_CP[t] * len(p[t]) for t in _PIECE_CP)
+    if lmat == 0:
+        return False        # bare king: the full-strength branch handles it
+    w = ctx.pieces[not loser]
+    wmat = sum(_PIECE_CP[t] * len(w[t]) for t in _PIECE_CP)
+    return wmat - lmat >= 500
+
+
 class MateDrive:
     name = "mate_drive"
     display_name = "Mating drive"
@@ -46,15 +65,18 @@ class MateDrive:
         for winner, loser, sign, wname in (
                 (chess.WHITE, chess.BLACK, 1, "White"),
                 (chess.BLACK, chess.WHITE, -1, "Black")):
-            if _bare_king(ctx, loser) and _has_mating_material(ctx, winner):
+            full = _bare_king(ctx, loser) and _has_mating_material(ctx, winner)
+            mopup = (not full) and _mopup_target(ctx, loser)
+            if full or mopup:
                 lk = ctx.king_sq[loser]
                 wk = ctx.king_sq[winner]
                 if lk is None or wk is None:
                     return None
+                scale = 1.0 if full else 0.5
                 md = (abs(chess.square_file(lk) - chess.square_file(wk))
                       + abs(chess.square_rank(lk) - chess.square_rank(wk)))
-                corner = W["mate_drive.corner"] * _CMD[lk]
-                kingprox = W["mate_drive.king_prox"] * (14 - md)
+                corner = W["mate_drive.corner"] * _CMD[lk] * scale
+                kingprox = W["mate_drive.king_prox"] * (14 - md) * scale
                 return sign, wname, sign * corner, sign * kingprox
         return None
 
