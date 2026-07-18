@@ -20,8 +20,12 @@ entry reference; add new ideas as they come up.
 
 ## Evaluation accuracy (better judgment per node)
 
-- [x] ~~Tune concept weights via eval-loss vs Stockfish~~ (session 2: ANTI-CORRELATED with
-      strength — see LOG. Next attempt should target move-agreement or direct Elo)
+- [x] ~~Tune concept weights via eval-loss vs Stockfish~~ (s2: anti-correlated) →
+      **SOLVED in s16–17 via Texel outcome tuning at scale**: +53 (59k samples) then
+      +23 (98k flywheel samples). Requirements discovered: outcome target (not
+      eval-MSE), balanced starts (UHO labels are confounded), ≥50k quiet samples,
+      prior-bounded with a hard envelope vs the ORIGINAL hand priors (relative
+      bounds compound across flywheel spins)
 - [x] King safety: attack-unit model (session 2, kept)
 - [x] Passed pawns: blockade detection (s2), king proximity in endgame (s12:
       **+110 marginal Elo, the project's strongest eval change**) —
