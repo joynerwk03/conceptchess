@@ -921,5 +921,21 @@
       "elo_vs_head": -29
     },
     "explanation": "+17 =21 -22 (46%, -29). The static storm bonus rewards premature pawn advances that weaken the attacker's own structure without pieces to follow up -- the classic 'engine pushes pawns' failure; the 12-ply search already values real attacks tactically. Not every gradient wins: this one has no concrete GOAL the search can't already see (unlike king-race/king-pressure, which price outcomes search reaches only deeper). Reverted."
+  },
+  {
+    "experiment": 64,
+    "date": "2026-07-20",
+    "rev": "a16982d",
+    "title": "Session 20: Lazy SMP multithreading \u2014 the plateau breaker",
+    "hypothesis": "The move-choice diagnosis said the gap is search depth; multi-core search buys depth from the idle cores the sequential harness leaves free.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "elo_t4_vs_t1": 140,
+      "t4_pct": 69,
+      "elo_t8_vs_t1": 187,
+      "t8_pct": 75,
+      "cores": 8
+    },
+    "explanation": "Lazy SMP (thread-local search state, shared TT, staggered helper depths). T=4 vs T=1: +34 =15 -11 (69%, +140, CI +52..+250). T=8 vs T=1: +34 =11 -8 (75%, +187, CI +91..+319, SPRT H1 at 53g). Biggest gain since the compiled core; breaks the s19 plateau exactly where the diagnosis pointed. Default 1 thread = byte-identical (coach deterministic); N opt-in via CC_THREADS. Two independent gates confirm -- robust, not winner's curse."
   }
 ]
