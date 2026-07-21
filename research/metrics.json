@@ -937,5 +937,20 @@
       "cores": 8
     },
     "explanation": "Lazy SMP (thread-local search state, shared TT, staggered helper depths). T=4 vs T=1: +34 =15 -11 (69%, +140, CI +52..+250). T=8 vs T=1: +34 =11 -8 (75%, +187, CI +91..+319, SPRT H1 at 53g). Biggest gain since the compiled core; breaks the s19 plateau exactly where the diagnosis pointed. Default 1 thread = byte-identical (coach deterministic); N opt-in via CC_THREADS. Two independent gates confirm -- robust, not winner's curse."
+  },
+  {
+    "experiment": 65,
+    "date": "2026-07-20",
+    "rev": "HEAD",
+    "title": "Session 20 threaded ladder anchor (CC_THREADS=8): 2772",
+    "hypothesis": "The SMP head-to-head gain shows on the absolute SF ladder too.",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "elo_ladder_t8": 2772,
+      "lo": 2633,
+      "hi": 2909,
+      "elo_ladder_t1_pooled": 2665
+    },
+    "explanation": "30 games vs SF 2600/2800/3000 at T=8: 65%/40%/35% -> MLE 2772 (2633-2909), up ~107 from the single-thread pooled ~2665. Compressed vs the +187 head-to-head as the SF ladder always is, but same direction. Current strength: ~2665 single-thread / ~2770 at 8 threads (ladder); higher on the sensitive head-to-head scale."
   }
 ]

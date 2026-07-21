@@ -36,6 +36,7 @@ S15, S15_LO, S15_HI = ANCHORS["session15"]["mle"]
 S16, S16_LO, S16_HI = ANCHORS["session16"]["mle"]
 S17P, S17P_LO, S17P_HI = ANCHORS["session17_pooled"]["mle"]
 S18P, S18P_LO, S18P_HI = ANCHORS["session18_pooled"]["mle"]
+S20, S20_LO, S20_HI = ANCHORS["session20_smp8"]["mle"]
 CHAIN_ERR = 220  # ± for delta-chained points (10-20 game matches)
 
 POINTS = [
@@ -106,6 +107,10 @@ POINTS = [
     # reconciliation adopted (pooled anchors = headline, chain = upper bound)
     {"label": "session 18 — mop-up, deep-TC check (pooled)", "exps": 163,
      "elo": S18P, "lo": S18P_LO, "hi": S18P_HI, "kind": "measured"},
+    # session 20: Lazy SMP multithreading (+140/+187 h2h vs single-thread);
+    # ladder-anchored at 8 threads. Single-threaded default stays ~2665.
+    {"label": "session 20 — Lazy SMP @ 8 threads", "exps": 172,
+     "elo": S20, "lo": S20_LO, "hi": S20_HI, "kind": "measured"},
 ]
 
 
@@ -162,13 +167,14 @@ def build_html():
                        ("session 15", ANCHORS["session15"]),
                        ("session 16", ANCHORS["session16"]),
                        ("session 17 pooled", ANCHORS["session17_pooled"]),
-                       ("session 18 pooled (current)", ANCHORS["session18_pooled"])):
+                       ("session 18 pooled", ANCHORS["session18_pooled"]),
+                       ("session 20 SMP@8 (current)", ANCHORS["session20_smp8"])):
         for opp, (w, d, l) in sorted(data["results"].items()):
             rows += (f"<tr><td>{name}</td><td>Stockfish {opp}</td>"
                      f"<td class='num'>+{w} ={d} −{l}</td>"
                      f"<td class='num'>{100 * (w + 0.5 * d) / (w + d + l):.0f}%</td></tr>")
     HTML_OUT.write_text(TEMPLATE.replace("{{SVG}}", svg).replace("{{ROWS}}", rows)
-                        .replace("{{CUR}}", f"{S18P} (95% {S18P_LO}–{S18P_HI})"))
+                        .replace("{{CUR}}", f"{S20} @8 threads (95% {S20_LO}–{S20_HI}); ~2665 single-thread"))
     print(f"wrote {HTML_OUT}")
 
 
