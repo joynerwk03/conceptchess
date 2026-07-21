@@ -952,5 +952,18 @@
       "elo_ladder_t1_pooled": 2665
     },
     "explanation": "30 games vs SF 2600/2800/3000 at T=8: 65%/40%/35% -> MLE 2772 (2633-2909), up ~107 from the single-thread pooled ~2665. Compressed vs the +187 head-to-head as the SF ladder always is, but same direction. Current strength: ~2665 single-thread / ~2770 at 8 threads (ladder); higher on the sensitive head-to-head scale."
+  },
+  {
+    "experiment": 66,
+    "date": "2026-07-20",
+    "rev": null,
+    "title": "Session 20 exp2: depth-preferred TT replacement under SMP",
+    "hypothesis": "Lazy SMP's N-thread write pressure makes depth-preferred replacement (neutral single-thread in s16) finally pay.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_pct_t8": 49,
+      "elo_vs_head": -6
+    },
+    "explanation": "T=8 depth-preferred vs T=8 always-replace: +18 =23 -19 (49%, -6). Neutral even under 8-thread write pressure -- the 4M-entry TT is large enough relative to ~2M nodes/move that deep entries survive the churn regardless (same root cause as s16/s19). Changed single-thread cttd -4.5% (better cutoffs) but no match gain. Reverted. Lesson: the TT-pressure hypothesis was reasonable but the table is simply oversized for this node budget at any thread count."
   }
 ]
