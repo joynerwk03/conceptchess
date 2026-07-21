@@ -13,3 +13,6 @@ research/books/UHO_Lichess_4852_v1.epd
 research/data/texel*.jsonl
 research/texel_gen*.log
 research/texel_tune*.log
+research/diag_vs_sf.log
+research/mine_quiet.log
+tests/suites/tactics_quiet.epd
