@@ -908,5 +908,18 @@
       "nodes_d10_cttd": 1956546
     },
     "explanation": "+18 =24 -18 (50%, +0, 95% -90..+90). -15% nodes to depth but zero strength: IIR's ordering benefit is a deep-search effect (depth 20+), and at this engine's 10-12 ply the no-TT-move nodes are too rare for the recovered depth to convert. Neutral, reverted. Recoverable-family, but the family rule isn't 'always wins' -- it's 'can win where discards can't'; this one had no headroom to exploit."
+  },
+  {
+    "experiment": 63,
+    "date": "2026-07-20",
+    "rev": null,
+    "title": "Session 19 exp4: pawn storm (attacker pawns at enemy king)",
+    "hypothesis": "Scoring the attacker's advancing pawns near the enemy king (gradient family) adds attacking strength.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_pct": 46,
+      "elo_vs_head": -29
+    },
+    "explanation": "+17 =21 -22 (46%, -29). The static storm bonus rewards premature pawn advances that weaken the attacker's own structure without pieces to follow up -- the classic 'engine pushes pawns' failure; the 12-ply search already values real attacks tactically. Not every gradient wins: this one has no concrete GOAL the search can't already see (unlike king-race/king-pressure, which price outcomes search reaches only deeper). Reverted."
   }
 ]
