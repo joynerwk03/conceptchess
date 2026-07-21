@@ -894,5 +894,19 @@
       "loss_delta_pct": -0.13
     },
     "explanation": "+22 =18 -20 (52%, +12, 95% -78..+102). Loss moved only -0.13% (vs iter-1's -1.7%). +12/52% with a CI spanning zero and negligible loss is noise around the fixed point, NOT a gain -- accepting it would be exactly the winner's-curse accumulation just documented, and the singular false-positive an hour earlier is the cautionary case. Flywheel declared CONVERGED at the iteration-3 weights. Kept iter-3; reverted this spin."
+  },
+  {
+    "experiment": 62,
+    "date": "2026-07-20",
+    "rev": null,
+    "title": "Session 19 exp3: internal iterative reduction (IIR)",
+    "hypothesis": "Reducing a ply when there's no TT move (poor ordering) buys depth cheaply.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_pct": 50,
+      "elo_vs_head": 0,
+      "nodes_d10_cttd": 1956546
+    },
+    "explanation": "+18 =24 -18 (50%, +0, 95% -90..+90). -15% nodes to depth but zero strength: IIR's ordering benefit is a deep-search effect (depth 20+), and at this engine's 10-12 ply the no-TT-move nodes are too rare for the recovered depth to convert. Neutral, reverted. Recoverable-family, but the family rule isn't 'always wins' -- it's 'can win where discards can't'; this one had no headroom to exploit."
   }
 ]
