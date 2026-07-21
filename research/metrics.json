@@ -880,5 +880,19 @@
       "games_1s": 80
     },
     "explanation": "0.3s: 49% (-6, 60g). 1s batch A: 60% (+70, 40g) -- looked like a depth-scaling win. Confirmation batch B: 44% (-44, 40g). POOLED 1s: +27 =29 -24 = 52% over 80g, neutral. Batch A was small-sample noise; the confirmation batch (run precisely because A's CI touched zero) caught a would-be false accept. Methodology lesson reinforced: 40-game 1s batches carry ~+-150 Elo; never accept a TC-dependent claim on one batch. Singular ext is neutral at both TCs for this shallow-search engine. Reverted."
+  },
+  {
+    "experiment": 61,
+    "date": "2026-07-20",
+    "rev": null,
+    "title": "Session 19 exp2: flywheel re-spin over mop-up eval (iteration 4)",
+    "hypothesis": "Re-spinning after the s18 mop-up eval change extracts more.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_pct": 52,
+      "elo_vs_head": 12,
+      "loss_delta_pct": -0.13
+    },
+    "explanation": "+22 =18 -20 (52%, +12, 95% -78..+102). Loss moved only -0.13% (vs iter-1's -1.7%). +12/52% with a CI spanning zero and negligible loss is noise around the fixed point, NOT a gain -- accepting it would be exactly the winner's-curse accumulation just documented, and the singular false-positive an hour earlier is the cautionary case. Flywheel declared CONVERGED at the iteration-3 weights. Kept iter-3; reverted this spin."
   }
 ]
