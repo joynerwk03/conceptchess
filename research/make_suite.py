@@ -44,7 +44,19 @@ def cp(score, mate_value=10_000):
     return score.score(mate_score=mate_value)
 
 
-def mine(count, depth, gap, min_eval, max_eval, seed):
+def _is_quiet(board, move):
+    """Best move is positional, not a capture/promotion/check — these are the
+    tactics the capture-heavy v1/v2 suites miss, and where a shallow searcher
+    is most likely to regress."""
+    if board.is_capture(move) or move.promotion:
+        return False
+    board.push(move)
+    chk = board.is_check()
+    board.pop()
+    return not chk
+
+
+def mine(count, depth, gap, min_eval, max_eval, seed, quiet_only=False):
     if not STOCKFISH:
         sys.exit("stockfish not found on PATH")
     rng = random.Random(seed)
@@ -69,6 +81,8 @@ def mine(count, depth, gap, min_eval, max_eval, seed):
                 continue
             if b - s < gap:
                 continue
+            if quiet_only and not _is_quiet(board, move):
+                continue
             epd = board.epd(bm=move)
             found.append(epd)
             print(f"[{len(found)}/{count}] {epd}   (best {b:+d} vs second {s:+d})")
@@ -88,10 +102,13 @@ def main():
     p.add_argument("--max-eval", type=int, default=3000,
                    help="skip already-totally-won positions")
     p.add_argument("--seed", type=int, default=1)
+    p.add_argument("--quiet-only", action="store_true",
+                   help="require the best move to be quiet (no capture/promo/check)")
     p.add_argument("--out", required=True)
     args = p.parse_args()
 
-    epds = mine(args.count, args.depth, args.gap, args.min_eval, args.max_eval, args.seed)
+    epds = mine(args.count, args.depth, args.gap, args.min_eval, args.max_eval,
+                args.seed, args.quiet_only)
     with open(args.out, "w") as f:
         f.write("\n".join(epds) + "\n")
     print(f"wrote {len(epds)} positions to {args.out}")
