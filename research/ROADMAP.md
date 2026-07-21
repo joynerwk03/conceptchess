@@ -3,14 +3,15 @@
 Hypothesis backlog, roughly ordered by expected value. Check off with a LOG
 entry reference; add new ideas as they come up.
 
-> **Status (s19, 2026-07-20): strength has plateaued at ~2650–2700**, confirmed
-> four ways (diverse gated experiments all neutral, flywheel converged,
-> move-choice diagnosis shows the eval agrees with SF-16 on 78% of moves so the
-> gap is search DEPTH not eval, and bigger TT/eval-hash buy no depth). More Elo
-> requires leaving the single-hypothesis loop (faster hardware/TC, a faster
-> interpretable eval, or opaque eval which is out of scope). Highest-value work
-> is now product/coaching + content. Use `research/diagnose.py` to target any
-> future concept idea instead of guessing.
+> **Status (s20, 2026-07-20): SMP broke the single-threaded plateau.** s19
+> established (four ways) that single-threaded strength had plateaued and the
+> gap to Stockfish was search DEPTH, not eval. s20 acted on that: **Lazy SMP
+> multithreading gained +140 (4 cores) / +187 (8 cores)** — the biggest jump
+> since the compiled core. The eval-concept space and single-threaded search
+> remain harvested (`diagnose.py` confirms the eval agrees with SF-16 on 78% of
+> moves), so future *eval* work needs the diagnosis to target it; the live
+> frontier is now parallel-search quality (SMP tuning: thread count, helper
+> diversity, TT depth-preferred sharing) and, as ever, product/coaching.
 
 ## Speed (deeper search = biggest strength lever in pure Python)
 
@@ -60,7 +61,11 @@ entry reference; add new ideas as they come up.
 - [x] Repetition detection actually works now (s12: the port had only ever
       scanned opposite-side path entries — dead since s9; fix gated +47)
 - [ ] Aspiration windows, third attempt — only after root scores prove stable at C-core depths (failed at depth ~7 twice; the C core reaches 10–12 where swings may be smaller)
-- [ ] Singular / TT-move extensions
+- [x] Lazy SMP multithreading (s20: +140/+187 at 4/8 cores — the plateau breaker)
+- [ ] SMP tuning: helper diversity beyond staggered depth, depth-preferred TT
+      replacement (helps under multi-thread write pressure), thread-count auto-detect
+- [x] ~~Singular / TT-move extensions~~ (s19: neutral both TCs; a 40-game 1s
+      false-positive was caught by a confirmation batch)
 - [ ] Repetition-aware TT (avoid TT cutoffs masking repetition draws)
 - [ ] Better time management (spend more on unstable root evals)
 
