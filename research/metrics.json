@@ -965,5 +965,19 @@
       "elo_vs_head": -6
     },
     "explanation": "T=8 depth-preferred vs T=8 always-replace: +18 =23 -19 (49%, -6). Neutral even under 8-thread write pressure -- the 4M-entry TT is large enough relative to ~2M nodes/move that deep entries survive the churn regardless (same root cause as s16/s19). Changed single-thread cttd -4.5% (better cutoffs) but no match gain. Reverted. Lesson: the TT-pressure hypothesis was reasonable but the table is simply oversized for this node budget at any thread count."
+  },
+  {
+    "experiment": 67,
+    "date": "2026-07-20",
+    "rev": "HEAD",
+    "title": "Session 20 exp3: SMP validation at 1s/move (product TC)",
+    "hypothesis": "The SMP gain holds at the coach's real operating point (>=1s).",
+    "verdict": "ACCEPTED",
+    "metrics": {
+      "gate_pct_1s": 59,
+      "elo_smp_1s": 61,
+      "elo_smp_0p3s": 187
+    },
+    "explanation": "T=8 vs pre-SMP T=1 at 1.0s: +13 =21 -6 (59%, +61, 95% -45..+182). Net positive at the product TC (13W vs 6L), but smaller than +187 at 0.3s -- expected: each extra ply is worth less at deeper base search, so a fixed parallel speedup yields fewer Elo at longer TC. SMP is beneficial at both TCs; the honest range is ~+60 (1s) to ~+150-190 (0.3s)."
   }
 ]

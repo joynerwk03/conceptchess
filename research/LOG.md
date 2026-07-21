@@ -22,6 +22,15 @@ core (+382), and it lands exactly where the diagnosis pointed. The plateau
 was real *for single-threaded search*; it was not the ceiling of the
 architecture.
 
+**TC scaling (validation):** T=8 vs single-thread at **1.0s/move** (the
+coach's real operating point): **+13 =21 −6 (59%), +61 Elo**. Net positive at
+the product TC, but smaller than +187 at 0.3s — expected, since each extra
+ply is worth less at deeper base search, so a fixed parallel speedup converts
+to fewer Elo at longer TC. Honest range: ~+60 (1s) to ~+150–190 (0.3s).
+Follow-up: depth-preferred TT replacement under 8-thread write pressure gated
+neutral (49%) — the 4M-entry table is oversized for ~2M nodes/move at any
+thread count.
+
 **Design:** default is **1 thread = byte-identical** (cttd node count
 unchanged), so the coach GUI stays deterministic and converts basic mates
 reliably; N is opt-in via `CC_THREADS`. Known tradeoff, and why the default
