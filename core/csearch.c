@@ -8,6 +8,20 @@
  */
 #include <time.h>
 #include <math.h>
+#include <pthread.h>
+
+/* Lazy SMP: N threads search the same root sharing one transposition table.
+ * Each thread keeps its own search state (killers/history/path/nodes) in
+ * thread-local storage; only the TT and eval hash are shared. Helper threads
+ * diversify by starting iterative deepening at staggered depths, so they fill
+ * the shared TT with entries the main thread reuses to go deeper in the same
+ * wall-clock budget. TT/eval-hash writes race, which Lazy SMP tolerates (the
+ * 64-bit key check rejects torn entries; rare torn scores self-correct).
+ * Thread count is set via c_set_threads() (default 1 = exact old behavior). */
+#define MAX_THREADS 8
+static int g_threads = 1;
+static volatile int g_stop = 0;
+void c_set_threads(int n){ g_threads = n<1?1 : (n>MAX_THREADS?MAX_THREADS:n); }
 
 #define S_MATE 100000
 #define S_MATE_TH 90000
@@ -56,7 +70,7 @@ typedef struct {
     U64 path[4096];
     int path_len;
 } Search;
-static Search SS;
+static _Thread_local Search SS;   /* per-thread (Lazy SMP); TT/EH stay shared */
 #define PATH_CAP ((int)(sizeof(SS.path)/sizeof(SS.path[0])))
 
 static double now_sec(void){ struct timespec ts; clock_gettime(CLOCK_MONOTONIC,&ts);
@@ -179,7 +193,7 @@ static int eval_stm(Board *b){
 
 static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
     SS.nodes++;
-    if(!(SS.nodes&2047) && now_sec()>SS.stop_time){ SS.stopped=1; return 0; }
+    if(!(SS.nodes&2047) && (g_stop || now_sec()>SS.stop_time)){ SS.stopped=1; return 0; }
     int checked=in_check(b,b->side);
     if(checked){
         Move mv[256]; int n=gen_legal(b,mv);
@@ -253,7 +267,7 @@ static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
 
 static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev){
     SS.nodes++;
-    if(!(SS.nodes&2047) && now_sec()>SS.stop_time){ SS.stopped=1; return 0; }
+    if(!(SS.nodes&2047) && (g_stop || now_sec()>SS.stop_time)){ SS.stopped=1; return 0; }
     U64 h=b->hash;
     SS.path[SS.path_len++]=h;
     int ret, done=0;
@@ -379,50 +393,29 @@ static void uci_of(Move m, char *out){
     if(pr){ out[4]=" nbrq"[pr]; out[5]=0; } else out[4]=0;
 }
 
-/* Public API: search from startfen after the given space-separated UCI moves.
- * Fills uci_out (>=6 bytes), depth_out, nodes_out; returns score (stm cp). */
-static int g_search_init=0;
-int c_search(const char *startfen, const char *moves, double movetime, int max_depth,
-             char *uci_out, char *second_out, int *depth_out, long *nodes_out){
-    if(max_depth<=0) max_depth=64;
-    if(!g_init){ init_tables(); g_init=1; }
-    if(!g_search_init){ TT=calloc(TT_SIZE,sizeof(TTEntry)); EH=calloc(EH_SIZE,sizeof(EHEntry)); g_search_init=1; }
-    Board b; if(set_fen(&b,startfen)){ uci_out[0]=0; return 0; }
-    /* replay moves to build the board + repetition history */
+/* One Lazy-SMP worker: runs iterative deepening on a private search state,
+ * sharing TT/eval-hash with the others. Helpers stagger their start depth to
+ * diversify what fills the shared TT. Only the main thread's result is used. */
+typedef struct {
+    Board root;
+    const U64 *ghist; int nghist;   /* game-history hashes to seed SS.path */
+    double start, stop_time, movetime;
+    int max_depth, id, is_main;
+    /* outputs (main thread only) */
+    Move best, second; int score, cd; long nodes;
+} ThreadCtx;
+
+static void run_id(ThreadCtx *tc){
     memset(&SS,0,sizeof(SS));
-    SS.path[SS.path_len++]=b.hash;
-    if(moves && *moves){
-        const char *p=moves;
-        while(*p){
-            while(*p==' ')p++;
-            if(!*p)break;
-            int ff=p[0]-'a', fr=p[1]-'1', tf=p[2]-'a', tr=p[3]-'1';
-            int from=fr*8+ff, to=tr*8+tf, promo=0, flag=0;
-            char pc=p[4];
-            if(pc>='a'&&pc<='z'&&pc!=' '){ promo = pc=='n'?KNIGHT:pc=='b'?BISHOP:pc=='r'?ROOK:pc=='q'?QUEEN:0; p++; }
-            /* infer flags from board */
-            int mover=piece_on(&b,from);
-            if(mover==PAWN){ if(to==b.ep && ((to&7)!=(from&7))) flag=1;
-                else if(abs(tr-fr)==2) flag=3; }
-            if(mover==KING && abs(tf-ff)==2) flag=2;
-            Move m=MK_MOVE(from,to,promo,flag);
-            make(&b,m);
-            if(SS.path_len >= PATH_CAP-(MAXPLY+64)){
-                /* absurdly long game: drop the oldest history (is_rep only
-                 * ever looks back one halfmove-clock window) */
-                memmove(SS.path, SS.path+256, (SS.path_len-256)*sizeof(U64));
-                SS.path_len -= 256;
-            }
-            SS.path[SS.path_len++]=b.hash;
-            p+=4; while(*p&&*p!=' ')p++;
-        }
-    }
-    /* iterative deepening */
-    double start=now_sec(); SS.stop_time=start+movetime;
+    for(int i=0;i<tc->nghist;i++) SS.path[SS.path_len++]=tc->ghist[i];
+    SS.stop_time = tc->stop_time;
+    Board b = tc->root;
     Move root[256]; int rn=gen_legal(&b,root);
-    if(!rn){ uci_out[0]=0; return 0; }
+    if(!rn){ if(tc->is_main){ tc->best=0; tc->second=0; tc->score=0; tc->cd=0; tc->nodes=0; } return; }
     Move best=root[0], second=0; int score=0, cd=0;
-    for(int depth=1; depth<=max_depth; depth++){
+    int d0 = tc->is_main ? 1 : (2 + (tc->id % 3));   /* helpers start deeper */
+    for(int depth=d0; depth<=tc->max_depth; depth++){
+        if(g_stop) break;
         int a=-S_MATE, bt=S_MATE, bm_found=0; Move bm=0, sm=0; int bs=-S_MATE-1, ss=-S_MATE-1;
         order(&b,root,rn,best,0,0);
         for(int i=0;i<rn;i++){
@@ -438,20 +431,79 @@ int c_search(const char *startfen, const char *moves, double movetime, int max_d
         }
         if(SS.stopped) break;
         if(bm_found){ best=bm; score=bs; cd=depth; second=sm;
-            /* store the root entry so c_pv can extract the line */
-            U64 rh=b.hash;
-            TTEntry *re=&TT[rh&TT_MASK];
-            re->key=rh; re->depth=depth; re->flag=TT_EXACTF; re->score=score; re->move=best;
-            /* move best to front for next iteration */
+            if(tc->is_main){   /* only main writes the root entry c_pv reads */
+                U64 rh=b.hash; TTEntry *re=&TT[rh&TT_MASK];
+                re->key=rh; re->depth=depth; re->flag=TT_EXACTF; re->score=score; re->move=best;
+            }
             for(int i=0;i<rn;i++) if(root[i]==best){ Move t=root[i]; for(int j=i;j>0;j--)root[j]=root[j-1]; root[0]=t; break; } }
         if(score>S_MATE_TH||score<-S_MATE_TH) break;
-        if(now_sec()-start > movetime*0.5) break;
+        if(now_sec()-tc->start > tc->movetime*0.5) break;
     }
+    if(tc->is_main){
+        tc->best=best; tc->second=second; tc->score=score; tc->cd=cd; tc->nodes=SS.nodes;
+        g_stop=1;   /* tell helpers to wind down */
+    }
+}
+
+static void* thread_entry(void* arg){ run_id((ThreadCtx*)arg); return NULL; }
+
+/* Public API: search from startfen after the given space-separated UCI moves.
+ * Fills uci_out (>=6 bytes), depth_out, nodes_out; returns score (stm cp). */
+static int g_search_init=0;
+int c_search(const char *startfen, const char *moves, double movetime, int max_depth,
+             char *uci_out, char *second_out, int *depth_out, long *nodes_out){
+    if(max_depth<=0) max_depth=64;
+    if(!g_init){ init_tables(); g_init=1; }
+    if(!g_search_init){ TT=calloc(TT_SIZE,sizeof(TTEntry)); EH=calloc(EH_SIZE,sizeof(EHEntry)); g_search_init=1; }
+    Board b; if(set_fen(&b,startfen)){ uci_out[0]=0; return 0; }
+    /* replay moves to build the board + game-history hashes (to seed each
+     * worker's repetition path) */
+    static _Thread_local U64 ghist[4096]; int nghist=0;
+    ghist[nghist++]=b.hash;
+    if(moves && *moves){
+        const char *p=moves;
+        while(*p){
+            while(*p==' ')p++;
+            if(!*p)break;
+            int ff=p[0]-'a', fr=p[1]-'1', tf=p[2]-'a', tr=p[3]-'1';
+            int from=fr*8+ff, to=tr*8+tf, promo=0, flag=0;
+            char pc=p[4];
+            if(pc>='a'&&pc<='z'&&pc!=' '){ promo = pc=='n'?KNIGHT:pc=='b'?BISHOP:pc=='r'?ROOK:pc=='q'?QUEEN:0; p++; }
+            int mover=piece_on(&b,from);
+            if(mover==PAWN){ if(to==b.ep && ((to&7)!=(from&7))) flag=1;
+                else if(abs(tr-fr)==2) flag=3; }
+            if(mover==KING && abs(tf-ff)==2) flag=2;
+            Move m=MK_MOVE(from,to,promo,flag);
+            make(&b,m);
+            if(nghist >= (int)(sizeof(ghist)/sizeof(ghist[0]))-4){
+                memmove(ghist, ghist+256, (nghist-256)*sizeof(U64)); nghist-=256;
+            }
+            ghist[nghist++]=b.hash;
+            p+=4; while(*p&&*p!=' ')p++;
+        }
+    }
+    double start=now_sec();
+    int T = g_threads;
+    g_stop = 0;
+    ThreadCtx ctx[MAX_THREADS];
+    pthread_t th[MAX_THREADS];
+    for(int k=0;k<T;k++){
+        ctx[k].root=b; ctx[k].ghist=ghist; ctx[k].nghist=nghist;
+        ctx[k].start=start; ctx[k].stop_time=start+movetime; ctx[k].movetime=movetime;
+        ctx[k].max_depth=max_depth; ctx[k].id=k; ctx[k].is_main=(k==0);
+        ctx[k].best=0; ctx[k].second=0; ctx[k].score=0; ctx[k].cd=0; ctx[k].nodes=0;
+    }
+    for(int k=1;k<T;k++) pthread_create(&th[k], NULL, thread_entry, &ctx[k]);
+    run_id(&ctx[0]);                       /* main thread runs in-place */
+    for(int k=1;k<T;k++) pthread_join(th[k], NULL);
+
+    Move best=ctx[0].best;
+    if(!best){ uci_out[0]=0; return 0; }
     uci_of(best,uci_out);
-    if(second_out){ if(second) uci_of(second,second_out); else second_out[0]=0; }
-    if(depth_out)*depth_out=cd;
-    if(nodes_out)*nodes_out=SS.nodes;
-    return score;
+    if(second_out){ if(ctx[0].second) uci_of(ctx[0].second,second_out); else second_out[0]=0; }
+    if(depth_out)*depth_out=ctx[0].cd;
+    if(nodes_out)*nodes_out=ctx[0].nodes;
+    return ctx[0].score;
 }
 
 /* Principal variation from the TT, as space-separated UCI, into pv_out. */

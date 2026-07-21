@@ -40,6 +40,15 @@ def _load():
         lib.c_verify_hash.restype = ctypes.c_long
         lib.c_verify_hash.argtypes = [ctypes.c_char_p, ctypes.c_int]
         lib.c_verify_hash_fail_fen.restype = ctypes.c_char_p
+        # Lazy-SMP thread count (default 1 = single-threaded, byte-identical).
+        # Set via the CC_THREADS env var so match gates can pit N threads vs 1.
+        if hasattr(lib, "c_set_threads"):
+            lib.c_set_threads.argtypes = [ctypes.c_int]
+            import os
+            try:
+                lib.c_set_threads(int(os.environ.get("CC_THREADS", "1")))
+            except ValueError:
+                pass
         _lib = lib
         HAS_CORE = True
     except Exception:
