@@ -979,5 +979,21 @@
       "elo_smp_0p3s": 187
     },
     "explanation": "T=8 vs pre-SMP T=1 at 1.0s: +13 =21 -6 (59%, +61, 95% -45..+182). Net positive at the product TC (13W vs 6L), but smaller than +187 at 0.3s -- expected: each extra ply is worth less at deeper base search, so a fixed parallel speedup yields fewer Elo at longer TC. SMP is beneficial at both TCs; the honest range is ~+60 (1s) to ~+150-190 (0.3s)."
+  },
+  {
+    "experiment": 68,
+    "date": "2026-07-20",
+    "rev": null,
+    "title": "Session 20 exp4: bigger TT (25-bit) under SMP write pressure",
+    "hypothesis": "8-thread SMP puts ~16M writes/move into the 4M-entry TT; a 32M-entry table should retain better and gain Elo (unlike the neutral single-thread s19 test).",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_a_pct": 55,
+      "gate_b_pct": 48,
+      "pooled_pct": 51,
+      "games": 120,
+      "pooled_elo": 9
+    },
+    "explanation": "T=8 25-bit TT vs 22-bit: batch A +18=30-12 (55%,+35), batch B +18=21-21 (48%,-17). POOLED 36W 51D 33L = 51% over 120 games (~+9), neutral. Batch A was noise; the confirmation batch caught it -- second winner's-curse false positive averted this session (after singular ext). Even under 8x write pressure the 4M TT is sufficient; reverted (reclaims ~768MB). The mechanism was plausible, the data said no."
   }
 ]
