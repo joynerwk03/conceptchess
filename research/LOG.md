@@ -1,5 +1,46 @@
 ---
 
+## 2026-07-20 — Session 19: the plateau, established four ways
+
+Six experiments, zero accepts — but the session's product is a rigorously
+triangulated conclusion: **the engine is at the genuine ceiling of this
+architecture (interpretable concept-sum eval + alpha-beta) at this hardware
+and time control.** Four independent lines of evidence:
+
+1. **Diverse gated experiments all neutral/negative.** Singular extensions
+   (49% blitz; a 40-game 1s batch showed +70 but the confirmation batch
+   regressed it to +13/52% over 80 — a caught false positive), flywheel
+   re-spin iteration 4 (+12/52%, declined as noise vs the winner's curse),
+   internal iterative reduction (50%, −15% nodes but no strength — its
+   ordering benefit needs depth 20+), pawn storm (46%, unsound pushes the
+   search already handles).
+
+2. **The tuning flywheel converged.** Spin gains +53 → +23 → +12 → noise;
+   iteration 4 declined.
+
+3. **Move-choice diagnosis (research/diagnose.py, new).** On 50 realistic
+   Texel positions vs Stockfish-16: **the engine's move agrees with SF on
+   39/50 (78%).** Of 11 disagreements, material (+420cp, 2 pos, huge SF
+   gaps) dominates — these are *tactical/search-depth* misses, not eval
+   gaps. The leading *eval* culprit, threats, is only +60cp over 4 positions
+   (noise-level, and already Texel-tuned). **The evaluation is well-
+   calibrated; the gap to Stockfish is search depth, not missing concepts.**
+
+4. **Memory isn't the bottleneck.** Bumping TT 22→23 bits and the eval hash
+   20→23 bits left cttd node counts and time flat — no collision pressure at
+   ~2M nodes/move, so depth can't be bought from bigger tables.
+
+**Implication.** More Elo now requires leaving the single-hypothesis loop:
+faster hardware / longer TC (not code), a fundamentally faster interpretable
+eval (bounded below by the faithfulness tax, s16), or an opaque eval
+(NNUE — out of scope by the interpretability mission). The autoresearch loop
+for *strength* has converged. Remaining high-value work is product/coaching,
+content (the research record is strong), and the reusable diagnosis harness
+for any future concept ideas. New infra kept this session: `diagnose.py`
+(concept-attribution) and `make_suite --quiet-only`.
+
+---
+
 ## 2026-07-18 — Session 18: deep-TC validation + the backlog thins
 
 **Deep-TC robustness check: +223 Elo at 1s/move (78%, +19 =9 −2)** vs the

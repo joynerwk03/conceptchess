@@ -3,6 +3,15 @@
 Hypothesis backlog, roughly ordered by expected value. Check off with a LOG
 entry reference; add new ideas as they come up.
 
+> **Status (s19, 2026-07-20): strength has plateaued at ~2650–2700**, confirmed
+> four ways (diverse gated experiments all neutral, flywheel converged,
+> move-choice diagnosis shows the eval agrees with SF-16 on 78% of moves so the
+> gap is search DEPTH not eval, and bigger TT/eval-hash buy no depth). More Elo
+> requires leaving the single-hypothesis loop (faster hardware/TC, a faster
+> interpretable eval, or opaque eval which is out of scope). Highest-value work
+> is now product/coaching + content. Use `research/diagnose.py` to target any
+> future concept idea instead of guessing.
+
 ## Speed (deeper search = biggest strength lever in pure Python)
 
 - [x] Profile eval + search (`cProfile`); find the top 3 hot spots before optimizing anything
