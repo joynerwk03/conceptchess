@@ -864,5 +864,21 @@
       "elo_chain_est": 2807
     },
     "explanation": "The gap is now persistent and has a known cause: WINNER'S CURSE. Gates accept at >=50%, so accepted deltas are noise-biased upward; summing them into a chain overstates cumulative gain. The pooled anchors (~2650-2680) are the unbiased estimate; the chain is an optimistic upper bound. Both reported going forward, with the anchor as the headline number."
+  },
+  {
+    "experiment": 60,
+    "date": "2026-07-20",
+    "rev": null,
+    "title": "Session 19 exp1: singular extensions (TT-move verification search)",
+    "hypothesis": "Extending a provably-singular TT move a ply adds strength, and being depth-dependent may pay more at longer TC.",
+    "verdict": "REJECTED",
+    "metrics": {
+      "gate_blitz_pct": 49,
+      "elo_blitz": -6,
+      "gate_1s_pooled_pct": 52,
+      "elo_1s_pooled": 13,
+      "games_1s": 80
+    },
+    "explanation": "0.3s: 49% (-6, 60g). 1s batch A: 60% (+70, 40g) -- looked like a depth-scaling win. Confirmation batch B: 44% (-44, 40g). POOLED 1s: +27 =29 -24 = 52% over 80g, neutral. Batch A was small-sample noise; the confirmation batch (run precisely because A's CI touched zero) caught a would-be false accept. Methodology lesson reinforced: 40-game 1s batches carry ~+-150 Elo; never accept a TC-dependent claim on one batch. Singular ext is neutral at both TCs for this shallow-search engine. Reverted."
   }
 ]
