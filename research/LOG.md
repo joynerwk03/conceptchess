@@ -1,5 +1,36 @@
 ---
 
+## 2026-07-20 — Session 20: Lazy SMP breaks the plateau (+140–187 Elo)
+
+The s19 diagnosis said the gap to Stockfish was **search depth, not eval** —
+so the lever is nodes/second, and the biggest untapped source is the seven
+idle cores the sequential match harness leaves free while one side thinks.
+**Lazy SMP** (the big change): N threads search the same root sharing one
+transposition table; each keeps thread-local search state (killers, history,
+path, nodes); helper threads stagger their iterative-deepening start depth so
+they fill the shared TT with entries the main thread reuses to reach +1 ply
+in the same wall-clock budget. TT/eval-hash writes race — tolerated by Lazy
+SMP (the 64-bit key check rejects torn entries; rare torn scores
+self-correct).
+
+**Results (vs the single-threaded engine, 60 UHO games at 0.3s):**
+- T=4: **+34 =15 −11 (69%), +140 Elo** (95% +52..+250)
+- T=8: **+34 =11 −8 (75%), +187 Elo** (95% +91..+319, SPRT H1 at 53 games)
+
+Two independent gates, both decisive — the biggest gain since the compiled C
+core (+382), and it lands exactly where the diagnosis pointed. The plateau
+was real *for single-threaded search*; it was not the ceiling of the
+architecture.
+
+**Design:** default is **1 thread = byte-identical** (cttd node count
+unchanged), so the coach GUI stays deterministic and converts basic mates
+reliably; N is opt-in via `CC_THREADS`. Known tradeoff, and why the default
+is 1: T>1 is nondeterministic and can miss the precise KBN 50-move mate
+(the multi-threaded search occasionally picks a non-converging move). For the
+interpretable coach, determinism wins; for competitive strength, threads win.
+
+---
+
 ## 2026-07-20 — Session 19: the plateau, established four ways
 
 Six experiments, zero accepts — but the session's product is a rigorously

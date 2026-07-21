@@ -44,6 +44,11 @@ The web app is built to teach:
 
 The engine also speaks UCI (`python -m engine.uci`) for your own GUI.
 
+For maximum playing strength, set `CC_THREADS` to your core count — the
+compiled core runs a Lazy-SMP parallel search (~+140–190 Elo on 4–8 cores).
+The default is single-threaded and deterministic, which keeps the coach's
+explanations reproducible.
+
 ## Project layout
 
 | Path | What |
