@@ -399,7 +399,7 @@ static void uci_of(Move m, char *out){
 typedef struct {
     Board root;
     const U64 *ghist; int nghist;   /* game-history hashes to seed SS.path */
-    double start, stop_time, movetime;
+    double start, stop_time, opt_time, max_time;
     int max_depth, id, is_main;
     /* outputs (main thread only) */
     Move best, second; int score, cd; long nodes;
@@ -413,6 +413,7 @@ static void run_id(ThreadCtx *tc){
     Move root[256]; int rn=gen_legal(&b,root);
     if(!rn){ if(tc->is_main){ tc->best=0; tc->second=0; tc->score=0; tc->cd=0; tc->nodes=0; } return; }
     Move best=root[0], second=0; int score=0, cd=0;
+    Move prev_best=0; int prev_score=-S_MATE, stable_streak=0;
     int d0 = tc->is_main ? 1 : (2 + (tc->id % 3));   /* helpers start deeper */
     for(int depth=d0; depth<=tc->max_depth; depth++){
         if(g_stop) break;
@@ -437,7 +438,29 @@ static void run_id(ThreadCtx *tc){
             }
             for(int i=0;i<rn;i++) if(root[i]==best){ Move t=root[i]; for(int j=i;j>0;j--)root[j]=root[j-1]; root[0]=t; break; } }
         if(score>S_MATE_TH||score<-S_MATE_TH) break;
-        if(now_sec()-tc->start > tc->movetime*0.5) break;
+        /* Time management. Fixed movetime (max==opt) keeps the exact old rule.
+         * Clock mode (max>opt) adapts around the optimum budget:
+         *   - falling eval (score dropped vs the previous iteration) is a real
+         *     "we're in trouble, look harder" signal -> spend more;
+         *   - a best move settled for several iterations is easy -> bank time
+         *     for later moves; capped by the hard maximum.
+         * Best-move flip-flopping is NOT used to extend: in flat/quiet
+         * positions the PV oscillates between equal moves — noise, not
+         * difficulty (an early draft extended there and it was backwards). */
+        double soft;
+        if(tc->max_time > tc->opt_time*1.01){
+            int stable = (best==prev_best);
+            stable_streak = stable ? stable_streak+1 : 0;
+            double mult = 1.0;
+            if(depth>=6 && score < prev_score-40) mult = 1.8;   /* falling eval */
+            else if(stable_streak>=3) mult = 0.66;              /* easy, settled */
+            soft = tc->opt_time * 0.5 * mult;
+            if(soft > tc->max_time*0.5) soft = tc->max_time*0.5;
+        } else {
+            soft = tc->opt_time*0.5;
+        }
+        prev_best=best; prev_score=score;
+        if(now_sec()-tc->start > soft) break;
     }
     if(tc->is_main){
         tc->best=best; tc->second=second; tc->score=score; tc->cd=cd; tc->nodes=SS.nodes;
@@ -450,8 +473,9 @@ static void* thread_entry(void* arg){ run_id((ThreadCtx*)arg); return NULL; }
 /* Public API: search from startfen after the given space-separated UCI moves.
  * Fills uci_out (>=6 bytes), depth_out, nodes_out; returns score (stm cp). */
 static int g_search_init=0;
-int c_search(const char *startfen, const char *moves, double movetime, int max_depth,
-             char *uci_out, char *second_out, int *depth_out, long *nodes_out){
+int c_search(const char *startfen, const char *moves, double movetime, double max_time,
+             int max_depth, char *uci_out, char *second_out, int *depth_out, long *nodes_out){
+    if(max_time < movetime) max_time = movetime;   /* max budget >= optimum */
     if(max_depth<=0) max_depth=64;
     if(!g_init){ init_tables(); g_init=1; }
     if(!g_search_init){ TT=calloc(TT_SIZE,sizeof(TTEntry)); EH=calloc(EH_SIZE,sizeof(EHEntry)); g_search_init=1; }
@@ -489,7 +513,8 @@ int c_search(const char *startfen, const char *moves, double movetime, int max_d
     pthread_t th[MAX_THREADS];
     for(int k=0;k<T;k++){
         ctx[k].root=b; ctx[k].ghist=ghist; ctx[k].nghist=nghist;
-        ctx[k].start=start; ctx[k].stop_time=start+movetime; ctx[k].movetime=movetime;
+        ctx[k].start=start; ctx[k].stop_time=start+max_time;
+        ctx[k].opt_time=movetime; ctx[k].max_time=max_time;
         ctx[k].max_depth=max_depth; ctx[k].id=k; ctx[k].is_main=(k==0);
         ctx[k].best=0; ctx[k].second=0; ctx[k].score=0; ctx[k].cd=0; ctx[k].nodes=0;
     }

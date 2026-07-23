@@ -60,17 +60,58 @@ def open_opponent(spec, cwd):
     sys.exit(f"bad opponent spec: {spec}")
 
 
-def play_game(white, black, opening, movetime, max_moves=250):
+def _start_board(opening):
     if isinstance(opening, str):
-        board = chess.Board(opening)      # EPD/FEN start (unbalanced book)
-    else:
-        board = chess.Board()
-        for uci in opening:
-            board.push(chess.Move.from_uci(uci))
+        return chess.Board(opening)       # EPD/FEN start (unbalanced book)
+    board = chess.Board()
+    for uci in opening:
+        board.push(chess.Move.from_uci(uci))
+    return board
+
+
+def play_game(white, black, opening, movetime, max_moves=250):
+    board = _start_board(opening)
     limit = chess.engine.Limit(time=movetime)
     while not board.is_game_over(claim_draw=True) and board.fullmove_number < max_moves:
         engine = white if board.turn == chess.WHITE else black
         result = engine.play(board, limit)
+        if result.move is None:
+            break
+        board.push(result.move)
+    outcome = board.outcome(claim_draw=True)
+    if outcome is None or outcome.winner is None:
+        return 0.5, board
+    return (1.0 if outcome.winner == chess.WHITE else 0.0), board
+
+
+def play_game_clock(white, black, opening, clock, inc, max_moves=250):
+    """Game-clock play: each side gets `clock` seconds + `inc`/move. The harness
+    tracks each clock, decrements by measured wall time, and flags loss on time.
+    This is the only regime where adaptive time management can pay — saving
+    time on easy moves to spend on hard ones."""
+    import time as _time
+    board = _start_board(opening)
+    wc = bc = clock
+    while not board.is_game_over(claim_draw=True) and board.fullmove_number < max_moves:
+        white_to_move = board.turn == chess.WHITE
+        engine = white if white_to_move else black
+        limit = chess.engine.Limit(white_clock=wc, black_clock=bc,
+                                   white_inc=inc, black_inc=inc)
+        t0 = _time.perf_counter()
+        try:
+            result = engine.play(board, limit)
+        except Exception:
+            # engine crashed → loss for the side to move
+            return (0.0 if white_to_move else 1.0), board
+        elapsed = _time.perf_counter() - t0
+        if white_to_move:
+            wc = wc - elapsed + inc
+            if wc < 0:
+                return 0.0, board            # White flagged
+        else:
+            bc = bc - elapsed + inc
+            if bc < 0:
+                return 1.0, board            # Black flagged
         if result.move is None:
             break
         board.push(result.move)
@@ -110,6 +151,11 @@ def main():
     p.add_argument("--sprt", action="store_true",
                    help="stop early via SPRT (H0 elo=0 vs H1 elo=+35)")
     p.add_argument("--sprt-elo1", type=float, default=35.0)
+    p.add_argument("--clock", type=float, default=None,
+                   help="game-clock mode: seconds per side (e.g. 10). Enables "
+                        "adaptive time management; overrides --movetime.")
+    p.add_argument("--inc", type=float, default=0.1,
+                   help="increment per move (seconds) in --clock mode")
     args = p.parse_args()
 
     sprt = None
@@ -134,7 +180,11 @@ def main():
             opening = openings[(args.opening_offset + g // 2) % len(openings)]
             we_are_white = g % 2 == 0
             white, black = (ours, opp) if we_are_white else (opp, ours)
-            white_score, board = play_game(white, black, opening, args.movetime)
+            if args.clock is not None:
+                white_score, board = play_game_clock(white, black, opening,
+                                                     args.clock, args.inc)
+            else:
+                white_score, board = play_game(white, black, opening, args.movetime)
             our_score = white_score if we_are_white else 1 - white_score
             if our_score == 1:
                 wins += 1

@@ -39,14 +39,16 @@ class Engine:
         r.book_name = name
         return r, name
 
-    def best_move(self, board, movetime=1.0, max_depth=64, info_callback=None):
+    def best_move(self, board, movetime=1.0, max_depth=64, info_callback=None,
+                  max_time=None):
         """Search and return a SearchResult (or a book move in the opening)."""
         r, _ = self._book_result(board)
         if r is not None:
             return r
         if self.use_core:
             t = time.perf_counter()
-            move, score, depth, nodes, pv, second = core.search(board, movetime, max_depth)
+            move, score, depth, nodes, pv, second = core.search(board, movetime, max_depth,
+                                                                max_time=max_time)
             r = SearchResult(move=move, score=score, depth=depth, nodes=nodes,
                              time=time.perf_counter() - t, pv=pv)
             r.root_ranking = [move, second] if move else []

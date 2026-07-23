@@ -32,8 +32,9 @@ def _load():
         lib = ctypes.CDLL(str(_LIB))
         lib.c_search.restype = ctypes.c_int
         lib.c_search.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_double,
-                                 ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p,
-                                 ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_long)]
+                                 ctypes.c_double, ctypes.c_int, ctypes.c_char_p,
+                                 ctypes.c_char_p, ctypes.POINTER(ctypes.c_int),
+                                 ctypes.POINTER(ctypes.c_long)]
         lib.c_pv.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
         lib.c_eval.restype = ctypes.c_double
         lib.c_eval.argtypes = [ctypes.c_char_p]
@@ -58,7 +59,7 @@ def _load():
 _load()
 
 
-def search(board, movetime=1.0, max_depth=64):
+def search(board, movetime=1.0, max_depth=64, max_time=None):
     """Return (move, score, depth, nodes, pv, second) using the compiled core.
 
     score is centipawns from the side-to-move's perspective (mate near
@@ -72,6 +73,7 @@ def search(board, movetime=1.0, max_depth=64):
     depth = ctypes.c_int(0)
     nodes = ctypes.c_long(0)
     sc = _lib.c_search(start_fen.encode(), moves.encode(), float(movetime),
+                       float(max_time if max_time is not None else movetime),
                        int(max_depth), out, second, ctypes.byref(depth), ctypes.byref(nodes))
     uci = out.value.decode()
     move = chess.Move.from_uci(uci) if uci else None
