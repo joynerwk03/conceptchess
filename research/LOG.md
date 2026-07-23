@@ -1,5 +1,38 @@
 ---
 
+## 2026-07-23 — Session 21: analysis board (product) + adaptive-time deprioritized
+
+**Direction change (from William):** for this tool — primarily a *learning*
+aid people run at long/indefinite think times — adaptive time management is
+low-value (it only pays under strict clocks nobody analyzes with). Deprioritized
+as a strength lever. The strength focus going forward is improvements **more
+general than time management** (search/eval that help at any TC). The in-flight
+adaptive-vs-naive game-clock gate (T=1, 10s+0.1) was left running purely for the
+record; partial ~56% (18.5/33), SPRT never tripped — inconclusive and not built on.
+
+**Product (the session's real deliverable): an analysis board, now the default
+view of the web app.** Set up any position (free moves for either side, or paste
+a FEN) and the engine thinks indefinitely, depth climbing live with the eval,
+principal variation, and recommendation arrows (best move + runner-up) refining
+in place. Options: opening-book toggle, board flip, reset, undo, arrows on/off,
+insights overlay. Play-vs-engine (the old coach) moves under a header toggle.
+
+- **Backend:** new `/api/think` endpoint. Live-deepening with **no streaming
+  machinery** — the client calls repeatedly with an increasing `max_depth`; the
+  C core's TT persists across calls, so re-searching shallow depths is near-free
+  and each call effectively adds one ply. Per-call `movetime` is only a safety
+  ceiling. Returns White-perspective score, PV (SAN), best + runner-up root moves
+  (for the two arrows), node count, and a forced-mate flag. Book-aware.
+- **Interpretability intact:** the arrows/score come from the same C search; the
+  concept breakdown beside the board is the same faithful eval. No engine change,
+  so single-threaded determinism and the C==Python invariant are untouched.
+
+**Verdict:** ACCEPTED (product feature; no engine/eval change, no strength
+impact; `/api/think` verified across depth ladder, book, and mate-in-1;
+frontend passes `node --check`).
+
+---
+
 ## 2026-07-20 — Session 20: Lazy SMP breaks the plateau (+140–187 Elo)
 
 The s19 diagnosis said the gap to Stockfish was **search depth, not eval** —

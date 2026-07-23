@@ -111,12 +111,28 @@
   .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px; color:var(--muted); margin-top:8px; }
   .legend span { display:inline-flex; align-items:center; gap:5px; }
   .swatch { width:11px; height:11px; border-radius:3px; display:inline-block; }
+  .modeswitch { margin-left:auto; display:flex; gap:0; border:1px solid var(--line);
+    border-radius:8px; overflow:hidden; }
+  .modebtn { background:none; border:none; border-radius:0; color:var(--muted); padding:6px 14px;
+    font-size:12.5px; font-weight:600; }
+  .modebtn.active { background:var(--accent); color:#fff; }
+  .board-wrap { position:relative; }
+  .arrows { position:absolute; inset:0; width:512px; height:512px; pointer-events:none; z-index:4; }
+  #fenInput { background:var(--panel2); color:var(--text); border:1px solid var(--line);
+    border-radius:7px; padding:7px 10px; font-size:12px; width:150px;
+    font-family:ui-monospace,Menlo,monospace; }
+  .depthchip { font-variant-numeric:tabular-nums; }
+  .adepth { color:var(--accent); font-weight:600; }
 </style>
 </head>
 <body>
 <header>
   <h1>ConceptChess</h1>
   <span>a chess coach that shows you <em>why</em> — every number is a real evaluation</span>
+  <div class="modeswitch">
+    <button id="modeAnalysis" class="modebtn active">Analysis</button>
+    <button id="modePlay" class="modebtn">Play vs engine</button>
+  </div>
 </header>
 <div class="layout">
   <div class="board-col">
@@ -125,8 +141,22 @@
       <div class="white-part" id="evalFill" style="height:50%"></div>
     </div>
     <div>
-      <div class="board" id="board"></div>
-      <div class="controls">
+      <div class="board-wrap">
+        <div class="board" id="board"></div>
+        <svg class="arrows" id="arrows" viewBox="0 0 512 512"></svg>
+      </div>
+      <div class="controls" id="analysisControls">
+        <button id="analyzeBtn">▶ Analyze</button>
+        <button id="flipBtnA">Flip</button>
+        <button id="undoBtnA">Undo</button>
+        <button id="resetBtnA">Reset</button>
+        <span class="toggle on" id="arrowToggle">➤ Arrows</span>
+        <span class="toggle on" id="insightToggleA">💡 Insights</span>
+        <span class="toggle" id="bookToggle">📖 Book</span>
+        <input id="fenInput" placeholder="Paste FEN…">
+        <button id="fenLoad">Load</button>
+      </div>
+      <div class="controls" id="playControls" style="display:none">
         <button id="newWhite">New game (White)</button>
         <button id="newBlack">Black</button>
         <button id="undoBtn">Undo</button>
@@ -160,15 +190,23 @@
     </div>
     <div class="tabwrap">
       <div id="tab-analysis" class="tab show">
-        <div id="yourmove" class="yourmove"></div>
-        <div class="bigscore" id="score">+0.00</div>
-        <div class="meta" id="meta">Make a move — I'll coach it, then explain my reply.</div>
-        <div class="why" id="why" style="display:none"></div>
-        <h3 class="sec">Expected line</h3>
-        <div class="pv" id="pv">—</div>
-        <div id="altwrap" style="display:none">
-          <h3 class="sec">Considered alternative</h3>
-          <div class="pv" id="altpv">—</div>
+        <div id="analysisInfo">
+          <div class="bigscore" id="aScore">+0.00</div>
+          <div class="meta" id="aMeta">Set up a position and press Analyze — the engine thinks as long as you let it.</div>
+          <h3 class="sec">Best line <span id="aDepth" class="adepth depthchip" style="text-transform:none"></span></h3>
+          <div class="pv" id="aPv">—</div>
+        </div>
+        <div id="playInfo" style="display:none">
+          <div id="yourmove" class="yourmove"></div>
+          <div class="bigscore" id="score">+0.00</div>
+          <div class="meta" id="meta">Make a move — I'll coach it, then explain my reply.</div>
+          <div class="why" id="why" style="display:none"></div>
+          <h3 class="sec">Expected line</h3>
+          <div class="pv" id="pv">—</div>
+          <div id="altwrap" style="display:none">
+            <h3 class="sec">Considered alternative</h3>
+            <div class="pv" id="altpv">—</div>
+          </div>
         </div>
         <h3 class="sec">Evaluation breakdown — <span id="cScope" style="text-transform:none">current position</span></h3>
         <div class="meta" style="margin:0 0 6px">Positive favors White. Click a row for detail; open Concepts to learn each one.</div>
@@ -205,7 +243,9 @@ const GLYPHS={p:"♟",n:"♞",b:"♝",r:"♜",q:"♛",k:"♚"};
 const state={ startFen:null, moves:[], legal:[], fen:null, turn:"white", playerColor:"white",
   flipped:false, selected:null, lastMove:null, thinking:false, status:"ongoing", inCheck:false,
   sanHistory:[], evalPoints:[], viewPly:null, viewFen:null,
-  insights:true, coach:true, overlays:{}, candMove:null, review:null };
+  insights:true, coach:true, overlays:{}, candMove:null, review:null,
+  mode:"analysis", analyzing:false, analyzeToken:0, arrows:true, useBook:false,
+  bestArrow:null, secondArrow:null };
 const $=id=>document.getElementById(id);
 async function api(path,body){ const r=await fetch(path,{method:"POST",
   headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); return r.json(); }
@@ -244,10 +284,47 @@ function renderBoard(){
     div.onclick=()=>onSquareClick(sqn,pc);
     board.appendChild(div);
   }
+  drawArrows();
+}
+
+// ---- analysis-board arrows ----
+function sqCenter(sq){
+  const file=sq.charCodeAt(0)-97, rank=+sq[1];
+  const f=state.flipped?7-file:file, r=state.flipped?rank-1:8-rank;
+  return {x:f*64+32, y:r*64+32};
+}
+function arrowSvg(uci,color,w,op){
+  const a=sqCenter(uci.slice(0,2)), b=sqCenter(uci.slice(2,4));
+  const dx=b.x-a.x, dy=b.y-a.y, len=Math.hypot(dx,dy)||1, ux=dx/len, uy=dy/len;
+  const head=17, hw=head*0.6, px=-uy, py=ux;
+  const sx=a.x+ux*21, sy=a.y+uy*21, ex=b.x-ux*13, ey=b.y-uy*13;
+  const hx=b.x-ux*head, hy=b.y-uy*head;
+  return `<line x1="${sx.toFixed(1)}" y1="${sy.toFixed(1)}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" `
+    +`stroke="${color}" stroke-width="${w}" stroke-linecap="round" opacity="${op}"/>`
+    +`<polygon points="${b.x.toFixed(1)},${b.y.toFixed(1)} ${(hx+px*hw).toFixed(1)},${(hy+py*hw).toFixed(1)} `
+    +`${(hx-px*hw).toFixed(1)},${(hy-py*hw).toFixed(1)}" fill="${color}" opacity="${op}"/>`;
+}
+function drawArrows(){
+  const svg=$("arrows"); if(!svg) return;
+  if(state.mode!=="analysis"||!state.arrows||state.viewPly!==null){ svg.innerHTML=""; return; }
+  let s="";
+  if(state.secondArrow) s+=arrowSvg(state.secondArrow,"var(--accent)",6,0.42);
+  if(state.bestArrow) s+=arrowSvg(state.bestArrow,"var(--v-best)",9,0.9);
+  svg.innerHTML=s;
 }
 
 function onSquareClick(sq,pc){
   if(state.viewPly!==null){ state.viewPly=null;state.viewFen=null;renderBoard();updateStatus();renderMoves();return; }
+  if(state.mode==="analysis"){
+    if(state.status!=="ongoing") return;             // no moves once the game is decided
+    state.candMove=null;
+    const mine=pc&&((pc===pc.toUpperCase())===(state.turn==="white"));  // side to move, either color
+    if(state.selected){ let uci=state.selected+sq;
+      if(!state.legal.includes(uci)&&state.legal.includes(uci+"q")) uci+="q";
+      if(state.legal.includes(uci)){ state.selected=null; analysisMove(uci); return; } }
+    state.selected=mine?(state.selected===sq?null:sq):null; renderBoard();
+    return;
+  }
   if(state.thinking||state.status!=="ongoing"||state.turn!==state.playerColor) return;
   state.candMove=null;
   const mine=pc&&((pc===pc.toUpperCase())===(state.playerColor==="white"));
@@ -274,6 +351,11 @@ function updateStatus(){
     ?`checkmate, <b>${state.winner}</b> wins`:`draw (${state.status.replace(/_/g," ")})`)
     +' — <b>Review game</b> in the Moves tab'; return; }
   if(state.thinking){ el.innerHTML=`<span class="thinking">Engine is thinking…</span>`; return; }
+  if(state.mode==="analysis"){
+    el.innerHTML=`<b>${state.turn==="white"?"White":"Black"} to move</b>`
+      +(state.inCheck?" — check!":"")+' — click a piece to explore any line';
+    return;
+  }
   el.innerHTML=`<b>${state.turn===state.playerColor?"Your move":"Engine's move"}</b>`+(state.inCheck?" — check!":"");
 }
 
@@ -359,7 +441,7 @@ function renderConcepts(bd,deltas,scope){
 }
 
 $("findBtn").onclick=async()=>{
-  if(state.status!=="ongoing"||state.turn!==state.playerColor){ $("candlist").innerHTML='<div class="meta">Candidates are shown on your turn.</div>'; return; }
+  if(state.status!=="ongoing"||(state.mode==="play"&&state.turn!==state.playerColor)){ $("candlist").innerHTML='<div class="meta">Candidates are shown on your turn.</div>'; return; }
   $("findBtn").disabled=true; $("candlist").innerHTML='<div class="meta thinking">Searching every legal move…</div>';
   const r=await api("/api/candidates",payload()); $("findBtn").disabled=false;
   $("candlist").innerHTML=r.candidates.map(c=>{
@@ -429,6 +511,82 @@ function renderGraph(){
   svg+=`</svg>`; wrap.innerHTML=svg;
 }
 
+// ---- analysis board ----
+function renderAnalysis(r){
+  if(r.book){
+    $("aScore").textContent="Book";
+    $("aMeta").innerHTML=`opening book · <b>${r.best_san}</b> — ${r.book_name}`;
+    $("aDepth").textContent=""; $("aPv").textContent=r.best_san;
+  } else {
+    $("aScore").textContent=r.score_display;
+    $("aMeta").innerHTML=`best <b>${r.best_san}</b> · ${r.nodes.toLocaleString()} nodes`
+      +(r.mate?' · <b>forced mate</b>':'');
+    $("aDepth").textContent=`depth ${r.depth}`;
+    $("aPv").textContent=r.pv.join("  ")||"—";
+  }
+  if(r.score_white!==null&&r.score_white!==undefined) setEvalBar(r.score_white);
+  state.bestArrow=r.best; state.secondArrow=r.second; drawArrows();
+}
+
+async function startAnalysis(){
+  if(state.mode!=="analysis") return;
+  const token=++state.analyzeToken;            // supersede any running loop
+  state.analyzing=true; $("analyzeBtn").textContent="⏸ Stop";
+  if(state.status!=="ongoing"){ state.analyzing=false; $("analyzeBtn").textContent="▶ Analyze";
+    $("aMeta").innerHTML="Game over — set up a position to analyze."; return; }
+  $("aMeta").innerHTML='<span class="thinking">Analyzing…</span>';
+  let depth=1; const HARD_CAP=45;
+  while(state.analyzing&&token===state.analyzeToken&&depth<=HARD_CAP){
+    let r;
+    try{ r=await api("/api/think",{start_fen:state.startFen,moves:state.moves,
+      max_depth:depth,movetime:20,book:state.useBook}); }
+    catch(e){ break; }
+    if(token!==state.analyzeToken) return;      // position changed under us
+    if(r.error){ $("aMeta").textContent="Engine error: "+r.error; break; }
+    if(r.best===null){ $("aMeta").textContent="No legal moves in this position."; break; }
+    renderAnalysis(r);
+    if(r.book||r.done) break;                    // book move or forced mate: nothing to deepen
+    depth=Math.max(depth+1,r.depth+1);
+  }
+  if(token===state.analyzeToken){ state.analyzing=false; $("analyzeBtn").textContent="▶ Analyze"; }
+}
+function stopAnalysis(){ state.analyzing=false; state.analyzeToken++;
+  $("analyzeBtn").textContent="▶ Analyze"; }
+function toggleAnalyze(){ if(state.analyzing) stopAnalysis(); else startAnalysis(); }
+
+async function analysisMove(uci){
+  stopAnalysis();
+  state.moves.push(uci); state.lastMove=uci; state.selected=null;
+  state.bestArrow=null; state.secondArrow=null;
+  await refreshState();
+  startAnalysis();                               // continuous analysis of the new position
+}
+
+async function initAnalysis(fen){
+  stopAnalysis();
+  Object.assign(state,{startFen:fen||null,moves:[],selected:null,lastMove:null,
+    sanHistory:[],evalPoints:[],viewPly:null,viewFen:null,review:null,candMove:null,
+    bestArrow:null,secondArrow:null});
+  try{ await refreshState(); }
+  catch(e){ $("aMeta").textContent="Couldn't load that position."; return; }
+  startAnalysis();
+}
+
+function setMode(m){
+  if(state.mode===m) return;
+  stopAnalysis();
+  state.mode=m; state.selected=null; state.bestArrow=state.secondArrow=null;
+  document.getElementById("modeAnalysis").classList.toggle("active",m==="analysis");
+  document.getElementById("modePlay").classList.toggle("active",m==="play");
+  $("analysisControls").style.display=m==="analysis"?"flex":"none";
+  $("playControls").style.display=m==="play"?"flex":"none";
+  $("analysisInfo").style.display=m==="analysis"?"block":"none";
+  $("playInfo").style.display=m==="play"?"block":"none";
+  showTab("analysis");
+  if(m==="analysis"){ state.playerColor=null; initAnalysis(state.startFen); }
+  else { newGame("white"); }
+}
+
 async function loadGlossary(){
   const r=await api("/api/glossary",{}); $("glossary").innerHTML=r.glossary.map(g=>
     `<div class="gloss"><h4>${g.display_name}</h4><p class="what">${g.what}</p>
@@ -454,6 +612,29 @@ async function newGame(color){
 }
 $("newWhite").onclick=()=>newGame("white"); $("newBlack").onclick=()=>newGame("black");
 $("flipBtn").onclick=()=>{state.flipped=!state.flipped;renderBoard();};
+
+// analysis-mode controls
+$("modeAnalysis").onclick=()=>setMode("analysis");
+$("modePlay").onclick=()=>setMode("play");
+$("analyzeBtn").onclick=toggleAnalyze;
+$("flipBtnA").onclick=()=>{state.flipped=!state.flipped;renderBoard();};
+$("resetBtnA").onclick=()=>{state.flipped=false;initAnalysis(null);};
+$("undoBtnA").onclick=()=>{ if(!state.moves.length)return; stopAnalysis();
+  state.moves.pop(); state.lastMove=state.moves[state.moves.length-1]||null;
+  state.selected=null; state.bestArrow=state.secondArrow=null;
+  refreshState().then(()=>startAnalysis()); };
+$("arrowToggle").onclick=()=>{ state.arrows=!state.arrows;
+  $("arrowToggle").classList.toggle("on",state.arrows); drawArrows(); };
+$("bookToggle").onclick=()=>{ state.useBook=!state.useBook;
+  $("bookToggle").classList.toggle("on",state.useBook);
+  if(state.mode==="analysis") startAnalysis(); };
+$("insightToggleA").onclick=()=>{ state.insights=!state.insights;
+  $("insightToggleA").classList.toggle("on",state.insights);
+  $("legend").style.display=state.insights?"flex":"none";
+  if(state.insights) api("/api/overlays",payload()).then(r=>{state.overlays=r.overlays||{};renderBoard();}); else renderBoard(); };
+$("fenLoad").onclick=()=>{ const v=$("fenInput").value.trim(); if(!v)return;
+  state.flipped=false; initAnalysis(v); };
+$("fenInput").onkeydown=e=>{ if(e.key==="Enter") $("fenLoad").click(); };
 $("undoBtn").onclick=async()=>{ if(state.thinking)return;
   state.moves.pop(); if(state.moves.length&&state.turn===state.playerColor)state.moves.pop();
   state.lastMove=state.moves[state.moves.length-1]||null; state.selected=null; state.review=null;
@@ -461,7 +642,7 @@ $("undoBtn").onclick=async()=>{ if(state.thinking)return;
   await refreshState(); renderGraph();
   if(state.status==="ongoing"&&state.turn!==state.playerColor) engineMove(); };
 
-loadGlossary(); newGame("white");
+loadGlossary(); initAnalysis(null);   // analysis board is the default view
 </script>
 </body>
 </html>

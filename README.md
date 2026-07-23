@@ -27,7 +27,14 @@ python3 -m venv .venv
 # open http://localhost:8000
 ```
 
-The web app is built to teach:
+The web app opens on an **analysis board** (the default view): set up any
+position — make moves for either side, or paste a FEN — and the engine thinks
+about it for as long as you let it, the depth climbing live as its evaluation,
+best line, and recommendation arrows (best move green, runner-up faint) refine
+in place. An optional opening book, board flip, and one-click reset round it out.
+Every number on screen is still a real concept evaluation, shown in the
+breakdown beside the board. Switch to **Play vs engine** in the header for a full
+game with move-by-move coaching:
 
 - **Coach my moves** — after each move you play, an instant verdict
   (best / good / inaccuracy / mistake / blunder) versus the engine's choice,

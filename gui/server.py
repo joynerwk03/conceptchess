@@ -13,8 +13,10 @@ from pathlib import Path
 
 import chess
 
+from engine import book as _book
+from engine import core as _core
 from engine.engine import Engine
-from engine.explain import explain_move, score_string
+from engine.explain import mate_distance, score_string
 from gui import coach
 
 STATIC = Path(__file__).parent / "static"
@@ -57,6 +59,53 @@ def state_dict(board):
         "legal_moves": [m.uci() for m in board.legal_moves],
         "status": status,
         "winner": winner,
+    }
+
+
+def analysis_step(board, max_depth, movetime, use_book):
+    """One iterative-deepening step for the analysis board.
+
+    The client calls this repeatedly with an increasing `max_depth`; the C
+    core's transposition table persists across calls, so re-searching the
+    shallow depths is near-free and each call effectively adds one ply. This
+    gives a live-deepening analysis (depth climbing, best move refining) with
+    no streaming machinery — just successive blocking searches. `movetime` is a
+    per-call safety ceiling so a single very deep iteration can't hang forever.
+    """
+    turn_white = board.turn == chess.WHITE
+    if use_book:
+        mv, name = _book.lookup(board)
+        if mv is not None:
+            return {
+                "book": True, "book_name": name,
+                "best": mv.uci(), "best_san": board.san(mv), "second": None,
+                "depth": 0, "nodes": 0, "score_white": None,
+                "score_display": "book", "pv": [], "pv_uci": [],
+                "mate": False, "done": True,
+            }
+    move, sc, depth, nodes, pv, second = _core.search(
+        board, movetime=movetime, max_depth=max_depth)
+    if move is None:
+        return {"book": False, "best": None, "second": None, "depth": 0,
+                "nodes": 0, "score_white": None, "score_display": "—",
+                "pv": [], "pv_uci": [], "mate": False, "done": True}
+    white_cp = sc if turn_white else -sc
+    pv_san, tmp = [], board.copy()
+    for m in pv:
+        try:
+            pv_san.append(tmp.san(m)); tmp.push(m)
+        except Exception:
+            break
+    return {
+        "book": False,
+        "best": move.uci(), "best_san": board.san(move),
+        "second": second.uci() if second else None,
+        "depth": depth, "nodes": nodes,
+        "score_white": round(white_cp, 1),
+        "score_display": score_string(white_cp),
+        "pv": pv_san, "pv_uci": [m.uci() for m in pv],
+        "mate": mate_distance(sc) is not None,
+        "done": mate_distance(sc) is not None,
     }
 
 
@@ -122,6 +171,13 @@ class Handler(BaseHTTPRequestHandler):
                     "explanation": explanation,
                     "state": s,
                 })
+            elif self.path == "/api/think":
+                board = build_board(payload)
+                max_depth = int(payload.get("max_depth", 64))
+                movetime = float(payload.get("movetime", 20.0))
+                use_book = bool(payload.get("book", False))
+                with _engine_lock:
+                    self._json(analysis_step(board, max_depth, movetime, use_book))
             elif self.path == "/api/candidates":
                 board = build_board(payload)
                 mt = float(payload.get("movetime", 0.12))
