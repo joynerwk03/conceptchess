@@ -52,7 +52,8 @@ entry reference; add new ideas as they come up.
 ## Search quality
 
 - [x] Qsearch: include checks at first ply of quiescence (s5)
-- [x] ~~Aggressive log-log LMR reduction table~~ (s11: REJECTED −29 Elo at 46%; 4–5 ply reductions discard too much at depth ~10–12)
+- [x] ~~Aggressive log-log LMR reduction table~~ (s11: REJECTED −29 Elo at 46%; 4–5 ply reductions discard too much at depth ~10–12. **s21 re-test:** same table now that ordering is strong (malus/countermove/SEE) → **neutral, 50%, −0 Elo** over 60 games — the s11 loss was ordering-dependent, but fixing it makes aggressive LMR a wash, not a win. Still rejected; lesson reaffirmed: bottleneck is ordering/eval, not per-node work.)
+- [ ] Internal iterative deepening (IID): at PV/high-depth nodes with no TT move, do a reduced search to get an ordering move first (improves ordering — the class this engine rewards)
 - [ ] Mate-distance pruning
 - [x] ~~50-move-rule detection (plain hm>=100 -> 0)~~ (s12: REJECTED at 48%,
       −12 — suspected TT pollution across clock contexts) — [ ] refined

@@ -6,9 +6,12 @@
 aid people run at long/indefinite think times — adaptive time management is
 low-value (it only pays under strict clocks nobody analyzes with). Deprioritized
 as a strength lever. The strength focus going forward is improvements **more
-general than time management** (search/eval that help at any TC). The in-flight
-adaptive-vs-naive game-clock gate (T=1, 10s+0.1) was left running purely for the
-record; partial ~56% (18.5/33), SPRT never tripped — inconclusive and not built on.
+general than time management** (search/eval that help at any TC). The
+adaptive-vs-naive game-clock gate (T=1, 10s+0.1) finished for the record:
+**+24 =18 −18 (55%), +35 Elo (95% −53..+128)** over 60 games — mildly positive
+where it's designed to help (a strict clock), but the CI spans zero and it's inert
+at fixed/indefinite time, so it stays in the tree (harmless in the analysis board)
+and is not pursued further.
 
 **Product (the session's real deliverable): an analysis board, now the default
 view of the web app.** Set up any position (free moves for either side, or paste
@@ -30,6 +33,47 @@ insights overlay. Play-vs-engine (the old coach) moves under a header toggle.
 **Verdict:** ACCEPTED (product feature; no engine/eval change, no strength
 impact; `/api/think` verified across depth ladder, book, and mate-in-1;
 frontend passes `node --check`).
+
+**Strength lever #1 — log-based LMR reduction table (REJECTED, neutral; a
+refutation-of-a-refutation worth recording).** Replaced the coarse stepped LMR
+(cap red=3) with the standard `0.85 + log(d)·log(m)/2.20` table, same
+reduce-conditions. Reaches **+1–2 plies deeper** at fixed time (middlegame 11→9
+became 11, i.e. +2). Screens green (perft, eval 0.000000, 47 tests, tactics
+24/24). **Match vs the no-LMR base at 0.3s, 60 UHO games: +21 =18 −21 (50%),
+−0 Elo (95% −90..+90).** Exactly neutral. The point: **s11 rejected this same
+aggressive log-LMR at −29 Elo** — but s11's baseline predated history-malus,
+countermove, and SEE ordering. With today's ordering, the same 4–5-ply late-quiet
+reductions are no longer *harmful* (the well-ordered late moves really are worse,
+so reducing them costs nothing) — but the extra depth they buy exactly offsets the
+occasional missed line. So the s11 failure was ordering-dependent, not intrinsic;
+fix the ordering and aggressive LMR becomes a wash, not a win. Reverted (a neutral
+change doesn't earn its complexity, and "50% ± 90" hides a small negative as easily
+as a small positive). Confirms, a second time, that this engine is bottlenecked on
+*ordering/eval quality*, not on doing less per node. Next lever chosen accordingly.
+
+**Verdict (lever #1):** REJECTED (strength-neutral; kept as a recorded negative).
+
+**Strength lever #2 — internal iterative deepening (IID) (NOT GATED; inert then
+uneconomic).** At a node with no TT move, do a reduced (depth−2) search first to
+seed a best move for ordering. Two placements, diagnosed by fixed-depth node
+counts (an exact A/B on an idle machine):
+- *PV-only* (`beta>alpha+1`): **byte-identical node counts to base** — it never
+  fires. With iterative deepening + TT, PV nodes already carry a hash move from
+  the previous iteration, so `!ttm` is essentially never true there. A literal
+  no-op; not worth gating.
+- *All nodes:* now fires, but **+49% nodes on the middlegame** (2.50M→3.71M at
+  d12) with the *same* best move. The shallow probes cost more than this engine's
+  already-strong history/killer/SEE ordering saves. Node count is a weak proxy
+  (it under-sold SEE ordering's +53), but inert-when-safe plus expensive-when-live
+  plus unchanged move choice is a consistent picture, not a fluke.
+
+Three search experiments this session (aggressive LMR, PV-IID, broad-IID) all say
+the same thing: **the ordering/reduction machinery is already well-tuned — there is
+no cheap search headroom left.** Redirecting to evaluation knowledge, which is
+where this engine's big *interpretable* gains have always come from (king-race
+concept +110, passer structure, SEE eval). Reverted to the clean baseline.
+
+**Verdict (lever #2):** NOT GATED — diagnosed inert/uneconomic; reverted.
 
 ---
 
