@@ -223,13 +223,16 @@ double eval_core(U64 bb[2][6], int side){
         static const double PV[6]={100,320,330,500,900,0};
         for(int c=0;c<2;c++){
             int sign=c==WHITE?1:-1;
+            /* the side to move can execute its threats now, so scale them up */
+            double w = (c==side) ? (1.0+W_THREAT_INITIATIVE) : 1.0;
+            double wp=W_THREAT_PAWN*w, wm=W_THREAT_MINOR*w, wr=W_THREAT_ROOK*w, wh=W_THREAT_HANGING*w;
             for(int p=0;p<5;p++){            /* PAWN..QUEEN (0-indexed here) */
                 U64 x=bb[!c][p];
                 while(x){ int sq=lsb(x); x&=x-1; U64 m=1ULL<<sq;
-                    if((pawnatk[c]&m)  && p>=KNIGHT) s += sign*W_THREAT_PAWN*PV[p];
-                    if((minoratk[c]&m) && p>=ROOK)   s += sign*W_THREAT_MINOR*PV[p];
-                    if((rookatk[c]&m)  && p==QUEEN)  s += sign*W_THREAT_ROOK*PV[p];
-                    if((atkby[c]&m) && !(atkby[!c]&m)) s += sign*W_THREAT_HANGING*PV[p];
+                    if((pawnatk[c]&m)  && p>=KNIGHT) s += sign*wp*PV[p];
+                    if((minoratk[c]&m) && p>=ROOK)   s += sign*wm*PV[p];
+                    if((rookatk[c]&m)  && p==QUEEN)  s += sign*wr*PV[p];
+                    if((atkby[c]&m) && !(atkby[!c]&m)) s += sign*wh*PV[p];
                 }
             }
         }

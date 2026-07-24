@@ -207,6 +207,32 @@ win.** The engine already handles pawn breaks via search; nudging the eval to wa
 them just distorts move choice. Reverted. Next eval work will avoid pawn-advance
 signals entirely.
 
+**Bad-bishop concept (REJECTED, −70 Elo).** Penalty per own pawn on a bishop's own
+square color. Faithful (0.000000). Gated **+18 =12 −30 (40%)** — too coarse: it
+penalizes *every* bishop (~3–4 own pawns sit on its color in the opening) instead
+of isolating genuinely bad ones, so it just adds noise. Reverted. Third coarse
+new-concept reject; the eval is well-tuned, and blunt new terms distort it.
+
+**Texel re-tune of the threat weights (NEUTRAL, kept guesses).** `research.tune
+threat.` lowered train loss (0.02158→0.02148) and shifted the weights (pawn 0.10→
+0.082, hanging 0.056→0.030 down; minor 0.06→0.097, rook 0.04→0.076 up). But gated
+**+19 =23 −18 (51%, +6 Elo)** vs the guessed weights — the classic loss≠Elo
+disconnect (the tuning flywheel converged sessions ago). Kept the committed guesses.
+
+**Threats-initiative — refine the *proven* concept (ACCEPTED, +64 Elo batch).**
+Key shift in approach: stop guessing coarse new concepts (0/3), instead sharpen the
+one that works. Real chess idea the eval ignored — a threat the **side to move** can
+execute *now* is worth more than the opponent's threat, which can be parried. Scaled
+the mover's four threat terms by 1+`threat.initiative` (0.25). Faithful even though
+now side-to-move-dependent (C==Python 0.000000; eval_check passes `side`). Gated vs
+the threats baseline: **+24 =23 −13 (59%), +64 Elo (95% −23..+161)** — consistent
+across the run (60/60/59), 1.85:1 wins. Committed; confirmation batch + initiative-
+weight tune queued (expect winner's curse to trim +64, as it did threats' +83→+47).
+
+**Verdict:** ACCEPTED (initiative refinement of the threats concept; +64 Elo batch,
+confirmation pending; C==Python preserved). Method lesson: refine proven concepts,
+don't guess new ones — the eval is mature.
+
 ---
 
 ## 2026-07-20 — Session 20: Lazy SMP breaks the plateau (+140–187 Elo)

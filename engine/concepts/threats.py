@@ -39,11 +39,15 @@ class Threats:
         items = []
         w_pawn, w_minor = W["threat.pawn"], W["threat.minor"]
         w_rook, w_hang = W["threat.rook"], W["threat.hanging"]
+        init = W["threat.initiative"]
         board = ctx.board
         attacked_by = ctx.attacked_by
         for color, sign, cname in ((chess.WHITE, 1, "Black"), (chess.BLACK, -1, "White")):
-            # color = the attacker; iterate the enemy's pieces.
+            # color = the attacker; iterate the enemy's pieces. The side to move
+            # can execute its threats immediately, so scale them up.
             enemy = not color
+            w = 1.0 + init if color == board.turn else 1.0
+            wp, wm, wr, wh = w_pawn * w, w_minor * w, w_rook * w, w_hang * w
             pawns = board.pawns & ctx.occupied_co[color]
             pawn_atk = _pawn_attacks(pawns, color)
             minor_atk = 0
@@ -63,17 +67,17 @@ class Threats:
                     if (pawn_atk & m) and pt >= chess.KNIGHT:
                         items.append(
                             (f"{cname} {pname} on {sqn} attacked by a pawn" if labels else None,
-                             sign * w_pawn * val))
+                             sign * wp * val))
                     if (minor_atk & m) and pt >= chess.ROOK:
                         items.append(
                             (f"{cname} {pname} on {sqn} attacked by a minor" if labels else None,
-                             sign * w_minor * val))
+                             sign * wm * val))
                     if (rook_atk & m) and pt == chess.QUEEN:
                         items.append(
                             (f"{cname} queen on {sqn} attacked by a rook" if labels else None,
-                             sign * w_rook * val))
+                             sign * wr * val))
                     if (atk & m) and not (dfd & m):
                         items.append(
                             (f"{cname} {pname} on {sqn} is hanging" if labels else None,
-                             sign * w_hang * val))
+                             sign * wh * val))
         return items
