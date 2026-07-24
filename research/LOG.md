@@ -186,6 +186,16 @@ why single-batch Elo is optimistic. Kept.
 games; C==Python invariant preserved). Lesson re-underscored: never rebuild the
 engine while a gate against it is running.
 
+**Pawn-storm king-safety concept (REJECTED, −83 Elo).** Added a term penalizing a
+king whose files carry advancing enemy pawns (integer storm sum, byte-identity
+trivial). Faithful (C==Python 0.000000, perft/tests green) but gated **+17 =12 −31
+(38%), −83 Elo** vs the threats baseline — a clear, consistent negative. It
+over-rewards pawn-pushing at the enemy king and mis-weights king danger; king
+safety is delicate and this was an intuition guess, not diagnosis-driven (the quiet
+suite hadn't flagged king safety). Reverted. Takeaway: on this engine, *piece-
+pressure* concepts land (threats +47) but *king-safety* re-tuning backfires — go
+where the diagnosis points, not where intuition does.
+
 ---
 
 ## 2026-07-20 — Session 20: Lazy SMP breaks the plateau (+140–187 Elo)
