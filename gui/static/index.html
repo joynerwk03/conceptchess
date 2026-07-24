@@ -336,6 +336,7 @@ function onSquareClick(sq,pc){
 
 async function refreshState(){
   const s=await api("/api/state",payload());
+  if(s.error) throw new Error(s.error);   // e.g. a pasted FEN that won't parse
   Object.assign(state,{fen:s.fen,turn:s.turn,legal:s.legal_moves,status:s.status,
     inCheck:s.in_check,winner:s.winner,sanHistory:s.san_history||[]});
   if(state.insights) api("/api/overlays",payload()).then(r=>{state.overlays=r.overlays||{};renderBoard();});
