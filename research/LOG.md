@@ -170,13 +170,21 @@ tests green, perft clean, tactics 24/24). Fully interpretable: the coach now say
 **Gate (isolated: aspiration+new-threats vs an aspiration-only worktree, 0.3s):
 +23 =28 −9 (62%), +83 Elo (95% −4..+181)** over 60 games — 2.6:1 win ratio,
 consistently positive the entire run (55→57.5→58→57.5→59→62, no negative window).
-High draw rate (28), as expected for an eval nuance. Grounded in real chess theory
-(every strong engine has threat terms), so the winner's-curse risk is low despite
-the CI grazing zero. Weights were conservative first guesses — tuning + a
-confirmation batch queued. Kept.
+High draw rate (28), as expected for an eval nuance.
 
-**Verdict:** ACCEPTED (new interpretable eval concept, +83 Elo point estimate;
-C==Python invariant preserved).
+**Confirmation (winner's curse trimmed it, as expected).** A clean second batch —
+run worktree-vs-worktree (threats-wt vs aspiration-wt) so it's independent of the
+main build — came in at **+21 =20 −19 (52%, +12 Elo)**. (A first confirmation
+attempt was discarded: I'd rebuilt main for the next concept *while it ran*, mixing
+binaries — a real methodology bug, caught and re-run clean.) **Pooled over both
+clean batches, 120 games: +44 =48 −28 = 56.7%, ≈+47 Elo (95% ~ −15..+112).** So
+the honest figure is **~+47 Elo**, not the +83 of batch A alone — both batches
+positive, grounded in chess theory, clearly worth keeping, but a textbook case of
+why single-batch Elo is optimistic. Kept.
+
+**Verdict:** ACCEPTED (new interpretable eval concept, ~+47 Elo pooled over 120
+games; C==Python invariant preserved). Lesson re-underscored: never rebuild the
+engine while a gate against it is running.
 
 ---
 
