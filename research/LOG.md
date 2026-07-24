@@ -201,9 +201,27 @@ neutral), a clean demonstration that the outcome target is right and the MSE tar
 misleads. Endgame terms tuned too: defensive rook-behind (10→12) beats supporting
 (12→9.6). PSTs, king safety (shield/open-file up), mobility and activity all shifted.
 
-**Gate (combined, vs HEAD, 0.3s, 60 UHO games): +25 =20 −15 (58%), +58 Elo
-(95% −29..+154)** — consistent across the run. Screens green throughout: C==Python
-0.000000, perft, 47 tests, tactics 24/24. Committed; confirmation batch queued.
+**Gate (combined, vs HEAD, 0.3s): batch A +25 =20 −15 (58%, +58 Elo) — but the
+confirmation came in +17 =17 −26 (42%, −53). Pooled 120 games: +42 =37 −41 = 50.4%,
+≈+3 Elo (95% −60..+66) — NEUTRAL.** The most violent winner's-curse swing of the
+run (58%→42%), and the honest verdict is that the full retune did NOT improve
+strength. Confirms, a third time this session-pair, that the tuning flywheel has
+converged: even with the correct outcome target (not eval-MSE), a broad weight
+re-fit doesn't beat the already-tuned weights at play. My first commit message
+overclaimed +58 — corrected here.
+
+**Resolution (disciplined):** reverted the broad weight changes (the confirmation
+was negative, so keeping ~19 unconfirmed weight edits is a real risk). **Kept the
+endgame rook-behind-passer concepts** — they're the requested, interpretable,
+byte-identical part, and low-frequency-neutral is expected for them, not a failure;
+they earn their place on coach value (the breakdown now explains "rook behind your
+passer"), gated separately for no-regression. **The one real finding is preserved
+as a follow-up:** the tuner drove `threat.pawn`→0.15 and `threat.initiative`→0.40
+INTO their upper bounds — strong evidence those s22 terms are under-weighted — worth
+a FOCUSED gate (just those two, not the whole re-fit) another session.
+
+**Verdict:** retune REJECTED (strength-neutral, flywheel converged); endgame
+rook-behind concepts KEPT (interpretable, faithful, no-regression).
 
 ---
 
