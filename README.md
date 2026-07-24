@@ -54,10 +54,14 @@ game with move-by-move coaching:
 
 The engine also speaks UCI (`python -m engine.uci`) for your own GUI.
 
-For maximum playing strength, set `CC_THREADS` to your core count — the
-compiled core runs a Lazy-SMP parallel search (~+140–190 Elo on 4–8 cores).
-The default is single-threaded and deterministic, which keeps the coach's
-explanations reproducible.
+**Playing strength: full-width by default.** When it plays — UCI, the web
+play-vs-engine opponent, and the analysis board — the engine runs a Lazy-SMP
+parallel search across all cores (up to 8), worth **~+140–190 Elo** over a single
+thread. The one place it stays single-threaded is the **coach's move verdicts**
+(best/good/mistake calls, candidate ranking, review), so those stay reproducible.
+Override the thread count with `CC_THREADS` (e.g. `CC_THREADS=1` for a
+deterministic engine); the research match harness sets `CC_THREADS=1` itself so
+version-vs-version strength gates stay clean single-thread comparisons.
 
 ## Project layout
 

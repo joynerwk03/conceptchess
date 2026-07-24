@@ -16,9 +16,16 @@ Usage:
 
 import argparse
 import math
+import os
 import shutil
 import sys
 from pathlib import Path
+
+# Keep strength gates clean single-thread by default: the UCI engine now plays at
+# full-width SMP by default, but SMP-vs-SMP on one machine contends for cores and
+# muddies version-vs-version comparisons. Both spawned engines inherit this env.
+# Set CC_THREADS explicitly before invoking to measure at N threads on purpose.
+os.environ.setdefault("CC_THREADS", "1")
 
 import chess
 import chess.engine

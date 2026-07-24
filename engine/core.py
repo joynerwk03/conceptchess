@@ -62,11 +62,26 @@ _load()
 def set_threads(n):
     """Set the Lazy-SMP search thread count (1 = deterministic single-thread).
 
-    The coach/play path keeps this at 1 for reproducible verdicts; the analysis
-    board raises it for deeper search (occasional PV nondeterminism is fine when
-    you're exploring, not scoring a move). No-op if the core lacks SMP."""
+    The coach's move-verdict searches keep this at 1 for reproducibility; play
+    and analysis raise it for deeper search (occasional PV nondeterminism is fine
+    when you're playing or exploring, not scoring a move). No-op if no SMP."""
     if _lib is not None and hasattr(_lib, "c_set_threads"):
         _lib.c_set_threads(int(n))
+
+
+def play_threads():
+    """Full-strength default thread count: honor CC_THREADS if set, else all
+    cores capped at the core's MAX_THREADS (8). Used by the UCI interface and the
+    web play/analysis paths so the engine plays at full width by default. Research
+    gates export CC_THREADS=1 to keep strength measurements clean single-thread."""
+    import os
+    env = os.environ.get("CC_THREADS")
+    if env is not None:
+        try:
+            return max(1, int(env))
+        except ValueError:
+            pass
+    return min(os.cpu_count() or 1, 8)
 
 
 def search(board, movetime=1.0, max_depth=64, max_time=None):

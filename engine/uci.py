@@ -27,6 +27,12 @@ def main():
     engine = Engine()
     board = chess.Board()
 
+    # Play at full width by default (Lazy SMP, all cores) — this is how the engine
+    # is played externally and in real games. CC_THREADS overrides; research match
+    # gates set CC_THREADS=1 to keep strength comparisons clean single-thread.
+    from engine import core
+    core.set_threads(core.play_threads())
+
     for line in sys.stdin:
         parts = line.strip().split()
         if not parts:

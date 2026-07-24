@@ -24,11 +24,11 @@ STATIC = Path(__file__).parent / "static"
 _engine = Engine()
 _engine_lock = threading.Lock()
 
-# The analysis board runs the engine at full width (Lazy SMP) for the deepest
-# search — it's for exploring, so occasional PV nondeterminism is fine. The
-# coach/play path stays single-threaded for reproducible move verdicts, so we
-# raise the thread count only around an analysis search and reset it after.
-ANALYSIS_THREADS = min(os.cpu_count() or 1, 8)
+# Analysis and the play-vs-engine opponent run the engine at full width (Lazy
+# SMP) for maximum strength; the coach's move-verdict searches (candidates /
+# analyze / review) stay single-threaded for reproducibility. We raise the thread
+# count only around a play/analysis search and reset to 1 afterward.
+ANALYSIS_THREADS = _core.play_threads()
 
 
 def build_board(payload):
@@ -164,8 +164,12 @@ class Handler(BaseHTTPRequestHandler):
                 board = build_board(payload)
                 movetime = float(payload.get("movetime", 1.0))
                 with _engine_lock:
-                    result, explanation = _engine.best_move_explained(
-                        board, movetime=movetime)
+                    _core.set_threads(ANALYSIS_THREADS)   # full-strength opponent
+                    try:
+                        result, explanation = _engine.best_move_explained(
+                            board, movetime=movetime)
+                    finally:
+                        _core.set_threads(1)   # keep the coach's verdicts deterministic
                 if result.move is None:
                     self._json({"error": "no legal moves", "state": state_dict(board)})
                     return
