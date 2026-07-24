@@ -75,6 +75,29 @@ concept +110, passer structure, SEE eval). Reverted to the clean baseline.
 
 **Verdict (lever #2):** NOT GATED — diagnosed inert/uneconomic; reverted.
 
+**Where the strength actually is — and lever #3, applied to the product.** After
+LMR (neutral) and IID (uneconomic), a fresh quiet/positional SF-verified suite
+(`research/suites/quiet_v1.epd`, 30 quiet-best-move positions) + `diagnose.py`:
+**26/30 solved, 4 scattered misses, no concentrated concept culprit** — the eval
+is well-calibrated (it was already Texel-tuned at scale in s16–17; knight outposts
+already rejected s17). A flat `sample` profile of the search puts **eval_core at
+~34% of self-time**, but it's already single-attack-pass optimized, and lazy/partial
+eval is off-limits (would break "search maximizes the displayed concept sum").
+
+So single-thread search is tuned, eval is tuned, and the ROADMAP's stated frontier
+is *parallel-search quality*. The highest-value move is therefore not another
+single-thread micro-lever but **applying the proven Lazy-SMP win (+187 Elo, s20) to
+the analysis board** — which had been running the default T=1 engine. T=1 exists
+only for *coach determinism*; an analysis board has no such constraint (occasional
+PV nondeterminism while exploring is fine). Now `/api/think` runs at full width
+(all cores, capped at 8) and resets to T=1 around the call so the coach/play path
+stays byte-reproducible. Measured on a middlegame at 3s: **T=1 depth 12 → T=8 depth
+14** (+2 plies, fuller PV) — the analysis board is now materially stronger for the
+exact use it was built for. 47 tests green; coach path untouched.
+
+**Verdict (lever #3):** ACCEPTED (product-strength win via committed SMP infra; no
+engine change, coach determinism preserved).
+
 ---
 
 ## 2026-07-20 — Session 20: Lazy SMP breaks the plateau (+140–187 Elo)

@@ -520,7 +520,7 @@ function renderAnalysis(r){
   } else {
     $("aScore").textContent=r.score_display;
     $("aMeta").innerHTML=`best <b>${r.best_san}</b> · ${r.nodes.toLocaleString()} nodes`
-      +(r.mate?' · <b>forced mate</b>':'');
+      +(r.threads>1?` · ${r.threads} threads`:'')+(r.mate?' · <b>forced mate</b>':'');
     $("aDepth").textContent=`depth ${r.depth}`;
     $("aPv").textContent=r.pv.join("  ")||"—";
   }

@@ -7,6 +7,7 @@ the server can rebuild the full board history (needed for repetition detection).
 """
 
 import json
+import os
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -22,6 +23,12 @@ from gui import coach
 STATIC = Path(__file__).parent / "static"
 _engine = Engine()
 _engine_lock = threading.Lock()
+
+# The analysis board runs the engine at full width (Lazy SMP) for the deepest
+# search — it's for exploring, so occasional PV nondeterminism is fine. The
+# coach/play path stays single-threaded for reproducible move verdicts, so we
+# raise the thread count only around an analysis search and reset it after.
+ANALYSIS_THREADS = min(os.cpu_count() or 1, 8)
 
 
 def build_board(payload):
@@ -177,7 +184,13 @@ class Handler(BaseHTTPRequestHandler):
                 movetime = float(payload.get("movetime", 20.0))
                 use_book = bool(payload.get("book", False))
                 with _engine_lock:
-                    self._json(analysis_step(board, max_depth, movetime, use_book))
+                    _core.set_threads(ANALYSIS_THREADS)
+                    try:
+                        res = analysis_step(board, max_depth, movetime, use_book)
+                    finally:
+                        _core.set_threads(1)   # keep the coach path deterministic
+                res["threads"] = ANALYSIS_THREADS
+                self._json(res)
             elif self.path == "/api/candidates":
                 board = build_board(payload)
                 mt = float(payload.get("movetime", 0.12))

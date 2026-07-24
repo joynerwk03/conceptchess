@@ -59,6 +59,16 @@ def _load():
 _load()
 
 
+def set_threads(n):
+    """Set the Lazy-SMP search thread count (1 = deterministic single-thread).
+
+    The coach/play path keeps this at 1 for reproducible verdicts; the analysis
+    board raises it for deeper search (occasional PV nondeterminism is fine when
+    you're exploring, not scoring a move). No-op if the core lacks SMP."""
+    if _lib is not None and hasattr(_lib, "c_set_threads"):
+        _lib.c_set_threads(int(n))
+
+
 def search(board, movetime=1.0, max_depth=64, max_time=None):
     """Return (move, score, depth, nodes, pv, second) using the compiled core.
 
