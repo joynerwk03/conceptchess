@@ -417,18 +417,42 @@ static void run_id(ThreadCtx *tc){
     int d0 = tc->is_main ? 1 : (2 + (tc->id % 3));   /* helpers start deeper */
     for(int depth=d0; depth<=tc->max_depth; depth++){
         if(g_stop) break;
-        int a=-S_MATE, bt=S_MATE, bm_found=0; Move bm=0, sm=0; int bs=-S_MATE-1, ss=-S_MATE-1;
-        order(&b,root,rn,best,0,0);
-        for(int i=0;i<rn;i++){
-            Board c=b; make(&c,root[i]);
-            int sc;
-            if(i==0) sc=-negamax(&c,depth-1,-bt,-a,1,root[i]);
-            else { sc=-negamax(&c,depth-1,-a-1,-a,1,root[i]);
-                   if(sc>a) sc=-negamax(&c,depth-1,-bt,-a,1,root[i]); }
+        /* Aspiration window: once the score has settled (depth>4) most iterations
+         * land near the last one, so search the root inside a narrow band around
+         * `score` — a tighter window prunes far more. Widen and re-search only on
+         * a fail-high/low. Shallow plies keep the full window (score not settled;
+         * helpers start at depth<=4 so their first pass is always full-window). */
+        int delta = 20;
+        int alpha0 = depth<=4 ? -S_MATE : score-delta;
+        int beta0  = depth<=4 ?  S_MATE : score+delta;
+        int bm_found=0; Move bm=0, sm=0; int bs=-S_MATE-1, ss=-S_MATE-1;
+        for(;;){
+            int a=alpha0, bt=beta0;
+            bm_found=0; bm=0; sm=0; bs=-S_MATE-1; ss=-S_MATE-1;
+            order(&b,root,rn,best,0,0);
+            for(int i=0;i<rn;i++){
+                Board c=b; make(&c,root[i]);
+                int sc;
+                if(i==0) sc=-negamax(&c,depth-1,-bt,-a,1,root[i]);
+                else { sc=-negamax(&c,depth-1,-a-1,-a,1,root[i]);
+                       if(sc>a) sc=-negamax(&c,depth-1,-bt,-a,1,root[i]); }
+                if(SS.stopped) break;
+                if(sc>bs){ ss=bs; sm=bm; bs=sc; bm=root[i]; bm_found=1; }
+                else if(sc>ss){ ss=sc; sm=root[i]; }
+                if(sc>a) a=sc;
+            }
             if(SS.stopped) break;
-            if(sc>bs){ ss=bs; sm=bm; bs=sc; bm=root[i]; bm_found=1; }
-            else if(sc>ss){ ss=sc; sm=root[i]; }
-            if(sc>a) a=sc;
+            if(bs<=alpha0 && alpha0>-S_MATE){        /* fail low: widen downward, re-search */
+                alpha0 = bs-delta; delta += delta;
+                if(alpha0<-S_MATE) alpha0=-S_MATE;
+                continue;
+            }
+            if(bs>=beta0 && beta0<S_MATE){           /* fail high: widen upward, re-search */
+                beta0 = bs+delta; delta += delta;
+                if(beta0>S_MATE) beta0=S_MATE;
+                continue;
+            }
+            break;   /* score inside the window: accept this iteration */
         }
         if(SS.stopped) break;
         if(bm_found){ best=bm; score=bs; cd=depth; second=sm;

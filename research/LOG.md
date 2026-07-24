@@ -98,6 +98,42 @@ exact use it was built for. 47 tests green; coach path untouched.
 **Verdict (lever #3):** ACCEPTED (product-strength win via committed SMP infra; no
 engine change, coach determinism preserved).
 
+**Levers #4–6 — pushing single-thread strength harder ("weaker levers OK, do your
+best").** Three more, gated by fixed-depth node counts on a 4-position middlegame
+set (idle machine, exact A/B) then matches:
+- **#4 continuation history** (graded generalization of the countermove slot,
+  keyed [side][prev_to][from][to]; ordering-only, no eval mirror needed).
+  REJECTED — **+40% nodes-to-depth**. Every variant (additive, capped below the
+  killer tier, tiebreaker-only) made ordering worse, not better. This engine's
+  butterfly-history + killers + countermove + SEE ordering is a strong optimum
+  that a second history table only adds noise to. Reverted.
+- **#5 bigger TT** (TT_BITS 22→24, 96MB→384MB). REJECTED (neutral) — at deep
+  analysis time it cut nodes (better hit rate) but reached the **same depth**: the
+  384MB table's cache-miss penalty cancels the hit-rate gain. Same verdict as the
+  s-earlier bigger-TT-under-SMP rejection, now confirmed at long TC too. Reverted.
+- **#6 aspiration windows** (delta=20; the C search searched the root with a FULL
+  window every iteration — genuinely missing). **ACCEPTED.** Screens green (perft,
+  eval 0.000000, 47 tests, tactics 24/24), −2.1% nodes on middlegames, +2.5% NPS
+  at equal avg depth. Match vs base at 0.3s, **two independent 60-game batches:
+  A +24=17−19 (54%, +29 Elo), B +25=13−22 (52%, +17 Elo); pooled 120 games
+  +49=30−41 = 53.3%, ≈+23 Elo (95% ~ −39..+87).** Both batches independently
+  positive with no winner's-curse regression on confirmation (+29→+17, not
+  +70→+13), and a mechanistic basis (the node/NPS wins) — so a real, modest gain
+  that helps *every* mode and TC. Kept. Honest framing: small (~+20 Elo), CI wide;
+  its value is as much a correct foundation as the raw points. delta swept
+  (16:+2.4%, 20:−2.1%, 30:+11.6% nodes) → 20 is the local optimum; wider windows
+  cost more via expensive high-depth re-searches.
+
+**Session-21 strength ledger:** six levers, one clear product win (SMP-for-analysis),
+one modest engine win (aspiration, ~+23 Elo pooled), four honest negatives (LMR
+neutral, IID uneconomic, continuation-history worse, bigger-TT neutral). The
+recurring lesson — this engine's ordering/eval are a genuinely strong local
+optimum — held all session; aspiration got in only because it attacks a real gap
+(the un-windowed root) rather than re-tuning something already tuned.
+
+**Verdict (lever #6 / aspiration):** ACCEPTED (~+23 Elo pooled over 120 games;
+principled, faster, all invariants intact).
+
 ---
 
 ## 2026-07-20 — Session 20: Lazy SMP breaks the plateau (+140–187 Elo)

@@ -53,7 +53,10 @@ entry reference; add new ideas as they come up.
 
 - [x] Qsearch: include checks at first ply of quiescence (s5)
 - [x] ~~Aggressive log-log LMR reduction table~~ (s11: REJECTED −29 Elo at 46%; 4–5 ply reductions discard too much at depth ~10–12. **s21 re-test:** same table now that ordering is strong (malus/countermove/SEE) → **neutral, 50%, −0 Elo** over 60 games — the s11 loss was ordering-dependent, but fixing it makes aggressive LMR a wash, not a win. Still rejected; lesson reaffirmed: bottleneck is ordering/eval, not per-node work.)
-- [ ] Internal iterative deepening (IID): at PV/high-depth nodes with no TT move, do a reduced search to get an ordering move first (improves ordering — the class this engine rewards)
+- [x] ~~Internal iterative deepening (IID)~~ (s21: NOT GATED — PV-only is inert under ID+TT (identical node counts); broadened is uneconomic, +49% nodes, same move choice)
+- [x] ~~Continuation history~~ (s21: REJECTED — +40% nodes-to-depth in every variant; butterfly+killers+countermove+SEE ordering is already a strong optimum)
+- [x] ~~Bigger TT (22→24 bits)~~ (s21: REJECTED neutral — cuts nodes but same depth; 384MB cache penalty cancels the hit-rate gain, at play AND deep-analysis TC)
+- [x] **Aspiration windows at the root** (s21: ACCEPTED, ~+23 Elo pooled over 120 games — the root had searched a full window every iteration; delta=20)
 - [ ] Mate-distance pruning
 - [x] ~~50-move-rule detection (plain hm>=100 -> 0)~~ (s12: REJECTED at 48%,
       −12 — suspected TT pollution across clock contexts) — [ ] refined
