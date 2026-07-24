@@ -1,11 +1,14 @@
 # ConceptChess
 
-A chess **coach** that shows its work. The engine plays around **2650–2700 Elo**
-(compiled C core; Stockfish-ladder-anchored), but its evaluation is deliberately
-a sum of named, human-meaningful concepts — material, piece placement, pawn
-structure (incl. passed-pawn king races and connected passers), king safety,
-king attack, king pressure, mobility, piece activity, threats, tempo, and
-endgame mating technique — so every judgment can be explained. Tests enforce
+A chess **coach** that shows its work. Single-threaded it plays around
+**2750 Elo** (compiled C core, Stockfish-ladder-anchored plus ~100 Elo of recent
+search/eval gains), and it plays **full-width Lazy-SMP by default** for another
+~+140–190 — but its evaluation is deliberately a sum of named, human-meaningful
+concepts — material, piece placement, pawn structure (incl. passed-pawn king
+races and connected passers), king safety, king attack, king pressure, mobility,
+piece activity, threats (pieces pressured by a lower-value attacker, weighted by
+whose move it is), tempo, and endgame mating technique — so every judgment can be
+explained. Tests enforce
 that the displayed breakdown is *exactly* the evaluation the search maximized
 (even the compiled eval is verified identical to the readable Python one on
 6,204 positions), so nothing shown is a post-hoc summary.
