@@ -148,6 +148,35 @@ principled, faster, all invariants intact).
 
 ---
 
+## 2026-07-24 — Session 23: SMP is the play default; SMP-quality frontier probed
+
+**SMP as the play default (ACCEPTED — product/strength).** With single-thread
+search and eval both at a hard optimum (see s22), the biggest available lever is
+the proven Lazy-SMP gain (+140–190, s20). The engine now plays full-width by
+default everywhere it actually plays — UCI (external GUIs/real games), the web
+play-vs-engine opponent, and the analysis board — via `core.play_threads()`
+(honor CC_THREADS, else all cores ≤8). The coach's move-verdict searches stay
+single-threaded for reproducibility; `research.match` exports CC_THREADS=1 so
+version-vs-version gates stay clean single-thread. Confirmed the gain holds on the
+current engine: benchmark avg depth **20.5 (T=8) vs 19.3 (T=1), +1.2 plies**. Eval
+and its explanations unchanged. Committed.
+
+**SMP helper LMR-diversity (REJECTED, neutral).** With SMP now the default, its
+*quality* is the live frontier. Tried: odd-id helper threads reduce one extra ply
+(`SS.lmr_bias`), so they explore different tree shapes and fill the shared TT with
+varied entries; main thread and the T=1 path provably unchanged. Gated clean at
+**T=4 vs T=4** (8 threads on 8 cores — no contention): batch A +19=24−17 (52%),
+confirmation +... (47%); **pooled ~49.6% over 116 games** — neutral washout, same
+shape as history-LMR. Reverted. SMP-quality tuning is both noisy to gate (SMP
+nondeterminism) and, on the evidence so far, not a cheap win.
+
+**Frontier status:** single-thread search, eval, and now SMP-quality-diversity all
+explored. Banked this session-pair: ~+100 Elo single-thread (aspiration +23, threats
++47, initiative +32) + SMP as the play default. The last three levers (pins,
+history-LMR, SMP-diversity) were all neutral — the engine is at a deep optimum.
+
+---
+
 ## 2026-07-23 — Session 22: threat eval concept (+83 Elo) — eval knowledge, not search
 
 After s21 showed single-thread *search* is a strong local optimum (aspiration the
