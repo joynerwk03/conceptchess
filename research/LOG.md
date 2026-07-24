@@ -196,6 +196,17 @@ suite hadn't flagged king safety). Reverted. Takeaway: on this engine, *piece-
 pressure* concepts land (threats +47) but *king-safety* re-tuning backfires — go
 where the diagnosis points, not where intuition does.
 
+**Threat-by-pawn-push concept (REJECTED, −64 Elo).** A pawn that can *safely* push
+one square (empty, not into an enemy pawn's control) and from there attack an
+enemy minor/rook/queen (weight 0.05). Faithful (C==Python 0.000000, the trickiest
+mirror yet — bitboard shifts — passed; perft/tests green). Gated **+12 =25 −23
+(41%), −64 Elo** vs the threats baseline. Second pawn-advance concept to fail after
+storm, and it confirms the pattern hard: **concepts that reward pawn *advances*
+(storm, push) lose; concepts that value *existing* piece pressure (threats +47)
+win.** The engine already handles pawn breaks via search; nudging the eval to want
+them just distorts move choice. Reverted. Next eval work will avoid pawn-advance
+signals entirely.
+
 ---
 
 ## 2026-07-20 — Session 20: Lazy SMP breaks the plateau (+140–187 Elo)
