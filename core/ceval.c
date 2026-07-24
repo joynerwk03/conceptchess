@@ -205,25 +205,31 @@ double eval_core(U64 bb[2][6], int side){
     /* tempo */
     s += (side==WHITE?1:-1)*W_TEMPO;
 
-    /* threats */
+    /* threats: pieces pressured by a lower-value attacker, plus hanging pieces.
+     * Mirrors engine/concepts/threats.py — per enemy piece, add the pawn / minor
+     * / rook / hanging terms in THAT order so the float sum matches byte-for-byte. */
     {
-        U64 atkby[2];
+        U64 atkby[2], pawnatk[2], minoratk[2], rookatk[2];
         for(int c=0;c<2;c++){
-            U64 a = c==WHITE ? WPAWN_ATK(bb[WHITE][PAWN]) : BPAWN_ATK(bb[BLACK][PAWN]);
-            /* union of the precomputed per-piece attacks (order-free: OR) */
-            for(int p=KNIGHT;p<=QUEEN;p++)
-                for(int i=0;i<pna[c][p];i++) a|=pat[c][p][i];
-            a|=KING_ATK[lsb(bb[c][KING])];
-            atkby[c]=a;
+            U64 pa = c==WHITE ? WPAWN_ATK(bb[WHITE][PAWN]) : BPAWN_ATK(bb[BLACK][PAWN]);
+            U64 ma=0, ra=0, qa=0;
+            for(int i=0;i<pna[c][KNIGHT];i++) ma|=pat[c][KNIGHT][i];
+            for(int i=0;i<pna[c][BISHOP];i++) ma|=pat[c][BISHOP][i];
+            for(int i=0;i<pna[c][ROOK];i++)   ra|=pat[c][ROOK][i];
+            for(int i=0;i<pna[c][QUEEN];i++)  qa|=pat[c][QUEEN][i];
+            pawnatk[c]=pa; minoratk[c]=ma; rookatk[c]=ra;
+            atkby[c] = pa|ma|ra|qa|KING_ATK[lsb(bb[c][KING])];
         }
         static const double PV[6]={100,320,330,500,900,0};
         for(int c=0;c<2;c++){
             int sign=c==WHITE?1:-1;
-            for(int p=0;p<5;p++){
+            for(int p=0;p<5;p++){            /* PAWN..QUEEN (0-indexed here) */
                 U64 x=bb[!c][p];
-                while(x){ int sq=lsb(x); x&=x-1;
-                    if((atkby[c]&(1ULL<<sq)) && !(atkby[!c]&(1ULL<<sq)))
-                        s += sign*W_THREAT_HANGING*PV[p];
+                while(x){ int sq=lsb(x); x&=x-1; U64 m=1ULL<<sq;
+                    if((pawnatk[c]&m)  && p>=KNIGHT) s += sign*W_THREAT_PAWN*PV[p];
+                    if((minoratk[c]&m) && p>=ROOK)   s += sign*W_THREAT_MINOR*PV[p];
+                    if((rookatk[c]&m)  && p==QUEEN)  s += sign*W_THREAT_ROOK*PV[p];
+                    if((atkby[c]&m) && !(atkby[!c]&m)) s += sign*W_THREAT_HANGING*PV[p];
                 }
             }
         }

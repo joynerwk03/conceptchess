@@ -46,8 +46,11 @@ W = {
     "act.rook_open": 17.0,
     "act.rook_semi": 16.0,
     "act.rook_seventh": 22.05,
-    # threats
-    "threat.hanging": 0.0562,  # fraction of the hanging piece's value
+    # threats (fractions of the threatened piece's value)
+    "threat.hanging": 0.0562,  # attacked and undefended (en prise)
+    "threat.pawn": 0.10,   # a minor/rook/queen attacked by a pawn (must move or drop material)
+    "threat.minor": 0.06,  # a rook/queen attacked by a knight/bishop
+    "threat.rook": 0.04,   # a queen attacked by a rook
     # mating drive (bare-king endgames)
     "mate_drive.corner": 12,
     "mate_drive.king_prox": 6,

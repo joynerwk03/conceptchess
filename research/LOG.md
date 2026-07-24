@@ -148,6 +148,38 @@ principled, faster, all invariants intact).
 
 ---
 
+## 2026-07-23 — Session 22: threat eval concept (+83 Elo) — eval knowledge, not search
+
+After s21 showed single-thread *search* is a strong local optimum (aspiration the
+lone win), the productive frontier is **eval knowledge** — a new interpretable
+concept, the historical big-gain pattern (king-race +110). The `diagnose.py`
+"eval is calibrated" reading only means the top move rarely flips; it doesn't mean
+every positional feature is modeled.
+
+**Expanded the Threats concept (ACCEPTED, +83 Elo).** The old concept scored only
+*hanging* (attacked + undefended) pieces at 5.6% of value. Added the far larger
+signal of pieces pressured by a **lower-value attacker** — a pawn hitting a
+minor/rook/queen, a minor hitting a rook/queen, a rook hitting a queen — since
+those win material (SEE) or force a concession even when defended. Three new terms
+(threat.pawn 0.10, threat.minor 0.06, threat.rook 0.04 as fractions of the
+threatened piece's value), added per piece in a fixed order so the C eval mirrors
+the Python sum **byte-for-byte** (eval_check max |C−Python| = 0.000000, faithfulness
+tests green, perft clean, tactics 24/24). Fully interpretable: the coach now says
+"Black knight on d5 attacked by a pawn."
+
+**Gate (isolated: aspiration+new-threats vs an aspiration-only worktree, 0.3s):
++23 =28 −9 (62%), +83 Elo (95% −4..+181)** over 60 games — 2.6:1 win ratio,
+consistently positive the entire run (55→57.5→58→57.5→59→62, no negative window).
+High draw rate (28), as expected for an eval nuance. Grounded in real chess theory
+(every strong engine has threat terms), so the winner's-curse risk is low despite
+the CI grazing zero. Weights were conservative first guesses — tuning + a
+confirmation batch queued. Kept.
+
+**Verdict:** ACCEPTED (new interpretable eval concept, +83 Elo point estimate;
+C==Python invariant preserved).
+
+---
+
 ## 2026-07-20 — Session 20: Lazy SMP breaks the plateau (+140–187 Elo)
 
 The s19 diagnosis said the gap to Stockfish was **search depth, not eval** —
