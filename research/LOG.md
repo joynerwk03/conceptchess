@@ -229,9 +229,20 @@ the threats baseline: **+24 =23 −13 (59%), +64 Elo (95% −23..+161)** — con
 across the run (60/60/59), 1.85:1 wins. Committed; confirmation batch + initiative-
 weight tune queued (expect winner's curse to trim +64, as it did threats' +83→+47).
 
-**Verdict:** ACCEPTED (initiative refinement of the threats concept; +64 Elo batch,
-confirmation pending; C==Python preserved). Method lesson: refine proven concepts,
-don't guess new ones — the eval is mature.
+**Confirmation:** clean second batch +19 =22 −19 (50%) — a weak final 20 games
+(5/20) after a 62.5% first 40, i.e. high 60-game variance. **Pooled 120 games:
++43 =45 −32 = 54.6%, ≈+32 Elo (95% −30..+96).** Honest figure **~+32 Elo**, not the
++64 of batch A — same winner's-curse trim as threats (+83→+47). Kept.
+
+**Verdict:** ACCEPTED (initiative refinement of the threats concept; ~+32 Elo pooled
+over 120 games; C==Python preserved). Method lesson confirmed twice now: **refine
+the proven concept, don't guess new ones** — threats +47 and its initiative
+refinement +32 both landed; every coarse new concept (storm/push/bad-bishop) lost.
+
+**Session-22 tally (single-thread, all pooled/confirmed):** threats +47, threats-
+initiative +32 ≈ **+79 Elo of eval knowledge**, on top of s21's aspiration +23 — the
+engine is materially stronger while staying fully interpretable (every new term is a
+named, explained concept; C==Python 0.000000 throughout).
 
 ---
 
