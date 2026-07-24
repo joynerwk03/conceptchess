@@ -124,6 +124,11 @@ double eval_core(U64 bb[2][6], int side){
                         int dok=dfo>dro?dfo:dro, dek=dfe>dre?dfe:dre;
                         s += sign*kd_w*(dek-dok);
                     }
+                    /* rook behind the passer (Tarrasch); mirrors pawn_structure._rook_behind:
+                     * own rook supports (bonus), enemy rook attacks it from behind (penalty) */
+                    { U64 behind = c==WHITE ? ((1ULL<<(r*8))-1) : ~((1ULL<<((r+1)*8))-1);
+                      if((bb[c][ROOK]&FILEBB[f]) & behind)  s += sign*W_PAWN_ROOK_BEHIND_PASSER*passed_scale;
+                      if((bb[!c][ROOK]&FILEBB[f]) & behind) s -= sign*W_PAWN_ROOK_BEHIND_ENEMY_PASSER*passed_scale; }
                 }
             }
         }

@@ -9,6 +9,16 @@ from engine.weights import W
 PASSED_BONUS = [0, 10, 15, 20, 35, 60, 100, 0]
 
 
+def _rook_behind(board, passer_sign, sq, rook_color):
+    """A rook of `rook_color` on the passer's file, behind it (on the side the
+    passer advanced from) — the Tarrasch 'rook belongs behind the passed pawn',
+    whether it's the pusher's rook (support) or the defender's (attack)."""
+    f, r = sq & 7, sq >> 3
+    rooks = board.rooks & board.occupied_co[rook_color] & chess.BB_FILES[f]
+    behind = ((1 << (r * 8)) - 1) if passer_sign > 0 else ~((1 << ((r + 1) * 8)) - 1)
+    return bool(rooks & behind)
+
+
 class PawnStructure:
     name = "pawn_structure"
     display_name = "Pawn structure"
@@ -50,6 +60,11 @@ class PawnStructure:
                 ok, ek = (wk, bk) if sign > 0 else (bk, wk)
                 s += sign * kd_w * (chess.square_distance(ek, front)
                                     - chess.square_distance(ok, front))
+            color = sign > 0
+            if _rook_behind(board, sign, sq, color):
+                s += sign * W["pawn.rook_behind_passer"] * scale
+            if _rook_behind(board, sign, sq, not color):
+                s -= sign * W["pawn.rook_behind_enemy_passer"] * scale
         return s
 
     def _compute(self, ctx):
@@ -134,6 +149,13 @@ class PawnStructure:
                                 who = "escorted by king" if race * sign > 0 else "outrun by enemy king"
                                 items.append((f"{cname} {chess.square_name(sq)} passer {who}",
                                               race))
+                        col = sign > 0
+                        if _rook_behind(ctx.board, sign, sq, col):
+                            items.append((f"{cname} rook behind {chess.square_name(sq)} passer",
+                                          sign * W["pawn.rook_behind_passer"] * passed_scale))
+                        if _rook_behind(ctx.board, sign, sq, not col):
+                            items.append((f"Enemy rook behind {cname} {chess.square_name(sq)} passer",
+                                          -sign * W["pawn.rook_behind_enemy_passer"] * passed_scale))
         return items
 
     @staticmethod

@@ -120,6 +120,10 @@ TUNABLE = {
     "act.rook_semi": (0.75, 1.25), "act.rook_seventh": (0.75, 1.25),
     "threat.hanging": (0.75, 1.5),
     "pawn.blocked_passer": (0.8, 1.2),
+    # s22 threat terms + s23 endgame terms (untuned first guesses — widest bounds)
+    "threat.pawn": (0.6, 1.5), "threat.minor": (0.6, 1.5), "threat.rook": (0.6, 1.5),
+    "threat.initiative": (0.5, 1.6),
+    "pawn.rook_behind_passer": (0.4, 1.6), "pawn.rook_behind_enemy_passer": (0.4, 1.6),
 }
 
 

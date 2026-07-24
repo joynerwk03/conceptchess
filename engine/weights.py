@@ -18,40 +18,42 @@ W = {
     "material.queen": 900,
     # piece-square tables: multiplier per piece type on the (tapered) table value
     "pst.pawn": 0.5125,
-    "pst.knight": 0.75,
-    "pst.bishop": 1.5094,
-    "pst.rook": 0.7625,
-    "pst.queen": 0.5625,
-    "pst.king": 0.9,
+    "pst.knight": 0.562,
+    "pst.bishop": 1.208,
+    "pst.rook": 0.572,
+    "pst.queen": 0.703,
+    "pst.king": 1.05,
     # pawn structure
-    "pawn.doubled": 19.125,
-    "pawn.isolated": 9.5625,
-    "pawn.passed_scale": 0.9,     # multiplier on the per-rank passed bonus
-    "pawn.passed_eg_scale": 1.728,
-    "pawn.blocked_passer": 0.4,  # multiplier when the square in front is occupied  # passed pawns matter more in the endgame
+    "pawn.doubled": 15.3,
+    "pawn.isolated": 7.65,
+    "pawn.passed_scale": 0.75,     # multiplier on the per-rank passed bonus
+    "pawn.passed_eg_scale": 2.074,
+    "pawn.blocked_passer": 0.45,  # multiplier when the square in front is occupied  # passed pawns matter more in the endgame
     "pawn.passer_king_dist": 6.76,  # cp per square of net king distance to the passer's front square (endgame-scaled)
     "pawn.connected_passer": 7.5,  # per passer with a friendly passer on an adjacent file
+    "pawn.rook_behind_passer": 9.6,  # a friendly rook behind a passer supports its advance (Tarrasch)
+    "pawn.rook_behind_enemy_passer": 12,  # an enemy rook behind our passer attacks/stops it
     # king safety
-    "king.shield_gap": 14.421,
-    "king.open_file": 17.5781,
+    "king.shield_gap": 16.584,
+    "king.open_file": 21.094,
     "kattack.scale": 4.0,   # cp per weighted attack unit on the enemy king zone
     "kattack.proximity": 2,  # cp per weighted closeness unit of pieces near the enemy king (phase-scaled)
     # mobility (cp per square above/below typical)
-    "mob.knight": 3.9774,
+    "mob.knight": 4.773,
     "mob.bishop": 5.6112,
     "mob.rook": 3.7408,
     "mob.queen": 1.8704,
     # piece activity
-    "act.bishop_pair": 44.5312,
-    "act.rook_open": 17.0,
+    "act.bishop_pair": 48,
+    "act.rook_open": 20.4,
     "act.rook_semi": 16.0,
     "act.rook_seventh": 22.05,
     # threats (fractions of the threatened piece's value)
-    "threat.hanging": 0.0562,  # attacked and undefended (en prise)
-    "threat.pawn": 0.10,   # a minor/rook/queen attacked by a pawn (must move or drop material)
+    "threat.hanging": 0.05,  # attacked and undefended (en prise)
+    "threat.pawn": 0.15,   # a minor/rook/queen attacked by a pawn (must move or drop material)
     "threat.minor": 0.06,  # a rook/queen attacked by a knight/bishop
-    "threat.rook": 0.04,   # a queen attacked by a rook
-    "threat.initiative": 0.25,  # the side to move's threats count for more (it can execute them now)
+    "threat.rook": 0.024,   # a queen attacked by a rook
+    "threat.initiative": 0.4,  # the side to move's threats count for more (it can execute them now)
     # mating drive (bare-king endgames)
     "mate_drive.corner": 12,
     "mate_drive.king_prox": 6,

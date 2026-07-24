@@ -175,6 +175,36 @@ explored. Banked this session-pair: ~+100 Elo single-thread (aspiration +23, thr
 +47, initiative +32) + SMP as the play default. The last three levers (pins,
 history-LMR, SMP-diversity) were all neutral — the engine is at a deep optimum.
 
+**Endgame concepts + full Texel retune (ACCEPTED, +58 Elo batch).** Two things at
+once, both requested:
+
+*Endgame concepts (additive, so they fit the concept-sum invariant — note that
+drawishness ideas like opposite-bishop scaling are inherently MULTIPLICATIVE and
+would break "eval = sum of named concepts", so they were deliberately not taken):*
+**rook behind a passed pawn** (Tarrasch) — a friendly rook behind the passer
+supports its advance (bonus), an enemy rook behind it attacks/stops it (penalty).
+Both byte-identical C↔Python (0.000000).
+
+*Full Texel retune on FRESH data.* Regenerated the dataset from the now-stronger
+engine: **29,769 samples / 1500 self-play games**, balanced outcomes
+(10234/9228/10307) from Stockfish-screened balanced starts. Crucially this used
+`research.texel` (fits **game outcomes**) — not `research.tune`/`evalloss`
+(eval-MSE vs Stockfish), the target the LOG had already flagged as anti-correlated.
+Extended TUNABLE to cover the s22 threat terms and the new endgame terms, which had
+never been tuned. **Loss 0.088139 → 0.087638 (0.57%); 21 weights changed.**
+
+The headline finding: **`threat.pawn` 0.10→0.15 and `threat.initiative` 0.25→0.40
+both hit their UPPER bounds** — the tuner wanted them higher still, i.e. the threat
+concept (s22's big win) was materially under-weighted. This is the exact OPPOSITE
+of what the earlier eval-MSE tune concluded (it wanted them lower, and gated
+neutral), a clean demonstration that the outcome target is right and the MSE target
+misleads. Endgame terms tuned too: defensive rook-behind (10→12) beats supporting
+(12→9.6). PSTs, king safety (shield/open-file up), mobility and activity all shifted.
+
+**Gate (combined, vs HEAD, 0.3s, 60 UHO games): +25 =20 −15 (58%), +58 Elo
+(95% −29..+154)** — consistent across the run. Screens green throughout: C==Python
+0.000000, perft, 47 tests, tactics 24/24. Committed; confirmation batch queued.
+
 ---
 
 ## 2026-07-23 — Session 22: threat eval concept (+83 Elo) — eval knowledge, not search
