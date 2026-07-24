@@ -124,12 +124,24 @@ set (idle machine, exact A/B) then matches:
   (16:+2.4%, 20:−2.1%, 30:+11.6% nodes) → 20 is the local optimum; wider windows
   cost more via expensive high-depth re-searches.
 
-**Session-21 strength ledger:** six levers, one clear product win (SMP-for-analysis),
-one modest engine win (aspiration, ~+23 Elo pooled), four honest negatives (LMR
-neutral, IID uneconomic, continuation-history worse, bigger-TT neutral). The
-recurring lesson — this engine's ordering/eval are a genuinely strong local
-optimum — held all session; aspiration got in only because it attacks a real gap
-(the un-windowed root) rather than re-tuning something already tuned.
+**Lever #7 — root-move ordering by previous-iteration score (REJECTED).** Natural
+follow-on to aspiration: keep the root list sorted by each move's last score so the
+true best is first and the window holds without a re-search. On 4 middlegames it
+looked good (−4.3% nodes vs base, better than aspiration's −2.1%) but the broad
+benchmark told the truth — **avg depth 19.50 → 19.33** and middlegame fixed-time
+depth 13 → 12. Cause: with PVS only move 1 gets a true score; moves 2..N carry
+null-window *upper bounds*, so sorting by them misorders decent-but-scouted moves
+to the back. Would need per-move re-search or bound-aware sorting to fix; not worth
+it on top of aspiration. Reverted.
+
+**Session-21 strength ledger:** seven levers, one clear product win (SMP-for-analysis),
+one modest engine win (aspiration, ~+23 Elo pooled), five honest negatives (LMR
+neutral, IID uneconomic, continuation-history worse, bigger-TT neutral, root-order
+regresses). The recurring lesson — this engine's ordering/eval are a genuinely
+strong local optimum — held all session; aspiration got in only because it attacks
+a real structural gap (the un-windowed root) rather than re-tuning something already
+tuned. Broad-benchmark avg depth is the reliable arbiter; 4-position node counts
+mislead (root-order looked +good there, regressed on the suite).
 
 **Verdict (lever #6 / aspiration):** ACCEPTED (~+23 Elo pooled over 120 games;
 principled, faster, all invariants intact).
