@@ -43,6 +43,8 @@ def _load():
         lib.c_verify_hash_fail_fen.restype = ctypes.c_char_p
         # Lazy-SMP thread count (default 1 = single-threaded, byte-identical).
         # Set via the CC_THREADS env var so match gates can pit N threads vs 1.
+        if hasattr(lib, "c_set_multipv"):
+            lib.c_set_multipv.argtypes = [ctypes.c_int]
         if hasattr(lib, "c_set_threads"):
             lib.c_set_threads.argtypes = [ctypes.c_int]
             import os
@@ -67,6 +69,15 @@ def set_threads(n):
     when you're playing or exploring, not scoring a move). No-op if no SMP."""
     if _lib is not None and hasattr(_lib, "c_set_threads"):
         _lib.c_set_threads(int(n))
+
+
+def set_multipv(on):
+    """Enable/disable the true 2nd-best root move (an extra full-window pass that
+    excludes the best move). OFF by default so play pays nothing; the analysis
+    GUI turns it on so its runner-up recommendation is real, not a move-order
+    artifact. No-op if the core predates this feature."""
+    if _lib is not None and hasattr(_lib, "c_set_multipv"):
+        _lib.c_set_multipv(1 if on else 0)
 
 
 def play_threads():

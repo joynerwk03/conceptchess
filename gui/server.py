@@ -189,10 +189,12 @@ class Handler(BaseHTTPRequestHandler):
                 use_book = bool(payload.get("book", False))
                 with _engine_lock:
                     _core.set_threads(ANALYSIS_THREADS)
+                    _core.set_multipv(True)   # real runner-up for the 2nd arrow
                     try:
                         res = analysis_step(board, max_depth, movetime, use_book)
                     finally:
                         _core.set_threads(1)   # keep the coach path deterministic
+                        _core.set_multipv(False)
                 res["threads"] = ANALYSIS_THREADS
                 self._json(res)
             elif self.path == "/api/candidates":

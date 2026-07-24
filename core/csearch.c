@@ -23,6 +23,15 @@ static int g_threads = 1;
 static volatile int g_stop = 0;
 void c_set_threads(int n){ g_threads = n<1?1 : (n>MAX_THREADS?MAX_THREADS:n); }
 
+/* MultiPV / true 2nd-best. OFF by default: a normal alpha-beta search scores
+ * only the BEST root move exactly -- every other root move fails low against
+ * best's alpha and returns an upper bound, so the "runner-up" is a move-order
+ * artifact, not a real 2nd choice. When on (the analysis GUI turns it on), we
+ * do one extra full-window root pass that excludes best to find the true 2nd
+ * move. Off in play so games pay zero extra cost. */
+static int g_want_second = 0;
+void c_set_multipv(int on){ g_want_second = on?1:0; }
+
 #define S_MATE 100000
 #define S_MATE_TH 90000
 #define TT_EXACTF 0
@@ -494,6 +503,45 @@ static void run_id(ThreadCtx *tc){
 
 static void* thread_entry(void* arg){ run_id((ThreadCtx*)arg); return NULL; }
 
+/* Find the TRUE 2nd-best root move: a fresh full-window root search that
+ * excludes `best`. Runs single-threaded on the main thread after the main
+ * search, reusing its warm TT (so it is cheap). Alpha starts at -inf, so the
+ * best-of-the-rest raises alpha and is scored exactly by PVS -- exactly how the
+ * main search finds `best`. Returns 0 if there is no legal alternative. */
+static Move root_second(const Board *rootb, Move best, int maxdepth,
+                        const U64 *ghist, int nghist, double stop_time){
+    memset(&SS,0,sizeof(SS));
+    for(int i=0;i<nghist && i<PATH_CAP;i++) SS.path[SS.path_len++]=ghist[i];
+    SS.stop_time = stop_time;
+    Board b = *rootb;
+    Move root[256]; int rn=gen_legal(&b,root);
+    if(rn<=1) return 0;
+    if(maxdepth<1) maxdepth=1;
+    /* Iterative deepening over the non-best moves, so a sensible 2nd move is
+     * always available even if the budget runs out before full depth (the
+     * sibling subtrees are cold -- the main search failed them low early). */
+    Move sm=0;
+    for(int depth=1; depth<=maxdepth; depth++){
+        order(&b,root,rn, sm?sm:best, 0,0);  /* last iter's 2nd sorts first */
+        Move dsm=0; int ds=-S_MATE-1, a=-S_MATE; int first=1;
+        for(int i=0;i<rn;i++){
+            if(root[i]==best) continue;
+            Board c=b; make(&c,root[i]);
+            int sc;
+            if(first){ sc=-negamax(&c,depth-1,-S_MATE,-a,1,root[i]); first=0; }
+            else { sc=-negamax(&c,depth-1,-a-1,-a,1,root[i]);
+                   if(sc>a && !SS.stopped) sc=-negamax(&c,depth-1,-S_MATE,-a,1,root[i]); }
+            if(SS.stopped) break;
+            if(sc>ds){ ds=sc; dsm=root[i]; }
+            if(sc>a) a=sc;
+        }
+        if(SS.stopped) break;                /* depth incomplete: keep prior sm */
+        sm=dsm;
+        if(ds>S_MATE_TH||ds<-S_MATE_TH) break;
+    }
+    return sm;
+}
+
 /* Public API: search from startfen after the given space-separated UCI moves.
  * Fills uci_out (>=6 bytes), depth_out, nodes_out; returns score (stm cp). */
 static int g_search_init=0;
@@ -549,7 +597,14 @@ int c_search(const char *startfen, const char *moves, double movetime, double ma
     Move best=ctx[0].best;
     if(!best){ uci_out[0]=0; return 0; }
     uci_of(best,uci_out);
-    if(second_out){ if(ctx[0].second) uci_of(ctx[0].second,second_out); else second_out[0]=0; }
+    if(second_out){
+        second_out[0]=0;
+        if(g_want_second){          /* real 2nd move via a full-window exclude-best pass */
+            g_stop=0;               /* helpers already joined; this is single-threaded */
+            Move snd=root_second(&b, best, ctx[0].cd, ghist, nghist, now_sec()+movetime*0.5);
+            if(snd) uci_of(snd,second_out);
+        }
+    }
     if(depth_out)*depth_out=ctx[0].cd;
     if(nodes_out)*nodes_out=ctx[0].nodes;
     return ctx[0].score;
