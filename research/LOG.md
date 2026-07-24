@@ -239,10 +239,24 @@ over 120 games; C==Python preserved). Method lesson confirmed twice now: **refin
 the proven concept, don't guess new ones** — threats +47 and its initiative
 refinement +32 both landed; every coarse new concept (storm/push/bad-bishop) lost.
 
+**Pins concept (REJECTED, neutral −12 Elo).** New concept penalizing own minors/
+rooks/queens pinned to their king (both colors, symmetric). Notable engineering:
+a from-scratch pin detector in C (between-table + slider rays) that reproduced
+python-chess `is_pinned` **byte-for-byte on all 500 eval_check positions** — the
+hardest mirror of the session, and it passed clean. But gated **+22 =14 −24 (48%),
+−12 Elo** vs the initiative baseline. The refined lesson: a winning eval concept
+must be concrete **and beyond the search horizon**. Threats/initiative qualify
+(positional pressure the 0.3s search doesn't fully resolve); pins don't — the search
+already handles pin *tactics* directly, so the eval term is redundant. Reverted.
+
 **Session-22 tally (single-thread, all pooled/confirmed):** threats +47, threats-
 initiative +32 ≈ **+79 Elo of eval knowledge**, on top of s21's aspiration +23 — the
 engine is materially stronger while staying fully interpretable (every new term is a
-named, explained concept; C==Python 0.000000 throughout).
+named, explained concept; C==Python 0.000000 throughout). Six eval attempts: 2 wins
+(threats, initiative), 4 losses (storm/push/bad-bishop coarse-or-search-handled;
+pins search-handled; weight-tune loss≠Elo). **Winning eval concept = concrete +
+beyond-horizon + not-already-in-search.** That trio is now well-covered — the eval
+is mature; further eval headroom is scarce.
 
 ---
 
