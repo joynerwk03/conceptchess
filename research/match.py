@@ -76,11 +76,12 @@ def _start_board(opening):
     return board
 
 
-def play_game(white, black, opening, movetime, max_moves=250):
+def play_game(white, black, opening, white_time, black_time, max_moves=250):
     board = _start_board(opening)
-    limit = chess.engine.Limit(time=movetime)
+    wl = chess.engine.Limit(time=white_time)
+    bl = chess.engine.Limit(time=black_time)
     while not board.is_game_over(claim_draw=True) and board.fullmove_number < max_moves:
-        engine = white if board.turn == chess.WHITE else black
+        engine, limit = (white, wl) if board.turn == chess.WHITE else (black, bl)
         result = engine.play(board, limit)
         if result.move is None:
             break
@@ -145,6 +146,9 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--games", type=int, default=10)
     p.add_argument("--movetime", type=float, default=0.5)
+    p.add_argument("--opp-movetime", type=float, default=None,
+                   help="opponent's per-move seconds (default: same as --movetime). "
+                        "Set different for time-odds / time-scaling tests.")
     p.add_argument("--opponent", default="stockfish:1400")
     p.add_argument("--opponent-cwd", default=None)
     p.add_argument("--opening-offset", type=int, default=0,
@@ -191,7 +195,10 @@ def main():
                 white_score, board = play_game_clock(white, black, opening,
                                                      args.clock, args.inc)
             else:
-                white_score, board = play_game(white, black, opening, args.movetime)
+                our_t = args.movetime
+                opp_t = args.opp_movetime if args.opp_movetime is not None else args.movetime
+                white_time, black_time = (our_t, opp_t) if we_are_white else (opp_t, our_t)
+                white_score, board = play_game(white, black, opening, white_time, black_time)
             our_score = white_score if we_are_white else 1 - white_score
             if our_score == 1:
                 wins += 1
@@ -224,7 +231,10 @@ def main():
     n = wins + draws + losses
     score = wins + 0.5 * draws
     elo, ci = elo_estimate(score, n)
-    print(f"\nresult vs {args.opponent}: +{wins} ={draws} -{losses}  "
+    _tc = f"{args.movetime}s"
+    if args.opp_movetime is not None and args.opp_movetime != args.movetime:
+        _tc = f"us {args.movetime}s vs opp {args.opp_movetime}s"
+    print(f"\nresult vs {args.opponent} [{_tc}]: +{wins} ={draws} -{losses}  "
           f"({100 * score / n:.0f}%)")
     print(f"elo diff: {elo:+.0f}  (95% ~ {ci[0]:+.0f}..{ci[1]:+.0f})")
     if args.pgn_out and pgns:
