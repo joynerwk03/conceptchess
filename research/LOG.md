@@ -91,6 +91,26 @@ relative (external long-TC Elo needs a vs-SF-at-long-TC calibration, which is
 confounded by SF's own scaling). The hypothesis that search under-uses long TC
 is NOT supported.
 
+**Extended scaling rung (2.4s vs 4.8s) — INCONCLUSIVE + two findings.** The 16x
+rung crashed at game 27/40 (python-chess timed out waiting for a move) and its
+partial result (2.4s side 28% → implied +166/doubling) is anomalous and not
+trusted. Investigated:
+- *Intermittent long-TC crash.* Could NOT reproduce in isolation: the C core and
+  the UCI engine both respect the time budget and return promptly across many
+  4.8s calls; deep fixed-depth searches (to depth 30) don't crash. Likely a rare
+  hang or a harness/many-spawn issue over a ~2h run. NEEDS a longer repro run;
+  note the analysis board uses /api/think (repeated bounded calls), not one long
+  `go`, so it may not hit this. FLAGGED, not fixed.
+- *PV truncation at long TC (real, display-only).* The expected line is extracted
+  by walking the TT (`c_pv`); TT_BITS=22 → 4M entries, so at 17-60M nodes (long
+  TC) deep PV entries — sometimes even the root — are overwritten, giving a SHORT
+  or EMPTY displayed PV. The MOVE and SCORE are always correct (search works); only
+  the analysis board's shown line degrades. Confirmed: same middlegame at 1/2/4/8s
+  gave pvlen 11/9/12/4, and 0 at 30s. FIX (for review — it touches the search hot
+  loop, so gated on William's OK): a triangular PV table maintained during search
+  (write-only side data → provably non-perturbing via node-count invariance), read
+  out instead of walking the TT. Cheaper partial mitigation: bump TT_BITS 22→24.
+
 **Multiplicative eval modifiers + OCB drawishness (A).** ACCEPTED, kept as a
 feature. Implements William's idea: eval is now `sum(concepts)` THEN a chain of
 multiplicative modifiers, each shown in the breakdown as its marginal delta
