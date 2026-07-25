@@ -91,6 +91,21 @@ relative (external long-TC Elo needs a vs-SF-at-long-TC calibration, which is
 confounded by SF's own scaling). The hypothesis that search under-uses long TC
 is NOT supported.
 
+**Multiplicative eval modifiers + OCB drawishness (A).** ACCEPTED, kept as a
+feature. Implements William's idea: eval is now `sum(concepts)` THEN a chain of
+multiplicative modifiers, each shown in the breakdown as its marginal delta
+`(factor-1)*running` — so the displayed items still sum to the total and the
+explanation stays faithful. First modifier: opposite-colored-bishop drawishness
+(pure OCB ending — one bishop each, opposite colors, no other pieces — scales the
+eval by ocb.draw_scale=0.6, since those endings are famously drawish). Faithful:
+C==Python 0.000000 over 6204 pos incl. pure-OCB positions; new TestModifiers +
+all 47 fast tests green; symmetry holds through the modifier. Gate vs pre-OCB
+(120g UHO, 0.3s): 52% (+38 =50 -32), +17 Elo (95% -45..+81) — no regression.
+Kept NOT for Elo (pure OCB is rare at 0.3s so the match effect is ~noise) but
+because it makes the eval correct where it fires and is the interpretability
+capability requested; it also unlocks future non-linear terms (king-safety x
+material, etc.) a pure sum can't express. ocb.draw_scale is tunable.
+
 ---
 
 ## 2026-07-23 — Session 21: analysis board (product) + adaptive-time deprioritized

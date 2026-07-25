@@ -89,3 +89,31 @@ class TestSanity:
         # Same material, White's c-pawn is passed, Black's h-pawn is blockaded by nothing
         with_passer = chess.Board("8/8/4k3/8/2P5/8/5K2/8 w - - 0 1")
         assert evaluate(with_passer) > 50
+
+
+class TestModifiers:
+    """Multiplicative modifiers: damp the eval but stay faithful (the marginal
+    delta shown in the breakdown sums back to the total)."""
+
+    from engine.weights import W
+    OCB = "8/2k5/8/3b4/2P5/4B3/2K5/8 w - - 0 1"   # pure opp-bishops, White up a pawn
+    MIXED = "8/2k5/8/3b4/2P5/4B1N1/2K5/8 w - - 0 1"  # + a knight -> not pure OCB
+
+    def test_pure_ocb_is_damped(self):
+        board = chess.Board(self.OCB)
+        raw = sum(c.score for c in evaluate_detailed(board).concepts if c.name != "ocb")
+        assert evaluate(board) == pytest.approx(raw * self.W["ocb.draw_scale"], abs=1e-6)
+        assert 0 < evaluate(board) < raw   # White still better, but less so
+
+    def test_ocb_breakdown_is_faithful(self):
+        board = chess.Board(self.OCB)
+        bd = evaluate_detailed(board)
+        assert bd.total == pytest.approx(evaluate(board), abs=1e-6)
+        ocb = [c for c in bd.concepts if c.name == "ocb"][0]
+        assert sum(v for _, v in ocb.items) == pytest.approx(ocb.score, abs=1e-6)
+        assert ocb.score < 0   # it reduced White's edge
+
+    def test_modifier_inert_when_not_pure_ocb(self):
+        board = chess.Board(self.MIXED)
+        raw = sum(c.score for c in evaluate_detailed(board).concepts if c.name != "ocb")
+        assert evaluate(board) == pytest.approx(raw, abs=1e-6)   # factor 1.0

@@ -54,6 +54,10 @@ W = {
     "threat.minor": 0.06,  # a rook/queen attacked by a knight/bishop
     "threat.rook": 0.04,   # a queen attacked by a rook
     "threat.initiative": 0.25,  # the side to move's threats count for more (it can execute them now)
+    # drawishness (MULTIPLICATIVE modifier, not a summed concept): pure
+    # opposite-colored-bishop endings are drawish, so the whole eval is scaled
+    # toward zero. Shown in the breakdown as the marginal delta it applies.
+    "ocb.draw_scale": 0.6,  # multiply eval by this in pure opposite-bishop endings
     # mating drive (bare-king endgames)
     "mate_drive.corner": 12,
     "mate_drive.king_prox": 6,

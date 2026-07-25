@@ -266,6 +266,17 @@ double eval_core(U64 bb[2][6], int side){
         s += sign*(W_MATE_DRIVE_CORNER*CMD_TBL[lk]*scale + W_MATE_DRIVE_KING_PROX*(14-md)*scale);
     }
 
+    /* opposite-colored-bishop drawishness (multiplicative modifier; mirrors
+     * engine/concepts/opposite_bishops.py). Pure OCB ending -> damp the eval. */
+    if(popcnt(bb[WHITE][BISHOP])==1 && popcnt(bb[BLACK][BISHOP])==1
+       && !bb[WHITE][KNIGHT] && !bb[BLACK][KNIGHT]
+       && !bb[WHITE][ROOK]   && !bb[BLACK][ROOK]
+       && !bb[WHITE][QUEEN]  && !bb[BLACK][QUEEN]){
+        int wl = (bb[WHITE][BISHOP]&LIGHT_SQ)!=0;
+        int bl = (bb[BLACK][BISHOP]&LIGHT_SQ)!=0;
+        if(wl!=bl) s *= W_OCB_DRAW_SCALE;
+    }
+
     return s;
 }
 

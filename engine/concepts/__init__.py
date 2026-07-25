@@ -21,6 +21,7 @@ from engine.concepts.king_attack import KingAttack
 from engine.concepts.tempo import Tempo
 from engine.concepts.threats import Threats
 from engine.concepts.mate_drive import MateDrive
+from engine.concepts.opposite_bishops import OppositeBishops
 
 ALL_CONCEPTS = [
     Material(),
@@ -33,4 +34,11 @@ ALL_CONCEPTS = [
     Tempo(),
     Threats(),
     MateDrive(),
+]
+
+# Multiplicative modifiers, applied to the additive concept sum in order. Each
+# exposes factor(ctx) (1.0 = no effect) and item_label(ctx); the breakdown shows
+# the marginal delta (factor-1)*running so the explanation stays faithful.
+ALL_MODIFIERS = [
+    OppositeBishops(),
 ]

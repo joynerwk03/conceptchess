@@ -132,6 +132,7 @@ static const double PASSED_BONUS[8] = {
 #define W_THREAT_MINOR (0.06)
 #define W_THREAT_ROOK (0.04)
 #define W_THREAT_INITIATIVE (0.25)
+#define W_OCB_DRAW_SCALE (0.6)
 #define W_MATE_DRIVE_CORNER (12)
 #define W_MATE_DRIVE_KING_PROX (6)
 #define W_TEMPO (10)
