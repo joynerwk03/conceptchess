@@ -161,6 +161,21 @@ the OCB+PV baseline:
   TestConnectedPawns + 57 fast tests green. Session eval total ~+84 (backward+
   connected, gated incrementally).
 
+**Re-calibration — the +84 self-play Elo did NOT transfer externally (important).**
+Re-ran the Stockfish calibration on the full new engine (OCB+PV+backward+connected),
+single-thread, 0.3s, 40 games/anchor: SF-2600 56%, SF-2700 45%, SF-2800 31% ->
+crossover ~2655. Before this session's eval work it was ~2650, and vs the SAME
+SF-2700 anchor we scored 45% BOTH times. So the ~+84 "Elo" from backward+connected
+was SELF-PLAY-relative and did not move external strength vs Stockfish. Why: those
+terms let us punish our own prior versions' blind spots (huge in self-play), but
+Stockfish never had those blind spots, so correcting them gains ~nothing against
+it. The concepts are still real, faithful eval improvements (more accurate, better
+interpretability, no external REGRESSION), and kept -- but the honest external
+number is ~2655, not ~2735. LESSON (again, now measured directly): self-play Elo
+overstates external gain for eval changes; the only trustworthy strength number is
+vs an external opponent. Closing the real gap to a 2820 bot needs a bigger lever
+than classical eval tuning -- the eval is at its external ceiling for this engine.
+
 ---
 
 ## 2026-07-23 — Session 21: analysis board (product) + adaptive-time deprioritized
