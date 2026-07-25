@@ -27,6 +27,7 @@ W = {
     "pawn.doubled": 19.125,
     "pawn.isolated": 9.5625,
     "pawn.backward": 6,  # a pawn left behind its neighbours whose stop square an enemy pawn covers (x2 on a half-open file)
+    "pawn.connected": 4,  # per connected pawn (phalanx or supported), x(rank-3) so only advanced duos score
     "pawn.passed_scale": 0.9,     # multiplier on the per-rank passed bonus
     "pawn.passed_eg_scale": 1.728,
     "pawn.blocked_passer": 0.4,  # multiplier when the square in front is occupied  # passed pawns matter more in the endgame

@@ -148,6 +148,18 @@ the OCB+PV baseline:
   every existing term (no redundancy), a concrete structural fact nothing else
   measured. pawn.backward=6 (x2 half-open), tunable. New TestBackwardPawns + all
   54 fast tests green.
+- *Connected pawns* — **ACCEPTED (+29 Elo, three consistent batches).** After
+  backward pawns won, the pawn-structure eval was clearly the untapped seam, so:
+  a phalanx (adjacent-file friend on the same rank) or supported pawn (friend one
+  rank behind), bonus x(rank-3) so only advanced duos score (the starting chain
+  earns nothing). Gated on TOP of backward (baseline = OCB+PV+backward): batch A
+  55% (+38), B 53% (+23), C 54% (+26) -- **pooled 360g 54.2% (+138 =114 -108),
+  +29 Elo, 95% CI [-1, +59]**. The CI grazes zero, but all three independent
+  batches landed positive (~+29 each, no collapse) -- the signature of a real
+  effect, not winner's curse. Orthogonal to every term (rewards structure, not
+  advancement, which PST already has). pawn.connected=4, tunable. New
+  TestConnectedPawns + 57 fast tests green. Session eval total ~+84 (backward+
+  connected, gated incrementally).
 
 ---
 

@@ -109,6 +109,7 @@ static const double PASSED_BONUS[8] = {
 #define W_PAWN_DOUBLED (19.125)
 #define W_PAWN_ISOLATED (9.5625)
 #define W_PAWN_BACKWARD (6)
+#define W_PAWN_CONNECTED (4)
 #define W_PAWN_PASSED_SCALE (0.9)
 #define W_PAWN_PASSED_EG_SCALE (1.728)
 #define W_PAWN_BLOCKED_PASSER (0.4)

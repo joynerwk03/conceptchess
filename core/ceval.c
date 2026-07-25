@@ -158,6 +158,24 @@ double eval_core(U64 bb[2][6], int side){
         }
     }
 
+    /* connected pawns (mirrors engine/concepts/connected_pawns.py): phalanx or
+     * supported, bonus x(rank-3) so only advanced duos score. */
+    for(int c=0;c<2;c++){
+        int sign=c==WHITE?1:-1; U64 own=bb[c][PAWN];
+        U64 x=own;
+        while(x){ int sq=lsb(x); x&=x-1; int f=sq%8, r=sq/8;
+            int rel = c==WHITE ? r : 7-r, adv = rel-2;
+            if(adv<=0) continue;
+            int back = c==WHITE ? r-1 : r+1, conn=0;
+            for(int af=f-1; af<=f+1; af+=2){
+                if(af<0||af>7) continue;
+                if(own & (1ULL<<(r*8+af))) conn=1;                          /* phalanx */
+                if(back>=0 && back<8 && (own & (1ULL<<(back*8+af)))) conn=1; /* supported */
+            }
+            if(conn) s += sign * W_PAWN_CONNECTED * adv;
+        }
+    }
+
     /* king safety */
     if(phase>=0.05){
         for(int c=0;c<2;c++){

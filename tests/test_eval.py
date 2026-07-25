@@ -142,3 +142,23 @@ class TestBackwardPawns:
     def test_symmetry(self):
         b = chess.Board("rnbqkbnr/pp3ppp/3p4/2p1p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1")
         assert evaluate(b.mirror()) == pytest.approx(-evaluate(b), abs=1e-6)
+
+
+class TestConnectedPawns:
+    """Connected pawns (phalanx or supported) score only when advanced (4th rank+)."""
+
+    def _cp(self, fen):
+        from engine.concepts.connected_pawns import ConnectedPawns
+        from engine.context import EvalContext
+        return ConnectedPawns().score(EvalContext(chess.Board(fen)))
+
+    def test_advanced_phalanx_rewarded(self):
+        # White duo on the 5th rank -> good for White
+        assert self._cp("4k3/8/8/3PP3/8/8/8/4K3 w - - 0 1") > 0
+
+    def test_starting_chain_scores_zero(self):
+        assert self._cp(chess.STARTING_FEN) == 0
+
+    def test_symmetry(self):
+        b = chess.Board("4k3/8/8/4P3/3P4/8/8/4K3 w - - 0 1")
+        assert evaluate(b.mirror()) == pytest.approx(-evaluate(b), abs=1e-6)
