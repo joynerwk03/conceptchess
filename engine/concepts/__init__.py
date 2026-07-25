@@ -22,11 +22,13 @@ from engine.concepts.tempo import Tempo
 from engine.concepts.threats import Threats
 from engine.concepts.mate_drive import MateDrive
 from engine.concepts.opposite_bishops import OppositeBishops
+from engine.concepts.backward_pawns import BackwardPawns
 
 ALL_CONCEPTS = [
     Material(),
     PiecePlacement(),
     PawnStructure(),
+    BackwardPawns(),
     KingSafety(),
     KingAttack(),
     Mobility(),

@@ -134,6 +134,30 @@ double eval_core(U64 bb[2][6], int side){
         }
     }
 
+    /* backward pawns (mirrors engine/concepts/backward_pawns.py): a pawn whose
+     * adjacent-file friends have all advanced past it and whose stop square an
+     * enemy pawn covers -- a chronic weakness, worse on a half-open file. Placed
+     * after pawn structure, before king safety, to match the Python sum order. */
+    for(int c=0;c<2;c++){
+        int sign=c==WHITE?1:-1;
+        U64 own=bb[c][PAWN], enemy=bb[!c][PAWN];
+        U64 enemy_atk = c==WHITE ? BPAWN_ATK(enemy) : WPAWN_ATK(enemy);
+        U64 x=own;
+        while(x){ int sq=lsb(x); x&=x-1; int f=sq%8, r=sq/8;
+            U64 adj = (f>0?FILEBB[f-1]:0) | (f<7?FILEBB[f+1]:0);
+            U64 own_adj = own & adj;
+            if(!own_adj) continue;                     /* isolated, not backward */
+            U64 support; int stop;
+            if(c==WHITE){ support = adj & ((1ULL<<((r+1)*8))-1); stop=sq+8; }
+            else        { support = adj & ~((1ULL<<(r*8))-1);    stop=sq-8; }
+            if(own_adj & support) continue;            /* a neighbour is level/behind */
+            if(stop<0||stop>63) continue;
+            if(!(enemy_atk & (1ULL<<stop))) continue;  /* can advance safely */
+            int half_open = !(enemy & FILEBB[f]);
+            s -= sign * W_PAWN_BACKWARD * (half_open?2:1);
+        }
+    }
+
     /* king safety */
     if(phase>=0.05){
         for(int c=0;c<2;c++){

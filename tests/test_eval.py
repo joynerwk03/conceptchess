@@ -117,3 +117,28 @@ class TestModifiers:
         board = chess.Board(self.MIXED)
         raw = sum(c.score for c in evaluate_detailed(board).concepts if c.name != "ocb")
         assert evaluate(board) == pytest.approx(raw, abs=1e-6)   # factor 1.0
+
+
+class TestBackwardPawns:
+    """A pawn whose neighbours have all advanced past it and whose stop square an
+    enemy pawn covers is backward — penalized, doubly so on a half-open file."""
+
+    def _bp(self, fen):
+        from engine.concepts.backward_pawns import BackwardPawns
+        from engine.context import EvalContext
+        return BackwardPawns().score(EvalContext(chess.Board(fen)))
+
+    def test_black_backward_pawn_penalized(self):
+        # black d6 backward (c5,e5 advanced; d5 covered by white e4) -> good for White
+        assert self._bp("rnbqkbnr/pp3ppp/3p4/2p1p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1") > 0
+
+    def test_half_open_file_is_worse(self):
+        # white e3 backward on a half-open file -> bad for White, doubled (-6*2)
+        assert self._bp("4k3/8/8/3p1p2/3P1P2/4P3/8/4K3 w - - 0 1") == -12.0
+
+    def test_no_false_positive_at_start(self):
+        assert self._bp(chess.STARTING_FEN) == 0
+
+    def test_symmetry(self):
+        b = chess.Board("rnbqkbnr/pp3ppp/3p4/2p1p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1")
+        assert evaluate(b.mirror()) == pytest.approx(-evaluate(b), abs=1e-6)

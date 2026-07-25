@@ -129,6 +129,26 @@ because it makes the eval correct where it fires and is the interpretability
 capability requested; it also unlocks future non-linear terms (king-safety x
 material, etc.) a pure sum can't express. ocb.draw_scale is tunable.
 
+**New eval concept classes (William: "try for a new eval concept class").**
+Two attempts, both faithful (C==Python 0.000000), gated single-thread at 0.3s vs
+the OCB+PV baseline:
+- *King danger (safe checks)* — REJECTED. Count undefended squares from which the
+  enemy could check our king (the top king-safety feature in strong engines).
+  At weight 10: 44%, **-44 Elo** (a regression). At weight 3: 52%, +12 (neutral).
+  Lowering the weight turned the regression into a wash, not a gain — the signal
+  is largely REDUNDANT with the existing king_attack term (both score king
+  pressure), so adding it only distorts. Reverted.
+- *Backward pawns* — **ACCEPTED (+55 Elo confirmed).** A pawn whose adjacent-file
+  neighbours have all advanced past it and whose stop square an enemy pawn covers
+  is a chronic weakness (x2 on a half-open file) that doubled/isolated don't
+  capture. Gate: batch A 60% (+56 =32 -32, +70), batch B (independent openings)
+  56% (+47 =40 -33, +41), **pooled 240g 57.9% (+103 =72 -65), +55 Elo, 95% CI
+  [+19,+93]** — CI clears zero, held across both batches (NOT winner's curse).
+  Why this won where 3 eval experiments this session didn't: it is ORTHOGONAL to
+  every existing term (no redundancy), a concrete structural fact nothing else
+  measured. pawn.backward=6 (x2 half-open), tunable. New TestBackwardPawns + all
+  54 fast tests green.
+
 ---
 
 ## 2026-07-23 — Session 21: analysis board (product) + adaptive-time deprioritized
