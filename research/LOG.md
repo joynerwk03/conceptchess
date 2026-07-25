@@ -52,11 +52,27 @@ Hypothesis preserved: this specifically improves *deep-endgame* placement, which
 0.3s blitz under-samples — could be positive at the long TC the analysis board
 actually uses. A targeted long-TC endgame gate could revisit it; not worth it now.
 
-**Next (strength):** multiplicative eval terms via marginal-delta attribution
-(William's idea) — a factor `f` on subtotal `P` shows contribution `(f-1)·P`, so
-the breakdown still sums to the total and stays faithful. Unlocks non-linear
-knowledge a pure sum can't express (OCB drawishness, king-safety×material) —
-the winning pattern is concrete + beyond-search-horizon + not-already-captured.
+**Threat under-weighting follow-up.** REJECTED (neutral), reverted. The outcome
+Texel tuner had driven threat.pawn (0.10→~0.15) and threat.initiative (0.25→~0.40)
+into their upper bounds — suggestive that the (proven high-value) threat terms
+were under-weighted. Tested directly: bump threat.pawn→0.15, threat.initiative→0.35,
+gate vs the confirmed 0.10/0.25 baseline (UHO, 0.3s, single-thread):
+- batch A (120g): 56% (+48 =38 −34), +41 Elo (95% −21..+105) — promising.
+- batch B (120g, independent openings): 48% (+39 =37 −44), −14 Elo.
+- pooled (240g): 51.9% (+87 =75 −78), +13 Elo (95% −23..+50). NEUTRAL.
+Batch A was winner's-curse again. The confirmed 0.10/0.25 weights are correct;
+the outcome-tuner's upper-bound pull does NOT translate to match Elo (same lesson
+as the s23 full retune — outcome-loss optimum ≠ match-Elo optimum). Thread closed.
+
+**Two neutral eval experiments in a row (tapered PST, threat bump)** are strong
+evidence the eval is near its tuning ceiling at 0.3s. Small weight/table tweaks
+sit at the noise floor. Higher-value directions from here: (a) multiplicative
+eval terms via marginal-delta attribution (William's idea) — a factor `f` on
+subtotal `P` shows contribution `(f-1)·P`, faithful and interpretable, unlocks
+non-linear knowledge a sum can't express (OCB drawishness, king-safety×material);
+(b) long-TC scaling — all tuning is at 0.3s but the analysis board runs long;
+if we convert time to strength worse than the opponents, that is the real
+long-TC gap, and it points at search, not eval.
 
 ---
 
