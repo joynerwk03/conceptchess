@@ -36,9 +36,27 @@ brute-force ranking of every root move (start/italian/kiwipete/deep-endgame all
 match). Eval untouched: C==Python 0.000000 over 6204 pos; 47 fast tests green.
 Also unblocks the contrastive-alternative explanation the C search couldn't do.
 
-**Next (strength):** close the tapered-eval gap — pawn+king PSTs are already
-MG/EG-blended by `ctx.phase`, but N/B/R/Q use a single table each (the PeSTO
-gap). Extend MG/EG split to all pieces (reuses the existing, faithful blend).
+**Tapered N/B/R/Q PST (the PeSTO gap).** REJECTED (neutral), reverted. Pawn+king
+PSTs were already MG/EG-blended by `ctx.phase`; N/B/R/Q used a single table each.
+Added principled EG tables (knights centralize harder, rooks favor 7th/activity
+over the dead a/h penalty, bishops/queens centralize), blended identically.
+Faithful: C==Python 0.000000 over 6204 pos, 47 tests green.
+Gate vs pre-taper (single-thread, 0.3s):
+- batch A (balanced openings, 80g): 54%, +30 Elo (95% −46..+110) — promising.
+- batch B (UHO, 120g, higher power): 50% (+35 =49 −36), −3 Elo (95% −66..+60).
+Batch A was winner's-curse optimism again; the higher-power UHO batch says
+neutral. *Why:* the Michniewski MG tables already encode centralization and the
+dominant phase effect (king activation) was already tapered — little headroom
+left. Reverted (protocol: accept eval changes only if clearly positive).
+Hypothesis preserved: this specifically improves *deep-endgame* placement, which
+0.3s blitz under-samples — could be positive at the long TC the analysis board
+actually uses. A targeted long-TC endgame gate could revisit it; not worth it now.
+
+**Next (strength):** multiplicative eval terms via marginal-delta attribution
+(William's idea) — a factor `f` on subtotal `P` shows contribution `(f-1)·P`, so
+the breakdown still sums to the total and stays faithful. Unlocks non-linear
+knowledge a pure sum can't express (OCB drawishness, king-safety×material) —
+the winning pattern is concrete + beyond-search-horizon + not-already-captured.
 
 ---
 
