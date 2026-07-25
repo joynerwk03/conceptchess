@@ -1,5 +1,47 @@
 ---
 
+## 2026-07-24 — Session 24: external Elo calibration + true 2nd-best move (MultiPV)
+
+**Motivation (from William, playtesting):** vs the chess.com "Hikaru 2820" bot on
+the analysis board we lose/draw; and the board's *2nd* recommendation was often
+nonsensical. Both are real signals — investigated both.
+
+**True Elo calibration.** All internal Elo numbers were self-play-chained (each
+"+X" measured vs our own prior version at 0.3s), which inflates. Anchored to an
+external scale: single-thread ConceptChess vs Stockfish UCI_LimitStrength, 30
+games each at 0.3s, sequential (no CPU contention), alternating colors.
+
+| SF anchor | our score | Elo vs anchor |
+|---|---|---|
+| 1800 | 98% (+29 =1 −0) | +708 (saturated) |
+| 2100 | 87% (+26 =0 −4) | +325 |
+| 2400 | 73% (+20 =4 −6) | +176 |
+| 2700 | 45% (+4 =19 −7) | −35 |
+
+Clean monotonic trend; 50%-crossover ≈ **2650**. So single-thread true strength
+≈ **Stockfish-2650 at 0.3s** — the self-play ~2750 claim was ~100 Elo optimistic
+(real, but inflated). A 2650 engine losing/drawing to a 2820 bot is *expected*
+(~120 Elo gap ≈ opponent scores ~2/3); it is not evidence of over-rating.
+Caveats: (a) SF LimitStrength is imperfect and its scale ≠ chess.com's; (b) this
+is 0.3s blitz — long-TC (how the board is actually used) may show a wider gap
+since SF scales better with time. A long-TC spot-check is a follow-up.
+
+**True 2nd-best move (MultiPV).** ACCEPTED, committed. Root cause: a plain
+alpha-beta search scores only the *best* root move exactly — all others fail low
+against best's alpha and return an upper bound, so the reported "second" was a
+move-ordering artifact. Fix: when the GUI asks (`c_set_multipv(1)`), an extra
+iterative-deepening root pass excludes best with a fresh full window, scoring the
+real 2nd exactly. OFF in play (zero cost; UCI never asks). Verified vs a
+brute-force ranking of every root move (start/italian/kiwipete/deep-endgame all
+match). Eval untouched: C==Python 0.000000 over 6204 pos; 47 fast tests green.
+Also unblocks the contrastive-alternative explanation the C search couldn't do.
+
+**Next (strength):** close the tapered-eval gap — pawn+king PSTs are already
+MG/EG-blended by `ctx.phase`, but N/B/R/Q use a single table each (the PeSTO
+gap). Extend MG/EG split to all pieces (reuses the existing, faithful blend).
+
+---
+
 ## 2026-07-23 — Session 21: analysis board (product) + adaptive-time deprioritized
 
 **Direction change (from William):** for this tool — primarily a *learning*
