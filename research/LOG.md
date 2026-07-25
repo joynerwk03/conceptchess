@@ -74,6 +74,23 @@ non-linear knowledge a sum can't express (OCB drawishness, king-safety×material
 if we convert time to strength worse than the opponents, that is the real
 long-TC gap, and it points at search, not eval.
 
+**Long-TC scaling ladder (B).** Added `--opp-movetime` to the match harness and
+ran a self-play time-odds ladder: our engine at a fixed 0.3s anchor vs the same
+engine at 2x/4x/8x time (single-thread, UHO). The longer side's score = our Elo
+gain from that much extra thinking time:
+- 0.3s vs 0.6s (2x), 80g: anchor 34% → long side **+112 Elo**
+- 0.3s vs 1.2s (4x), 80g: anchor 19% → long side **+248 Elo**
+- 0.3s vs 2.4s (8x), 60g: anchor 13% → long side **+325 Elo**
+Per-doubling: +112, +136, +77. FINDING: **we scale with time well — no plateau.**
+Normal diminishing returns, but +77 Elo at the 1.2→2.4 doubling is healthy
+(strong engines ~+60-70/doubling). So extra thinking time genuinely strengthens
+us; the analysis board's long thinks are well spent. The losses to a 2820 bot at
+long TC are therefore the genuine ~120-Elo strength gap (we're ~2650), NOT a
+time-conversion failure. Caveats: single-thread (SMP×long-TC untested); self-
+relative (external long-TC Elo needs a vs-SF-at-long-TC calibration, which is
+confounded by SF's own scaling). The hypothesis that search under-uses long TC
+is NOT supported.
+
 ---
 
 ## 2026-07-23 — Session 21: analysis board (product) + adaptive-time deprioritized
