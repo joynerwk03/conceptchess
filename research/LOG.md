@@ -106,10 +106,13 @@ trusted. Investigated:
   TC) deep PV entries — sometimes even the root — are overwritten, giving a SHORT
   or EMPTY displayed PV. The MOVE and SCORE are always correct (search works); only
   the analysis board's shown line degrades. Confirmed: same middlegame at 1/2/4/8s
-  gave pvlen 11/9/12/4, and 0 at 30s. FIX (for review — it touches the search hot
-  loop, so gated on William's OK): a triangular PV table maintained during search
-  (write-only side data → provably non-perturbing via node-count invariance), read
-  out instead of walking the TT. Cheaper partial mitigation: bump TT_BITS 22→24.
+  gave pvlen 11/9/12/4, and 0 at 30s. FIXED (William approved): a triangular PV
+  table maintained in the search — pv[ply] recorded on each alpha-raise at a PV
+  node, root line published per completed iteration, read out via c_get_pv instead
+  of walking the TT. WRITE-ONLY side data: verified byte-identical node counts vs
+  baseline on 6 positions (search tree unchanged) — no strength gate needed. PVs
+  are now full length (12 at depth 12, 15 at depth 15) where they were 4/empty.
+  eval 0.000000, perft PASS, 50 fast tests green.
 
 **Multiplicative eval modifiers + OCB drawishness (A).** ACCEPTED, kept as a
 feature. Implements William's idea: eval is now `sum(concepts)` THEN a chain of

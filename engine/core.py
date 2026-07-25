@@ -36,6 +36,8 @@ def _load():
                                  ctypes.c_char_p, ctypes.POINTER(ctypes.c_int),
                                  ctypes.POINTER(ctypes.c_long)]
         lib.c_pv.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
+        if hasattr(lib, "c_get_pv"):
+            lib.c_get_pv.argtypes = [ctypes.c_char_p, ctypes.c_int]
         lib.c_eval.restype = ctypes.c_double
         lib.c_eval.argtypes = [ctypes.c_char_p]
         lib.c_verify_hash.restype = ctypes.c_long
@@ -115,8 +117,13 @@ def search(board, movetime=1.0, max_depth=64, max_time=None):
     move = chess.Move.from_uci(uci) if uci else None
     snd = chess.Move.from_uci(second.value.decode()) if second.value else None
 
-    pv_buf = ctypes.create_string_buffer(512)
-    _lib.c_pv(start_fen.encode(), moves.encode(), pv_buf, 512)
+    # Full PV from the search's triangular PV table (never TT-truncated). Falls
+    # back to the older TT-walk for a core built before c_get_pv existed.
+    pv_buf = ctypes.create_string_buffer(1024)
+    if hasattr(_lib, "c_get_pv"):
+        _lib.c_get_pv(pv_buf, 1024)
+    else:
+        _lib.c_pv(start_fen.encode(), moves.encode(), pv_buf, 1024)
     pv = [chess.Move.from_uci(u) for u in pv_buf.value.decode().split()] if pv_buf.value else []
     return move, sc, depth.value, nodes.value, pv, snd
 

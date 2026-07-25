@@ -67,6 +67,12 @@ typedef struct {
     int stopped;
     Move killers[MAXPLY][2];
     int seval[MAXPLY];   /* static eval per ply, for the improving heuristic */
+    /* Triangular PV table: pv[ply] holds the principal variation from `ply`
+     * down. WRITE-ONLY during search (never read to make a decision), so the
+     * search tree is byte-identical with or without it — it just records the
+     * line for display instead of walking the (lossy) TT. */
+    Move pv[MAXPLY][MAXPLY];
+    int pvlen[MAXPLY];
     int history[2][64][64];
     Move counter[2][64][64];  /* countermove: reply-by-side indexed by prev from/to */
     /* Game-history hashes + current search path. Sized for the longest
@@ -277,6 +283,8 @@ static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
 static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev){
     SS.nodes++;
     if(!(SS.nodes&2047) && (g_stop || now_sec()>SS.stop_time)){ SS.stopped=1; return 0; }
+    int pvnode = beta > alpha+1;          /* wide window == PV node (for PV recording) */
+    if(ply<MAXPLY) SS.pvlen[ply]=0;       /* leaf/cutoff nodes leave an empty PV here */
     U64 h=b->hash;
     SS.path[SS.path_len++]=h;
     int ret, done=0;
@@ -369,7 +377,16 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
         }
         if(SS.stopped){ SS.path_len--; return 0; }
         if(sc>best){ best=sc; bestm=m; }
-        if(sc>alpha) alpha=sc;
+        if(sc>alpha){ alpha=sc;
+            /* record PV: this move + the child's PV (write-only; never read by
+             * search, so the tree is unchanged). Only at PV nodes. */
+            if(pvnode && ply+1<MAXPLY){
+                SS.pv[ply][0]=m;
+                int cl=SS.pvlen[ply+1]; if(cl>MAXPLY-1) cl=MAXPLY-1;
+                for(int k=0;k<cl;k++) SS.pv[ply][k+1]=SS.pv[ply+1][k];
+                SS.pvlen[ply]=cl+1;
+            }
+        }
         if(alpha>=beta){
             if(quiet && ply<MAXPLY){
                 if(SS.killers[ply][0]!=m){ SS.killers[ply][1]=SS.killers[ply][0]; SS.killers[ply][0]=m; }
@@ -412,6 +429,7 @@ typedef struct {
     int max_depth, id, is_main;
     /* outputs (main thread only) */
     Move best, second; int score, cd; long nodes;
+    Move pv[MAXPLY]; int pvlen;   /* principal variation of the last completed iter */
 } ThreadCtx;
 
 static void run_id(ThreadCtx *tc){
@@ -435,6 +453,7 @@ static void run_id(ThreadCtx *tc){
         int alpha0 = depth<=4 ? -S_MATE : score-delta;
         int beta0  = depth<=4 ?  S_MATE : score+delta;
         int bm_found=0; Move bm=0, sm=0; int bs=-S_MATE-1, ss=-S_MATE-1;
+        Move iter_pv[MAXPLY]; int iter_pvlen=0;   /* root PV of this iteration */
         for(;;){
             int a=alpha0, bt=beta0;
             bm_found=0; bm=0; sm=0; bs=-S_MATE-1; ss=-S_MATE-1;
@@ -446,7 +465,13 @@ static void run_id(ThreadCtx *tc){
                 else { sc=-negamax(&c,depth-1,-a-1,-a,1,root[i]);
                        if(sc>a) sc=-negamax(&c,depth-1,-bt,-a,1,root[i]); }
                 if(SS.stopped) break;
-                if(sc>bs){ ss=bs; sm=bm; bs=sc; bm=root[i]; bm_found=1; }
+                if(sc>bs){ ss=bs; sm=bm; bs=sc; bm=root[i]; bm_found=1;
+                    /* root PV = this move + its child's PV (from ply 1) */
+                    iter_pv[0]=root[i];
+                    int cl=SS.pvlen[1]; if(cl>MAXPLY-1) cl=MAXPLY-1;
+                    for(int k=0;k<cl;k++) iter_pv[k+1]=SS.pv[1][k];
+                    iter_pvlen=cl+1;
+                }
                 else if(sc>ss){ ss=sc; sm=root[i]; }
                 if(sc>a) a=sc;
             }
@@ -465,6 +490,8 @@ static void run_id(ThreadCtx *tc){
         }
         if(SS.stopped) break;
         if(bm_found){ best=bm; score=bs; cd=depth; second=sm;
+            tc->pvlen=iter_pvlen;                    /* publish this completed iter's PV */
+            for(int k=0;k<iter_pvlen;k++) tc->pv[k]=iter_pv[k];
             if(tc->is_main){   /* only main writes the root entry c_pv reads */
                 U64 rh=b.hash; TTEntry *re=&TT[rh&TT_MASK];
                 re->key=rh; re->depth=depth; re->flag=TT_EXACTF; re->score=score; re->move=best;
@@ -542,6 +569,11 @@ static Move root_second(const Board *rootb, Move best, int maxdepth,
     return sm;
 }
 
+/* Stored principal variation of the last c_search (root line captured by the
+ * triangular-PV table). Formatted by c_get_pv — no TT walk, so it never
+ * truncates the way walking the (lossy, overwrite-heavy) TT does. */
+static Move g_pv[MAXPLY]; static int g_pvlen=0;
+
 /* Public API: search from startfen after the given space-separated UCI moves.
  * Fills uci_out (>=6 bytes), depth_out, nodes_out; returns score (stm cp). */
 static int g_search_init=0;
@@ -595,8 +627,10 @@ int c_search(const char *startfen, const char *moves, double movetime, double ma
     for(int k=1;k<T;k++) pthread_join(th[k], NULL);
 
     Move best=ctx[0].best;
-    if(!best){ uci_out[0]=0; return 0; }
+    if(!best){ uci_out[0]=0; g_pvlen=0; return 0; }
     uci_of(best,uci_out);
+    g_pvlen = ctx[0].pvlen;                 /* stash the PV for c_get_pv */
+    for(int i=0;i<g_pvlen && i<MAXPLY;i++) g_pv[i]=ctx[0].pv[i];
     if(second_out){
         second_out[0]=0;
         if(g_want_second){          /* real 2nd move via a full-window exclude-best pass */
@@ -608,6 +642,19 @@ int c_search(const char *startfen, const char *moves, double movetime, double ma
     if(depth_out)*depth_out=ctx[0].cd;
     if(nodes_out)*nodes_out=ctx[0].nodes;
     return ctx[0].score;
+}
+
+/* Principal variation from the last search's triangular PV table (full length,
+ * never TT-truncated), as space-separated UCI into pv_out. */
+void c_get_pv(char *pv_out, int maxlen){
+    int pos=0;
+    for(int i=0;i<g_pvlen;i++){
+        char u[8]; uci_of(g_pv[i],u); int ul=(int)strlen(u);
+        if(pos+ul+1>=maxlen) break;
+        if(pos) pv_out[pos++]=' ';
+        memcpy(pv_out+pos,u,ul); pos+=ul;
+    }
+    pv_out[pos]=0;
 }
 
 /* Principal variation from the TT, as space-separated UCI, into pv_out. */
