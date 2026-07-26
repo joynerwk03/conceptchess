@@ -191,6 +191,15 @@ is deeper search -- it finds better moves vs ANY opponent, so it should transfer
 externally (to be re-confirmed by calibration). Biggest single gain in the log.
 Next: LMP, razoring, singular extensions; then re-calibrate.
 
+**Late move pruning (LMP) -- ACCEPTED (+30, borderline).** In a non-PV node at
+depth<=5, skip late quiet moves outright once tried count `i >= (3+depth*depth)>>
+(improving?0:1)` (fewer when not improving); never skip a checking move. C-search
+only. Depth 13.5 vs 13.0 (RFP-only), tactics 24/24. Gate vs RFP-only baseline:
+57% / 50% / 55% over three batches -> pooled 360g 54.3% (+138 =115 -107), +30 Elo,
+95% CI [+0, +60]. Borderline (like connected pawns) but two of three batches
+clearly positive, no collapse, and it's a depth-adding search change (should
+transfer). Kept. LMP_DEPTH=5, tunable.
+
 ---
 
 ## 2026-07-23 — Session 21: analysis board (product) + adaptive-time deprioritized

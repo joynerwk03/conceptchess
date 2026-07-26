@@ -43,6 +43,7 @@ void c_set_multipv(int on){ g_want_second = on?1:0; }
 #define MAXPLY 128
 #define RFP_DEPTH 6      /* reverse-futility pruning: max depth to apply it */
 #define RFP_MARGIN 90    /* ...and cp margin conceded per ply */
+#define LMP_DEPTH 5      /* late-move pruning: max depth to skip late quiets */
 
 static const int SEEV[6]={100,320,330,500,900,0};
 
@@ -377,6 +378,11 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
         int quiet = !is_capture(b,m) && MV_PROMO(m)==0;
         Board c=*b; make(&c,m);
         if(futile && quiet && bestm && !in_check(&c,c.side)){ continue; }
+        /* late move pruning: in a non-PV node at shallow depth, once enough
+         * quiets have been tried, skip the remaining late quiets outright
+         * (fewer when the eval isn't improving). Never skip a checking move. */
+        if(!pvnode && quiet && bestm && !checked && depth<=LMP_DEPTH
+           && i >= ((3 + depth*depth) >> (improving?0:1)) && !in_check(&c,c.side)){ continue; }
         int sc;
         if(i==0){ sc=-negamax(&c,depth-1,-beta,-alpha,ply+1,m); }
         else {
