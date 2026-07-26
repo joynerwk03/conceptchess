@@ -236,6 +236,17 @@ is included. Combined with the +80 external (RFP+LMP at 0.3s), the search push i
 the real strength lever: the engine is now meaningfully stronger at the long/
 indefinite TC the analysis board actually uses. Search >> eval for this engine.
 
+**Internal iterative reduction (IIR) -- ACCEPTED (+48 Elo, confirmed).** With no
+TT move to guide ordering (`!ttm && depth>=4`), reduce depth by one ply instead
+of searching full-depth blind -- the shallower search fills the TT so the
+re-search is well-ordered. (IID's cheaper modern replacement; plain IID was
+tried and rejected -- IIR is the reduction variant, and it works.) One line,
+C-search only (eval 0.000000, tactics 24/24). Gate vs RFP+LMP+SE baseline: batch
+A 58% (+53), batch B 56% (+44), pooled 240g 56.9% (+96 =81 -63), +48 Elo, 95% CI
+[+13, +85] -- both batches strongly positive, CI clears zero. Second-biggest
+search gain after RFP. Also rejected this round: improving-aware RFP (+14 noise).
+Stack now RFP+LMP+SE+IIR. Next: probcut, correction history.
+
 ---
 
 ## 2026-07-23 — Session 21: analysis board (product) + adaptive-time deprioritized

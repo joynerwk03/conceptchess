@@ -311,6 +311,12 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
     }
     if(done){ SS.path_len--; return ret; }
 
+    /* internal iterative reduction: with no TT move to guide ordering, a full-
+     * depth search is wasteful -- reduce a ply and let the shallower search fill
+     * the TT so the re-search is well-ordered. (IID's cheaper modern replacement;
+     * plain IID was tried and rejected.) */
+    if(!excl && !ttm && depth>=4) depth--;
+
     /* reverse futility pruning (static null move): at shallow depth in a
      * non-PV node, if the static eval sits so far above beta that conceding a
      * margin per ply still clears beta, assume this node fails high and cut.
