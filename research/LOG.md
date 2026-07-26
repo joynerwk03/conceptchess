@@ -224,6 +224,18 @@ RFP+LMP baseline: batch A 55% (+32), batch B 54% (+26), pooled 240g 54.2%
 batches; a standard technique that pays off MORE at long TC than the 0.3s gate
 shows. Kept. Search stack now RFP+LMP+SE. Next: razoring, bigger TT, tuning.
 
+**More search: razoring REJECTED (neutral, overlaps futility/qsearch); bigger TT
+22->24 REJECTED (0.3s neutral/-12, cache locality); RFP margin swept -> 90 is
+optimal (70 -> -53, 110 -> +12 noise). RFP/LMP/SE margins well-tuned.**
+
+**Long-TC validation of the full search stack -- CONFIRMED BIG AT THE USER'S
+REGIME.** Full stack (RFP+LMP+SE) vs the eval-only engine at 1.5s/move, 50 games,
+UHO, single-thread: **71% (+28 =15 -7), +156 Elo, 95% CI [+59, +283]**. The stack
+holds (does not shrink) at long TC -- singular extensions, which pays off at depth,
+is included. Combined with the +80 external (RFP+LMP at 0.3s), the search push is
+the real strength lever: the engine is now meaningfully stronger at the long/
+indefinite TC the analysis board actually uses. Search >> eval for this engine.
+
 ---
 
 ## 2026-07-23 — Session 21: analysis board (product) + adaptive-time deprioritized
