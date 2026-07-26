@@ -210,6 +210,20 @@ opponent -- whereas the +84 eval self-play transferred ~0 (opponent-specific
 blind-spot fixes). CONCLUSION: keep pushing search. (40g/anchor is noisy but the
 shift is consistent across all four anchors.) Next: singular extensions, razoring.
 
+**Singular extensions -- ACCEPTED (+29, borderline).** The trickiest search
+feature: at a deep node (depth>=8) with a trusted TT fail-high move, a reduced-
+depth verification search of every OTHER move (excluded-move mechanism, window at
+ttScore-2*depth); if they all fail below it, the TT move is forced -> extend it a
+ply. C-search only; excluded-move slot per ply, TT-cutoff/store suppressed during
+verification, path popped so the verification doesn't see itself as a repetition,
+and the only-excluded-move corner case returns fail-low (forced-move extend).
+Verified: eval 0.000000, perft, tactics 24/24 (no blunder/crash -- the key
+correctness signal for this feature), no node explosion, 57 tests. Gate vs
+RFP+LMP baseline: batch A 55% (+32), batch B 54% (+26), pooled 240g 54.2%
+(+91 =78 -71), +29 Elo, 95% CI [-7, +66]. Borderline but two consistent positive
+batches; a standard technique that pays off MORE at long TC than the 0.3s gate
+shows. Kept. Search stack now RFP+LMP+SE. Next: razoring, bigger TT, tuning.
+
 ---
 
 ## 2026-07-23 — Session 21: analysis board (product) + adaptive-time deprioritized

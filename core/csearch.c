@@ -76,6 +76,7 @@ typedef struct {
      * line for display instead of walking the (lossy) TT. */
     Move pv[MAXPLY][MAXPLY];
     int pvlen[MAXPLY];
+    Move excluded[MAXPLY];   /* singular-extension verification: the move to skip at this ply */
     int history[2][64][64];
     Move counter[2][64][64];  /* countermove: reply-by-side indexed by prev from/to */
     /* Game-history hashes + current search path. Sized for the longest
@@ -287,6 +288,7 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
     SS.nodes++;
     if(!(SS.nodes&2047) && (g_stop || now_sec()>SS.stop_time)){ SS.stopped=1; return 0; }
     int pvnode = beta > alpha+1;          /* wide window == PV node (for PV recording) */
+    Move excl = (ply<MAXPLY)? SS.excluded[ply] : 0;  /* singular verification skips this move */
     if(ply<MAXPLY) SS.pvlen[ply]=0;       /* leaf/cutoff nodes leave an empty PV here */
     U64 h=b->hash;
     SS.path[SS.path_len++]=h;
@@ -296,11 +298,11 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
     if(!done && checked) depth++;
     if(!done && depth<=0){ ret=qsearch(b,alpha,beta,ply,0); done=1; }
 
-    Move ttm=0;
+    Move ttm=0; int tt_hit=0, tt_depth=0, tt_flag=0, tt_score=0;
     if(!done){
         TTEntry *e=&TT[h&TT_MASK];
-        if(e->key==h){ ttm=e->move;
-            if(e->depth>=depth && ply>0){
+        if(e->key==h){ ttm=e->move; tt_hit=1; tt_depth=e->depth; tt_flag=e->flag; tt_score=e->score;
+            if(!excl && e->depth>=depth && ply>0){   /* no TT cutoff during a singular verification */
                 if(e->flag==TT_EXACTF){ ret=e->score; done=1; }
                 else if(e->flag==TT_LOWERF && e->score>=beta){ ret=e->score; done=1; }
                 else if(e->flag==TT_UPPERF && e->score<=alpha){ ret=e->score; done=1; }
@@ -368,14 +370,32 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
     Move pl[256]; int np=gen_pseudo(b,pl);
     Move cm = prev ? SS.counter[b->side][MV_FROM(prev)][MV_TO(prev)] : 0;
     order(b,pl,np,ttm,ply<MAXPLY?ply:MAXPLY-1,cm);
+
+    /* singular extension: a deep, trusted TT fail-high move -- if a reduced-depth
+     * search of every OTHER move fails below ttScore-margin, that move is the only
+     * good one, so extend it a ply. Skipped inside a verification (excl set). */
+    int sing_ext = 0;
+    if(!excl && ttm && ply>0 && depth>=8 && tt_hit && tt_depth>=depth-3
+       && tt_flag==TT_LOWERF && tt_score>-S_MATE_TH && tt_score<S_MATE_TH){
+        int sbeta = tt_score - 2*depth;
+        SS.excluded[ply] = ttm;
+        SS.path_len--;                    /* verification re-searches this same position */
+        int v = negamax(b, (depth-1)/2, sbeta-1, sbeta, ply, prev);
+        SS.path_len++;
+        SS.excluded[ply] = 0;
+        if(!SS.stopped && v < sbeta) sing_ext = 1;
+    }
+
     int best=-S_MATE-1, orig_alpha=alpha; Move bestm=0;
     Move quiets[64]; int nq=0;   /* quiets tried before a cutoff, for history malus */
     int li=0;                    /* index among LEGAL moves (drives PVS/LMR) */
     for(int pi=0;pi<np;pi++){
         Move m=pl[pi];
         if(!is_legal(b,m)) continue;
+        if(m==excl) continue;                 /* singular verification: skip the excluded move */
         int i=li++;
         int quiet = !is_capture(b,m) && MV_PROMO(m)==0;
+        int ext = (m==ttm)? sing_ext : 0;     /* singular extension applies to the TT move */
         Board c=*b; make(&c,m);
         if(futile && quiet && bestm && !in_check(&c,c.side)){ continue; }
         /* late move pruning: in a non-PV node at shallow depth, once enough
@@ -384,13 +404,13 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
         if(!pvnode && quiet && bestm && !checked && depth<=LMP_DEPTH
            && i >= ((3 + depth*depth) >> (improving?0:1)) && !in_check(&c,c.side)){ continue; }
         int sc;
-        if(i==0){ sc=-negamax(&c,depth-1,-beta,-alpha,ply+1,m); }
+        if(i==0){ sc=-negamax(&c,depth-1+ext,-beta,-alpha,ply+1,m); }
         else {
             int red=1;
             if(depth>=3 && quiet && !checked){ if(i>=12)red=3; else if(i>=3)red=2;
                 if(red>1 && !improving) red++; }
             sc=-negamax(&c,depth-red,-alpha-1,-alpha,ply+1,m);
-            if(sc>alpha && (red>1 || beta>alpha+1)) sc=-negamax(&c,depth-1,-beta,-alpha,ply+1,m);
+            if(sc>alpha && (red>1 || beta>alpha+1)) sc=-negamax(&c,depth-1+ext,-beta,-alpha,ply+1,m);
         }
         if(SS.stopped){ SS.path_len--; return 0; }
         if(sc>best){ best=sc; bestm=m; }
@@ -419,10 +439,15 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
         }
         if(quiet && nq<64) quiets[nq++]=m;
     }
-    if(!li){ SS.path_len--; return checked? -S_MATE+ply : 0; }
-    int flag = best<=orig_alpha?TT_UPPERF : best>=beta?TT_LOWERF : TT_EXACTF;
-    TTEntry *e=&TT[h&TT_MASK];
-    e->key=h; e->depth=depth; e->flag=flag; e->score=best; e->move=bestm;
+    /* no legal move searched: mate/stalemate normally, but during a singular
+     * verification it just means the excluded move was the only one -> fail low
+     * so the caller treats it as singular (a forced move gets extended). */
+    if(!li){ SS.path_len--; return excl ? alpha : (checked? -S_MATE+ply : 0); }
+    if(!excl){   /* don't pollute this position's TT entry from a verification search */
+        int flag = best<=orig_alpha?TT_UPPERF : best>=beta?TT_LOWERF : TT_EXACTF;
+        TTEntry *e=&TT[h&TT_MASK];
+        e->key=h; e->depth=depth; e->flag=flag; e->score=best; e->move=bestm;
+    }
     SS.path_len--;
     return best;
 }
