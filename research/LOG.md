@@ -200,6 +200,16 @@ only. Depth 13.5 vs 13.0 (RFP-only), tactics 24/24. Gate vs RFP-only baseline:
 clearly positive, no collapse, and it's a depth-adding search change (should
 transfer). Kept. LMP_DEPTH=5, tunable.
 
+**Re-calibration (RFP+LMP) -- THE SEARCH GAINS TRANSFERRED (unlike eval).**
+Same Stockfish anchors, 40 games, 0.3s, single-thread. Eval-only engine -> now:
+vs SF-2600 56%->62%, vs SF-2700 45%->**58%** (~+88 Elo vs the SAME anchor),
+vs SF-2800 31%->36%, vs SF-2900 28% (new). Crossover ~2655 -> **~2736, roughly
++80 external Elo** from RFP+LMP. Decisive validation: search improvements transfer
+(~55% of the +144 self-play) because deeper search finds better moves vs ANY
+opponent -- whereas the +84 eval self-play transferred ~0 (opponent-specific
+blind-spot fixes). CONCLUSION: keep pushing search. (40g/anchor is noisy but the
+shift is consistent across all four anchors.) Next: singular extensions, razoring.
+
 ---
 
 ## 2026-07-23 — Session 21: analysis board (product) + adaptive-time deprioritized
