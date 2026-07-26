@@ -41,6 +41,8 @@ void c_set_multipv(int on){ g_want_second = on?1:0; }
 #define TT_SIZE (1u<<TT_BITS)
 #define TT_MASK (TT_SIZE-1)
 #define MAXPLY 128
+#define RFP_DEPTH 6      /* reverse-futility pruning: max depth to apply it */
+#define RFP_MARGIN 90    /* ...and cp margin conceded per ply */
 
 static const int SEEV[6]={100,320,330,500,900,0};
 
@@ -305,6 +307,15 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
         }
     }
     if(done){ SS.path_len--; return ret; }
+
+    /* reverse futility pruning (static null move): at shallow depth in a
+     * non-PV node, if the static eval sits so far above beta that conceding a
+     * margin per ply still clears beta, assume this node fails high and cut.
+     * Not in check; beta clear of mate scores. eval_stm is ~free via the hash. */
+    if(!pvnode && !checked && depth<=RFP_DEPTH && beta>-S_MATE_TH && beta<S_MATE_TH){
+        int st=eval_stm(b);
+        if(st - RFP_MARGIN*depth >= beta){ SS.path_len--; return st; }
+    }
 
     /* null move — only when the static eval already beats beta: if we're
      * statically below beta, "passing" almost never fails high, so the

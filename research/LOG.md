@@ -176,6 +176,21 @@ overstates external gain for eval changes; the only trustworthy strength number 
 vs an external opponent. Closing the real gap to a 2820 bot needs a bigger lever
 than classical eval tuning -- the eval is at its external ceiling for this engine.
 
+**Search push (William: "let's push on search, it is critical this tool is as
+strong as possible"). Reverse futility pruning -- ACCEPTED (+114 Elo).** The
+search already had TT/null-move/futility/LMR/PVS/check-ext/improving; LMR/IID/
+conthist were already tried and rejected. The conspicuous gap: reverse futility
+(static null-move) pruning. At shallow depth in a non-PV node not in check, if
+`eval_stm - RFP_MARGIN*depth >= beta`, return the eval (assume fail-high). C-
+search-only (eval untouched -> C==Python still 0.000000). RFP_DEPTH=6,
+RFP_MARGIN=90. Effect: **+1.5 ply deeper in the same 1.5s (depth 13.0 vs 11.5)**,
+tactics 24/24 (100%, no blunder). Gate vs baseline (single-thread, 0.3s, UHO):
+batch A 69% (+62 =42 -16, +140), batch B 63% (+53 =44 -23, +89), **pooled 240g
+65.8% (+115 =86 -39), +114 Elo, 95% CI [+79, +151]**. Unlike the eval gains, this
+is deeper search -- it finds better moves vs ANY opponent, so it should transfer
+externally (to be re-confirmed by calibration). Biggest single gain in the log.
+Next: LMP, razoring, singular extensions; then re-calibrate.
+
 ---
 
 ## 2026-07-23 — Session 21: analysis board (product) + adaptive-time deprioritized
