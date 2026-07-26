@@ -342,7 +342,7 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
                    * a null move outnumber the clock and is_rep's bound cuts off
                    * legitimate repetition history (missed rep draws broke KBN
                    * mate conversion — found by tests/test_endgame.py) */
-        int r = depth>=6?4:3;
+        int r = depth>=12?5:(depth>=6?4:3);   /* deeper null reduction as depth grows */
         int sc=-negamax(&c,depth-r,-beta,-beta+1,ply+1,0);
         if(SS.stopped){ SS.path_len--; return 0; }
         if(sc>=beta){ SS.path_len--; return beta; }

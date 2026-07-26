@@ -247,6 +247,13 @@ A 58% (+53), batch B 56% (+44), pooled 240g 56.9% (+96 =81 -63), +48 Elo, 95% CI
 search gain after RFP. Also rejected this round: improving-aware RFP (+14 noise).
 Stack now RFP+LMP+SE+IIR. Next: probcut, correction history.
 
+**Null-move R tier -- ACCEPTED (+29, borderline).** Deeper null reduction as depth
+grows: r = depth>=12?5:(depth>=6?4:3) (was depth>=6?4:3). Gate: batch A 53% (+23),
+batch B 55% (+35), pooled 240g 54.2%, +29 Elo, CI [-6,+64] -- two consistent
+positive batches. Kept. Stack now RFP+LMP+SE+IIR+null-R. (A full-stack re-
+validation vs the pre-search engine is queued to confirm the borderline pieces
+hold in aggregate.)
+
 ---
 
 ## 2026-07-23 — Session 21: analysis board (product) + adaptive-time deprioritized
