@@ -44,6 +44,8 @@ void c_set_multipv(int on){ g_want_second = on?1:0; }
 #define RFP_DEPTH 6      /* reverse-futility pruning: max depth to apply it */
 #define RFP_MARGIN 90    /* ...and cp margin conceded per ply */
 #define LMP_DEPTH 5      /* late-move pruning: max depth to skip late quiets */
+#define PROBCUT_DEPTH 5  /* probcut: min depth to attempt it */
+#define PROBCUT_MARGIN 180 /* ...cp above beta the capture must clear */
 
 static const int SEEV[6]={100,320,330,500,900,0};
 
@@ -346,6 +348,30 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
         int sc=-negamax(&c,depth-r,-beta,-beta+1,ply+1,0);
         if(SS.stopped){ SS.path_len--; return 0; }
         if(sc>=beta){ SS.path_len--; return beta; }
+    }
+
+    /* ProbCut: a good capture that, searched at reduced depth against a beta
+     * raised by a big margin, still fails high -- this node almost certainly
+     * fails high, so cut. Non-PV, not in check, deep enough, beta clear of mate,
+     * and not during a singular verification. */
+    if(!excl && !pvnode && !checked && depth>=PROBCUT_DEPTH
+       && beta>-S_MATE_TH && beta<S_MATE_TH){
+        int pcbeta = beta + PROBCUT_MARGIN;
+        if(pcbeta < S_MATE_TH){
+            Move pcl[256]; int pcn=gen_pseudo(b,pcl);
+            for(int pi=0;pi<pcn;pi++){
+                Move m=pcl[pi];
+                if(!is_capture(b,m) && MV_PROMO(m)==0) continue;   /* captures/promos only */
+                if(see(b,m) < 0) continue;                          /* only good captures */
+                if(!is_legal(b,m)) continue;
+                Board c=*b; make(&c,m);
+                int sc=-qsearch(&c,-pcbeta,-pcbeta+1,ply+1,0);      /* cheap check first */
+                if(!SS.stopped && sc>=pcbeta && depth-4>0)
+                    sc=-negamax(&c,depth-4,-pcbeta,-pcbeta+1,ply+1,m);
+                if(SS.stopped){ SS.path_len--; return 0; }
+                if(sc>=pcbeta){ SS.path_len--; return sc; }         /* fails high beyond margin */
+            }
+        }
     }
 
     int futile=0;

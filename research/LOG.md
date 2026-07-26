@@ -254,6 +254,25 @@ positive batches. Kept. Stack now RFP+LMP+SE+IIR+null-R. (A full-stack re-
 validation vs the pre-search engine is queued to confirm the borderline pieces
 hold in aggregate.)
 
+**Full-stack external re-calibration (RFP+LMP+SE+IIR+null-R).** vs SF-2700 44%,
+2800 32%, 2900 29%, 3000 28% (40g/anchor). NOISY: at 40g the CI is ~+-100 Elo, so
+this (crossover ~2700) is statistically indistinguishable from the RFP+LMP
+calibration (~2736). HONEST READ: the search push confirmed ~+80 external (RFP+LMP,
+clean 45%->58% before/after vs SF-2700); the SE/IIR/null-R external INCREMENT is
+within the 40g noise and NOT separately claimed. But they are the same CLASS of
+change (better/deeper search, opponent-agnostic) as RFP+LMP which did transfer,
+so the transfer argument is mechanistic, unlike the eval concepts (which fixed
+our own blind spots). Engine now ~2700-2740 external, up from ~2655.
+
+**ProbCut -- ACCEPTED (+50 Elo, confirmed).** A good capture (SEE>=0) that, at a
+raised beta (beta+180) via a quick qsearch then a depth-4 search, still fails high
+-> the node almost certainly fails high, cut. Non-PV, not in check, depth>=5.
+C-search only (eval 0.000000, perft, tactics 24/24, prunes nodes 1.67M vs 2.19M).
+Gate vs full-stack baseline: batch A 55% (+35), batch B 60% (+64), pooled 240g
+57.1% (+93 =88 -59), +50 Elo, 95% CI [+15, +85] -- both positive, CI clears zero.
+Third big win (RFP +114, IIR +48, probcut +50). MISSING techniques keep winning;
+tuning tweaks stay marginal. Stack: RFP+LMP+SE+IIR+null-R+probcut.
+
 ---
 
 ## 2026-07-23 — Session 21: analysis board (product) + adaptive-time deprioritized
