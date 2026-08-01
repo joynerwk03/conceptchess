@@ -24,7 +24,8 @@ scope by design.
 ## Compiled core (the engine that actually plays) — ~2442 Elo
 
 `engine/Engine` searches with a **compiled C core** by default (`engine/core.py`
-binds `core/libcengine.dylib` via ctypes; ~50× faster than the Python search,
+binds `core/libcengine.dylib` on macOS / `core/libcengine.so` on Linux+WSL2 via
+ctypes; ~50× faster than the Python search,
 ~+380 Elo). The Python search (`engine/search.py`) is the readable reference,
 still used with `Engine(use_core=False)` and by its own tests.
 
@@ -59,6 +60,26 @@ Known gap: the contrastive "alternative" explanation needs `use_core=False`
 - `gui/server.py` + `gui/static/index.html` — local web GUI (`python -m gui.server`)
 - `tests/` — invariants, search correctness, tactics regression gate
 - `research/` — benchmark, tactics runner, suite miner, match harness, LOG, ROADMAP
+
+## Setup on a new machine (Linux / Windows-WSL2)
+
+The engine is POSIX C (pthreads + clock_gettime), so it builds unchanged on Linux
+and inside WSL2; only the shared-library extension differs and `core/build.sh`
+handles that automatically. Native Windows (no WSL) is NOT supported — the Lazy
+SMP threading would need porting.
+
+```bash
+sudo apt update && sudo apt install -y build-essential python3-venv stockfish
+git clone https://github.com/joynerwk03/conceptchess.git && cd conceptchess
+python3 -m venv .venv && .venv/bin/pip install chess pytest matplotlib
+sh core/build.sh                                    # -> core/libcengine.so
+PYTHONPATH=. .venv/bin/python core/eval_check.py    # must print 0.000000
+.venv/bin/python core/perft_check.py                # must print ALL PERFT PASS
+.venv/bin/python -m pytest -q -m 'not slow'         # all green
+```
+
+Work on WSL2's own filesystem (`~/conceptchess`), not `/mnt/c/...` — cross-OS
+filesystem access is slow enough to distort match timings.
 
 ## Commands
 

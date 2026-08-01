@@ -17,7 +17,9 @@ import chess
 
 from engine.evaluation import evaluate
 
-LIB = Path(__file__).parent / "libcengine.dylib"
+import platform
+LIB = Path(__file__).parent / ("libcengine.dylib" if platform.system() == "Darwin"
+                              else "libcengine.so")
 DATA = Path(__file__).parent.parent / "research" / "data"
 
 

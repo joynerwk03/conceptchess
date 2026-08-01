@@ -5,11 +5,13 @@ A correct move generator reproduces these exactly; any mismatch is a movegen bug
 """
 
 import ctypes
+import platform
 from pathlib import Path
 
 import chess
 
-LIB = Path(__file__).parent / "libcengine.dylib"
+LIB = Path(__file__).parent / ("libcengine.dylib" if platform.system() == "Darwin"
+                               else "libcengine.so")
 
 CASES = [
     (chess.STARTING_FEN, [1, 20, 400, 8902, 197281, 4865609]),

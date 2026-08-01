@@ -8,13 +8,16 @@ falls back to the pure-Python search.
 """
 
 import ctypes
+import platform
 import subprocess
 from pathlib import Path
 
 import chess
 
 _CORE = Path(__file__).parent.parent / "core"
-_LIB = _CORE / "libcengine.dylib"
+# macOS builds a .dylib, Linux/WSL2 a .so (see core/build.sh).
+_LIBNAME = "libcengine.dylib" if platform.system() == "Darwin" else "libcengine.so"
+_LIB = _CORE / _LIBNAME
 
 HAS_CORE = False
 _lib = None
