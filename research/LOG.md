@@ -273,6 +273,27 @@ Gate vs full-stack baseline: batch A 55% (+35), batch B 60% (+64), pooled 240g
 Third big win (RFP +114, IIR +48, probcut +50). MISSING techniques keep winning;
 tuning tweaks stay marginal. Stack: RFP+LMP+SE+IIR+null-R+probcut.
 
+**Search ceiling reached: six consecutive REJECTED techniques.** After the three big
+wins, everything else came back neutral and was reverted: razoring (50%, overlaps
+futility/qsearch), TT 22->24 bits (48% at 0.3s, cache locality), improving-aware RFP
+margin (+14, noise), RFP margin sweep (70 -> -53, 110 -> +12; 90 is optimal),
+multi-cut on the singular verification (49%, fires too rarely), correction history
+(49%; our concept-sum eval's error is evidently NOT pawn-structure-correlated, so the
+correction adds noise not signal -- a genuinely interesting negative result for a
+non-NN eval), and SEE-pruning of losing captures (batch A 58%/+53 collapsed to batch B
+48%/-21, pooled 52.5%/+17 -- textbook winner's curse, caught by the confirmation rule).
+
+**CAPSTONE: total search gain at the analysis board's real regime.** Full search stack
+(RFP+LMP+SE+IIR+null-R+probcut) vs the pre-search eval-only engine, 1.5s/move, 50 games,
+UHO, single-thread: **76% (+30 =16 -4), +200 Elo, 95% CI [+101, +343]**. The search push
+is worth ~+200 Elo at long TC. External calibration puts the engine at ~2700-2740
+single-threaded (up from ~2655), i.e. the search work roughly halved the gap to a
+2820-class opponent, where the eval work had moved external strength ~0.
+
+**Standing lesson (now proven twice):** self-play gates measure "did we fix our own
+lineage's blind spots"; only search improvements reliably converted to external Elo.
+Eval changes must in future be validated against an EXTERNAL opponent, not self-play.
+
 ---
 
 ## 2026-07-23 — Session 21: analysis board (product) + adaptive-time deprioritized
