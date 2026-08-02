@@ -1,5 +1,75 @@
 ---
 
+## 2026-08-02 — Session 26: use the cores you have; instruments for finding the leak
+
+**Lazy SMP thread default: physical cores, not a hardcoded 8 — ACCEPTED.**
+`play_threads()` returned `min(os.cpu_count(), 8)`, which is wrong twice on a
+modern box: `os.cpu_count()` counts *logical* CPUs (20 here), and the cap of 8
+left two physical cores idle on a 10-core machine. Replaced with a physical-core
+count (Linux: unique `thread_siblings_list` entries; macOS: `hw.physicalcpu`),
+capped at `MAX_THREADS`, which went 8 → 16 in `core/csearch.c`.
+
+Measured the scaling curve first, and **the two standard SMP metrics disagreed —
+worth recording, because one of them is a trap:**
+
+| threads | depth @ 2.0s (avg of 2) | time to depth 14 (avg of 3) |
+|---|---|---|
+| 1  | 16.50 | 7.90s |
+| 4  | 17.67 | 2.88s |
+| 8  | 17.50 | 2.48s |
+| **10** | **18.25** | 2.41s |
+| 12 | 18.08 | 2.43s |
+| 16 | 18.08 | **1.97s** |
+| 20 | 17.50 | 1.99s |
+
+Time-to-depth keeps "improving" past the physical core count and picks T=16 —
+but T=16 reaches depth 14 on **1.98M nodes where T=1 needs 11.78M**. It is not
+6× faster; the parallel search simply *arrives at the label "depth 14" having
+examined far less*. Time-to-depth flatters Lazy SMP and should not be used to
+choose a thread count. Depth-at-fixed-time peaks at T=10 = the physical core
+count, which is also what the hardware predicts (helper threads are compute-bound,
+so hyperthread siblings contend rather than search).
+
+Gate (T=10 vs T=8, each side on its own built-in default, 160 games, 0.3s,
+**concurrency 1** — only one side thinks at a time, so a game needs at most 10
+cores; two concurrent games would put ~18 threads on 10 physical cores and
+measure contention instead): **54.4% (+53 =68 −39), paired +30 Elo, 95% CI
+[−8, +70]**.
+
+Honest read: **positive but imprecise — the interval grazes zero, so "+30" is not
+a claim, and the defensible statement is "a regression is excluded and both
+independent metrics point the same way."** Accepted anyway, on grounds the
+borderline search features did not have: the mechanism is not a heuristic that
+might backfire, it is *using two more cores*, and the depth benchmark agreed
+before the match did. On a machine without hyperthreading this is a no-op except
+that boxes with 8–16 physical cores now use them all. The coach's verdict path
+stays at T=1, so determinism and the C==Python invariant are untouched.
+
+Harness note: gating a change to the *default* thread count needed a new
+`research.match --threads default`, which leaves `CC_THREADS` unset so each side
+picks its own — both engines inherit one environment, so there was previously no
+way to pit two defaults against each other.
+
+**New instruments (not yet findings): `research.postmortem` and
+`research.abgate`.** Seven straight guessed techniques came back neutral, so
+rather than guess an eighth, two tools to aim the next experiment:
+
+- **`research.postmortem`** — phase-resolved centipawn-loss analysis of real
+  games against Stockfish. Analyses every position once at fixed depth and asks
+  which phase we bleed in, with the opponent's loss on the *same games* as the
+  control (raw cp/move is meaningless without it — endgame positions are sharper
+  for both sides). Also reports where our worst move of the game falls, split by
+  result, since games are decided by the worst move and the mean dilutes it.
+- **`research.abgate`** — the missing eval gate. s24 proved self-play Elo does
+  not transfer for eval changes, but differencing two independent
+  runs-vs-Stockfish was too imprecise to be practical. This plays BOTH builds
+  against the same strength-limited Stockfish over the **same openings in the
+  same colours**, so opening difficulty cancels in the per-slot difference
+  (common random numbers). Unit-tested, including the property the design exists
+  for: the paired interval is tighter than the unpaired one.
+
+---
+
 ## 2026-08-01 — Session 25: migrated to WSL2; the measuring instrument, rebuilt
 
 s24 ended with both levers near their ceiling and one hard lesson — self-play

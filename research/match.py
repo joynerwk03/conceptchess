@@ -49,9 +49,12 @@ OPENINGS = [
 ]
 
 
-def open_ours():
+def open_ours(cwd=None):
+    """Launch our side. `cwd` lets a caller run a DIFFERENT build (a worktree)
+    as "ours" -- research.abgate needs that to play two builds against one
+    external opponent over the same openings."""
     return chess.engine.SimpleEngine.popen_uci(
-        [sys.executable, "-m", "engine.uci"], cwd=ROOT)
+        [sys.executable, "-m", "engine.uci"], cwd=cwd or ROOT)
 
 
 def open_opponent(spec, cwd):
@@ -234,7 +237,7 @@ class MatchResult:
 
 
 def run_match(*, games, opponent, movetime=0.5, opp_movetime=None,
-              opponent_cwd=None, concurrency=1, openings=None,
+              opponent_cwd=None, ours_cwd=None, concurrency=1, openings=None,
               opening_offset=0, clock=None, inc=0.1, sprt=None,
               collect_pgn=False, progress=True):
     """Play `games` games and return a MatchResult.
@@ -254,11 +257,11 @@ def run_match(*, games, opponent, movetime=0.5, opp_movetime=None,
         # processes for the fast (performance) cores, that would be a systematic
         # bias in our favour on a big.LITTLE machine. Alternating launders it.
         if g % 2 == 0:
-            ours = open_ours()
+            ours = open_ours(ours_cwd)
             opp = open_opponent(opponent, opponent_cwd)
         else:
             opp = open_opponent(opponent, opponent_cwd)
-            ours = open_ours()
+            ours = open_ours(ours_cwd)
         try:
             white, black = (ours, opp) if we_are_white else (opp, ours)
             if clock is not None:
@@ -383,12 +386,24 @@ def main():
     p.add_argument("--sprt", action="store_true",
                    help="stop early via SPRT (H0 elo=0 vs H1 elo=+35)")
     p.add_argument("--sprt-elo1", type=float, default=35.0)
+    p.add_argument("--threads", default="1",
+                   help="CC_THREADS for BOTH engines (default 1 = clean "
+                        "single-thread gates). Pass 'default' to leave it UNSET so "
+                        "each side picks its own built-in thread count -- the only "
+                        "way to gate a change to that default, since both engines "
+                        "inherit this process's environment.")
     p.add_argument("--clock", type=float, default=None,
                    help="game-clock mode: seconds per side (e.g. 10). Enables "
                         "adaptive time management; overrides --movetime.")
     p.add_argument("--inc", type=float, default=0.1,
                    help="increment per move (seconds) in --clock mode")
     args = p.parse_args()
+
+    # Applied before any engine is spawned, so both inherit it.
+    if args.threads == "default":
+        os.environ.pop("CC_THREADS", None)
+    else:
+        os.environ["CC_THREADS"] = args.threads
 
     sprt = None
     if args.sprt:

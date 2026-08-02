@@ -85,11 +85,47 @@ def set_multipv(on):
         _lib.c_set_multipv(1 if on else 0)
 
 
+MAX_THREADS = 16      # must match MAX_THREADS in core/csearch.c (which also clamps)
+
+
+def _physical_cores():
+    """Physical (not hyperthreaded) core count, or None if undeterminable.
+
+    Lazy SMP helper threads are compute-bound, so two of them sharing one core's
+    execution units mostly contend instead of searching. Measured on a 10-core /
+    20-thread box (s25): depth at fixed time rose to 10 threads and fell off into
+    the hyperthreads (T=8 17.50, T=10 18.25, T=16 18.08, T=20 17.50 avg plies).
+    `os.cpu_count()` counts logical CPUs, so it is the wrong number here.
+    """
+    import glob
+    try:                                    # Linux: one entry per physical core
+        siblings = set()
+        for path in glob.glob(
+                "/sys/devices/system/cpu/cpu[0-9]*/topology/thread_siblings_list"):
+            with open(path) as f:
+                siblings.add(f.read().strip())
+        if siblings:
+            return len(siblings)
+    except OSError:
+        pass
+    try:                                    # macOS
+        import subprocess
+        out = subprocess.run(["sysctl", "-n", "hw.physicalcpu"],
+                             capture_output=True, text=True, timeout=2)
+        n = int(out.stdout.strip())
+        if n > 0:
+            return n
+    except Exception:
+        pass
+    return None
+
+
 def play_threads():
-    """Full-strength default thread count: honor CC_THREADS if set, else all
-    cores capped at the core's MAX_THREADS (8). Used by the UCI interface and the
-    web play/analysis paths so the engine plays at full width by default. Research
-    gates export CC_THREADS=1 to keep strength measurements clean single-thread."""
+    """Full-strength default thread count: honor CC_THREADS if set, else one
+    thread per PHYSICAL core (capped at MAX_THREADS). Used by the UCI interface
+    and the web play/analysis paths so the engine plays at full width by default.
+    Research gates export CC_THREADS=1 to keep strength measurements clean
+    single-thread."""
     import os
     env = os.environ.get("CC_THREADS")
     if env is not None:
@@ -97,7 +133,8 @@ def play_threads():
             return max(1, int(env))
         except ValueError:
             pass
-    return min(os.cpu_count() or 1, 8)
+    n = _physical_cores() or os.cpu_count() or 1
+    return max(1, min(n, MAX_THREADS))
 
 
 def search(board, movetime=1.0, max_depth=64, max_time=None):

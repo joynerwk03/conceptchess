@@ -18,7 +18,7 @@
  * wall-clock budget. TT/eval-hash writes race, which Lazy SMP tolerates (the
  * 64-bit key check rejects torn entries; rare torn scores self-correct).
  * Thread count is set via c_set_threads() (default 1 = exact old behavior). */
-#define MAX_THREADS 8
+#define MAX_THREADS 16
 static int g_threads = 1;
 static volatile int g_stop = 0;
 void c_set_threads(int n){ g_threads = n<1?1 : (n>MAX_THREADS?MAX_THREADS:n); }
