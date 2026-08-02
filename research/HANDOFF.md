@@ -91,12 +91,13 @@ Read the **paired** Elo line, not the per-game one.
 
 ## Next actions
 
-1. **The most valuable untested regime is LONG TC.** Every gate in this project's
-   history is 0.3s, but the analysis board thinks indefinitely, and s26 found one
-   feature whose sign flips between 0.3s and 1.0s. A 3.0s gate of the current
-   engine against the s24 pre-search engine, or simply re-running the borderline
-   audits at 3.0s, is the highest-information thing left. Budget ~2h for 200
-   games at 3.0s, concurrency 8.
+1. **Long TC: the parameters are already validated, a long-TC MATCH is not.**
+   s26 screened the four most time-control-sensitive knobs (quiescence check
+   depth, LMP_DEPTH, RFP_DEPTH, TT_BITS) on the mined blunder suite at 1.0s and
+   3.0s and the baseline beat all four at 3.0s — so the blitz-tuned parameters
+   are not mis-set for the product's regime. What remains untested is an actual
+   long-TC *match*: the suite is a proxy, and every Elo number in this project is
+   from a 0.3s gate. Budget ~2.5h for 2x400 games at 1.0s, concurrency 8.
 2. **An unresolved robustness flag** from s24 is still open: an intermittent hang
    at long TC (a 16x scaling rung crashed at game 27/40 and could not be
    reproduced in isolation). ~6000 games at 0.3s this session hit nothing, so if

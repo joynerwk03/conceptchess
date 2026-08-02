@@ -245,6 +245,35 @@ The general lesson is uncomfortable and worth carrying: **a 0.3s gate is not
 neutral evidence about a feature whose value grows with depth**, and the mined
 blunder suite is a cheap second instrument for exactly that question.
 
+**Is the engine mis-tuned for the regime it is actually used in? No — four
+"more aggressive at depth" variants all lose at 3.0s.** Every tuned parameter in
+this engine was swept at 0.3s, the analysis board thinks far longer, and the
+quiescence-check result above proves a sign CAN flip with time control. So the
+obvious worry is that the whole parameter set is blitz-tuned. Screened the four
+most time-control-sensitive knobs on the mined blunder suite (216 real positions,
+Stockfish-verified best move) at 1.0s and 3.0s:
+
+| variant | 1.0s | 3.0s |
+|---|---|---|
+| **baseline** | 56/216 | **79/216** |
+| quiescence quiet-checks extended to qd≤1 | 56 | 75 |
+| LMP_DEPTH 5→8 | 54 | 75 |
+| RFP_DEPTH 6→8 | 56 | 71 |
+| TT_BITS 22→24 | 57 | 70 |
+
+**The baseline wins at 3.0s against all four**, by 4–9 positions against a ~±2
+noise floor (measured: re-running the baseline gave 56 and 57 on separate runs,
+the fixed-time jitter again). RFP_DEPTH 8 and TT_BITS 24 are clearly harmful at
+long TC — the third independent rejection of a bigger transposition table, now at
+the deep regime where it should have had its best case.
+
+The bias in this test runs **against** the baseline: the suite was mined from
+positions the baseline itself got wrong, so every variant enjoys a free
+decorrelation bonus. Losing anyway makes it strong evidence. Conclusion: the
+0.3s-tuned parameters are also right at long TC, and the blitz-tuning worry is
+not supported. That closes the largest open question in the s26 handoff without
+spending 2.5 hours per long-TC match gate — the mined suite paid for itself.
+
 **HEADLINE: what the engine is actually worth as it is really played — ~2840
 external.** Every external number this project has ever quoted is
 SINGLE-THREADED, because gates export `CC_THREADS=1` to stay clean. But nobody
