@@ -68,6 +68,55 @@ rather than guess an eighth, two tools to aim the next experiment:
   (common random numbers). Unit-tested, including the property the design exists
   for: the paired interval is tighter than the unpaired one.
 
+**DIAGNOSIS 1 — the endgame is not the leak; the middlegame is.** 200 games vs
+SF-2800 (42.8%), every position scored at depth 14, our centipawn loss compared
+against *the opponent's loss on the same games* (raw cp/move is meaningless
+without that control — endgame positions are sharper for both sides):
+
+| phase | our cp/move | SF cp/move | **excess** |
+|---|---|---|---|
+| opening | 23.3 | 18.1 | **+5.2** |
+| middlegame | 23.4 | 19.0 | **+4.4** |
+| endgame | 12.8 | 12.2 | **+0.6** |
+
+**We play endgames at parity with a 2800-rated opponent.** That kills a standing
+ROADMAP direction: hand-built endgame knowledge (unstoppable passer, wrong-bishop
+draws) is not where the strength is, and would have been a session's work to find
+that out. Our worst move of the game also lands in the endgame only 16% of the
+time in games we lose, against 30% of our moves being endgame moves — the phase
+is under-represented in disasters, not over. The deficit is concentrated where
+material is high: most pieces, highest branching factor, shallowest search.
+
+**DIAGNOSIS 2 — 82% of our real blunders are fixed by more thinking time.**
+`research.blunders` mined 216 real blunders (≥150cp given up) out of those games
+and re-searched each at 10x the time it was played at: **123 search-limited (82%)
+vs 27 eval-limited (18%)**. Mined suite kept at `research/suites/blunders_v1.epd`
+for reuse. Among the 18% that survive more depth, the concepts most often
+favouring our worse move are **threats (9 positions), material (4, but +1330cp of
+mass — poisoned-material grabs) and king_attack (4)**. That is the first
+diagnosis-pointed eval target the project has had since the king-race work, and
+`abgate` can now test it externally.
+
+**METHOD — two traps found and disarmed, both of which had been silently
+distorting things:**
+
+1. *A first version of the blunder classifier said 65% of blunders "did not
+   reproduce" on a fresh short search.* That looked like a spectacular finding
+   about in-game state. It was an artifact: **the search stops on WALL CLOCK, so
+   move choice at 0.3s is unstable.** Two 0.3s searches of the same position pick
+   different moves **18%** of the time, and replaying a whole game through one
+   engine reproduces only **71%** of its own moves. Any classifier resting on a
+   short re-search is mostly reading timing jitter, so the tool now keys off the
+   long search alone. Worth stating plainly: **at fixed TIME the engine is not
+   deterministic even at one thread** — the byte-identical guarantee is a
+   fixed-DEPTH property.
+2. *Does gating at `--concurrency 8` weaken the engines it measures?* If a 0.3s
+   search got fewer nodes under load, every parallel gate and the 2743 calibration
+   would be measuring a weaker engine. Checked directly: solo **374,971** nodes
+   per 0.3s search vs **~363,000** under 8-way load — a 3% difference, with
+   identical depth (11.08 vs 11.17). **Parallel gating is sound**, which retires
+   the last doubt about the s25 instrument.
+
 ---
 
 ## 2026-08-01 — Session 25: migrated to WSL2; the measuring instrument, rebuilt
