@@ -3,15 +3,21 @@
 Hypothesis backlog, roughly ordered by expected value. Check off with a LOG
 entry reference; add new ideas as they come up.
 
-> **Status (s20, 2026-07-20): SMP broke the single-threaded plateau.** s19
-> established (four ways) that single-threaded strength had plateaued and the
-> gap to Stockfish was search DEPTH, not eval. s20 acted on that: **Lazy SMP
-> multithreading gained +140 (4 cores) / +187 (8 cores)** — the biggest jump
-> since the compiled core. The eval-concept space and single-threaded search
-> remain harvested (`diagnose.py` confirms the eval agrees with SF-16 on 78% of
-> moves), so future *eval* work needs the diagnosis to target it; the live
-> frontier is now parallel-search quality (SMP tuning: thread count, helper
-> diversity, TT depth-preferred sharing) and, as ever, product/coaching.
+> **Status (s25, 2026-08-01): the measuring instrument, rebuilt.** s24 ended with
+> both levers near their ceiling (three neutral eval results, six neutral search
+> results) and one hard lesson: **self-play gates do not measure external strength
+> for eval changes** — two eval concepts gated at +55/+29 in self-play and
+> transferred ~ZERO against Stockfish, while every search gain did transfer. The
+> bottleneck was therefore the instrument, not the ideas: gates were too slow and
+> too noisy to resolve the +20–30 Elo effects that remain. s25 rebuilt it —
+> parallel gating (~8× throughput), a validated-unbiased harness, and
+> `research.calibrate` for repeatable external Elo tracked in
+> `research/data/elo_history.json`. **Gate eval changes against Stockfish, never
+> against ourselves**, and always confirm with an independent second batch.
+>
+> Frontier: search remains the transferable lever. Untried directions —
+> move-ordering quality (capture history), quiescence quality, SMP scaling beyond
+> the hardcoded 8-thread cap, real-play time management, endgame knowledge.
 
 ## Speed (deeper search = biggest strength lever in pure Python)
 
@@ -81,8 +87,21 @@ entry reference; add new ideas as they come up.
 - [x] ~~Eval agreement with Stockfish~~ (session 2: built as eval-loss metric; good concept
       screen, bad tuning target) — [ ] move-agreement-at-fixed-nodes metric instead
 - [x] Ladder-anchor MLE fit is now a script (research/ladder_anchor.py, reproduces
-      all committed anchors) — [ ] still todo: automated ladder *runner* (play the
-      SF levels and feed results in one command)
+      all committed anchors) — [x] **automated ladder runner: `research.calibrate`
+      (s25)**. Plays the SF anchors, fits by ML with a proper trinomial draw model
+      (ladder_anchor treated a 0/0.5/1 score as a binomial — draw-blind), reports a
+      profile-likelihood CI *and* a paired bootstrap CI, and appends every run to
+      `research/data/elo_history.json`. Estimator is unit-tested against simulated
+      ladders (`tests/test_calibrate.py`: recovery + 95% coverage)
+- [x] Parallel gating: `research.match --concurrency N` (s25 validated at N=8 on a
+      10-core box: 400-game A-vs-identical-A scored 51.0%, paired +7 Elo
+      [−19,+33] — no detectable harness bias, 7.75× CPU utilisation)
+- [ ] Fold `elo_history.json` into `research/elo_timeline.py` so the forward
+      series and the hand-built historical anchors plot on one axis
+- [ ] Re-gate the borderline-ACCEPTED search features (singular extensions +29
+      CI[−7,+66], null-move R tier +29 CI[−6,+64], LMP +30 CI[+0,+60]) now that
+      600–800-game gates cost ~40 min instead of ~5 h — convert "borderline" into
+      confirmed or removed
 - [ ] Game-phase-specific benchmarks (endgame play is a known weak spot for shallow searchers)
 - [ ] Explanation quality checks: does the stated top concept delta actually track the
       move choice? (e.g., ablation: remove top concept, does move change?)

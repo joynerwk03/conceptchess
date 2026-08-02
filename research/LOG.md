@@ -1,5 +1,99 @@
 ---
 
+## 2026-08-01 — Session 25: migrated to WSL2; the measuring instrument, rebuilt
+
+s24 ended with both levers near their ceiling and one hard lesson — self-play
+gates do not measure external strength for EVAL changes. The HANDOFF's plan was
+therefore instrument-first: prove the new parallel harness is unbiased, then make
+external Elo repeatable, and only then resume strength research. This session did
+that, on a new machine.
+
+**Machine migration (macOS -> Windows/WSL2).** The POSIX C core built unchanged;
+the port needed exactly one fix — `core/libcengine.so` was missing from
+`.gitignore` (only the macOS `.dylib` was listed). Stockfish 18 installed to
+`~/.local/bin` without root (no passwordless sudo on this box; everything resolves
+it via `shutil.which`, so no code change). **All sacred invariants hold on the new
+box: C eval == Python eval to 0.000000 over 6204 positions, perft ALL PASS, 57
+fast tests green, tactics 24/24.**
+
+New hardware: i9-10900K, 10 physical cores / 20 threads, 23 GB RAM, 918 GB free
+(the Mac was at 99% disk, which had been throttling how many baseline worktrees
+could exist at once). It is **~1.7x SLOWER per core** than the Mac — 2.62M vs
+4.37M nps on the same benchmark positions — but with parallel gating the *total*
+throughput is several times higher, and throughput is what actually rate-limits
+this research loop. A 600-game measurement now costs 38 minutes.
+
+**Harness bias check (HANDOFF item 2) — PASSED.** The concurrency support is
+worthless if parallelism favours a side, so: the engine vs a byte-identical copy
+of itself (md5-verified same `.so`, separate worktree), 400 games, 0.2s,
+concurrency 8, UHO book. **51.0% (+135 =138 -127), paired +7 Elo, 95% CI
+[-19, +33]** — no detectable bias. CPU accounting confirms the parallelism is
+real and uncontended: 124m28s CPU in 16m03s wall = 7.75x on 8 workers. Note the
+big.LITTLE core-class hazard that motivated the check does not exist here (10
+identical cores), so this is a cleaner machine for parallel gating than the Mac.
+
+**`research.calibrate` (HANDOFF item 3) — external Elo, measured properly and
+tracked.** The ROADMAP had listed the automated ladder *runner* as missing; this
+is it, plus three fixes to how the number was computed:
+
+- *It runs the ladder.* Previously the anchors were played by hand and the counts
+  typed into `research.ladder_anchor`.
+- *Draws are modelled.* `ladder_anchor` treats a 0/0.5/1 chess score as a
+  binomial — the same draw-blind approximation already fixed for match gates in
+  s25's harness upgrade. `calibrate` fits a trinomial with the BayesElo draw
+  model and a nuisance `draw_elo` maximised out. Measured effect on simulated
+  ladders: **+-51.9 vs +-56.3 Elo at 40 games/anchor (coverage 97% vs 100% — the
+  binomial is over-conservative), +-26.6 vs +-28.8 at 150/anchor.** Modest, but
+  free and correct.
+- *Two intervals, deliberately.* A profile-likelihood CI (model-based) and a
+  **paired bootstrap** over colour-swapped game pairs (assumption-light, catches
+  model misfit and the correlation inside a pair). They are meant to be compared;
+  if they disagree, trust the bootstrap.
+
+`research/match.py` grew a reusable `run_match()` (extracted from `main()`, same
+behaviour) so calibrate drives the real harness rather than reimplementing the
+pairing/concurrency logic. Every run appends to `research/data/elo_history.json`
+({commit, date, tc, anchors, W/D/L, elo, ci, machine, SF version}).
+
+**The estimator is unit-tested, not just used.** `tests/test_calibrate.py` (12
+fast + 1 slow) simulates ladders from a KNOWN rating and checks the fit recovers
+it, that the fit really is the likelihood maximum, that more games tighten the
+interval, and — the one that matters — that **the 95% interval covers the truth
+~95% of the time** over 40 simulated ladders. A rating estimate the whole loop
+leans on should not be trusted on the strength of its docstring.
+
+**Pilot (3 anchors x 40 games) found a real misfit, and changed the anchor set.**
+Crossover ~2725, but the residuals were **+4.8% at SF-2500 and -8.7% at SF-2900**:
+our score curve is *steeper* than the logistic, so a wide ladder drags the single
+fitted number around depending on which anchors are in it. Distant anchors also
+carry little information per game. So the default anchor set is now a fixed, tight
+**2600/2700/2800** — whatever misfit remains is then a constant offset that
+cancels when comparing one run to the next, which is what a tracking instrument
+actually needs. (The 40-game pilot also scored 52.5% vs SF-2700 where 200 games
+gave 57.8% — a 5-point swing, and a compact illustration of why the old
+40-games/anchor ladder could not resolve anything.)
+
+**Baseline recorded: external Elo 2743, 95% CI [2717, 2769] (+-26).**
+
+| SF anchor | our score | model expects | resid |
+|---|---|---|---|
+| 2600 | 67.0% (+110 =48 -42) | 67.6% | -0.6% |
+| 2700 | 57.8% (+85 =61 -54) | 55.4% | +2.3% |
+| 2800 | 39.8% (+39 =81 -80) | 42.7% | -3.0% |
+
+600 games, 0.3s, single-thread, UHO book, Stockfish 18 anchors; paired bootstrap
+[2718, 2767] agrees with the profile interval to 1 Elo, and residuals stay within
+3%, so the logistic is a good local fit over this band. **This is the number to
+beat from now on, and it costs 38 minutes to re-measure — where the s24 ladder
+gave +-100 Elo and could not tell a +80 Elo search push from noise.** It also
+confirms s24's honest "~2700-2740" estimate, now with a real error bar.
+Caveats worth keeping: Stockfish 18's `UCI_LimitStrength` scale is its own, not
+FIDE and not chess.com's, and this box's slower cores mean 0.3s here buys fewer
+nodes than 0.3s on the Mac — so the number is comparable to FUTURE runs on this
+instrument, not to the Mac-era anchors.
+
+---
+
 ## 2026-07-24 — Session 24: external Elo calibration + true 2nd-best move (MultiPV)
 
 **Motivation (from William, playtesting):** vs the chess.com "Hikaru 2820" bot on
