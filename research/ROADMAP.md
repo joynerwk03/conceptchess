@@ -61,6 +61,13 @@ entry reference; add new ideas as they come up.
 - [x] ~~Aggressive log-log LMR reduction table~~ (s11: REJECTED −29 Elo at 46%; 4–5 ply reductions discard too much at depth ~10–12. **s21 re-test:** same table now that ordering is strong (malus/countermove/SEE) → **neutral, 50%, −0 Elo** over 60 games — the s11 loss was ordering-dependent, but fixing it makes aggressive LMR a wash, not a win. Still rejected; lesson reaffirmed: bottleneck is ordering/eval, not per-node work.)
 - [x] ~~Internal iterative deepening (IID)~~ (s21: NOT GATED — PV-only is inert under ID+TT (identical node counts); broadened is uneconomic, +49% nodes, same move choice)
 - [x] ~~Continuation history~~ (s21: REJECTED — +40% nodes-to-depth in every variant; butterfly+killers+countermove+SEE ordering is already a strong optimum)
+- [x] ~~Capture history~~ (s25: REJECTED — pooled 800 games 49.25%, −5 Elo, 95% CI
+      [−24,+14]. The last missing learned-ordering table: captures were ordered by
+      SEE alone, which returns 0 for every even trade. Made the tree cheaper (+7%
+      nps, +0.17 avg depth) but not better — the move it would promote is almost
+      always already the TT move, searched first anyway. Fifth ordering experiment
+      to land neutral-or-worse; **stop trying to improve move ordering on this
+      engine** unless a diagnosis points there specifically)
 - [x] ~~Bigger TT (22→24 bits)~~ (s21: REJECTED neutral — cuts nodes but same depth; 384MB cache penalty cancels the hit-rate gain, at play AND deep-analysis TC)
 - [x] **Aspiration windows at the root** (s21: ACCEPTED, ~+23 Elo pooled over 120 games — the root had searched a full window every iteration; delta=20)
 - [ ] Mate-distance pruning

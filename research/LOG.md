@@ -92,6 +92,57 @@ FIDE and not chess.com's, and this box's slower cores mean 0.3s here buys fewer
 nodes than 0.3s on the Mac — so the number is comparable to FUTURE runs on this
 instrument, not to the Mac-era anchors.
 
+**Capture history — REJECTED (−5 Elo over 800 games), and the first gate that
+actually earns the word "neutral".** With the instrument rebuilt, the first
+research target was the one standard ordering technique genuinely missing: quiets
+have had a learned signal (butterfly history) since early on, but captures were
+ordered purely by **SEE — a static material verdict that returns 0 for every even
+trade**, so it cannot separate two equal-SEE captures of which only one refutes
+anything here. Added `caphist[side][piece][to][victim]`, updated with the same
+bonus/gravity scheme as quiet history (reward the capture that caused the cutoff,
+penalize the captures tried before it), and folded into the good-capture tier as
+`100000 + SEE*16 + clip(caphist, ±4000)` — SEE still dominates any ≥250cp
+difference, capture history only breaks ties. C-search only, so eval untouched.
+
+Screens were mildly *encouraging*, which is the point of the story: eval
+0.000000, perft, 69 tests, tactics 24/24, and the benchmark moved the right way —
+**avg depth 16.50 vs 16.33, nps 2.80M vs 2.62M (+7%)**. The tree really did get
+cheaper. It just didn't get better:
+
+- batch A (400g, openings 0–199): 51.0% (+131 =146 −123), paired **+7** Elo [−19, +33]
+- batch B (400g, openings 200–399): 47.5% (+116 =148 −136), paired **−17** Elo [−43, +8]
+- **pooled 800g: 49.25% (+247 =294 −259), −5 Elo, 95% CI [−24, +14]**
+
+Reverted (the rebuilt core is md5-identical to the baseline worktree's again).
+
+Two things make this negative more useful than the six neutrals that closed s24.
+First, **the control**: the A-vs-identical-A harness check scored 51.0%/+7 — the
+*same* numbers as batch A. Batch A was literally indistinguishable from playing
+the engine against itself, which is the clearest possible statement that nothing
+happened. Second, **the CI excludes anything above +14 Elo**. The old instrument
+returned "50%, ±90" and could not distinguish "no effect" from "a real +30 we
+should keep"; this says capture history is worth less than +14 Elo on this engine,
+which is a fact rather than a shrug. That is what the 800-game gate bought, and it
+cost 50 minutes.
+
+*Why it lost, mechanistically:* this is the fourth ordering experiment to come
+back neutral-or-worse (continuation history +40% nodes, history-modulated LMR
+−47, root-move ordering by previous score, now capture history), and they share a
+cause. The move that a capture-ordering table would promote — the one that
+actually refutes the node — is overwhelmingly *already* the TT move from a
+previous iteration, and the TT move is searched first regardless. Capture history
+only reorders the moves after it, which the search was going to refute cheaply
+anyway. The +7% nps confirms it made the tree marginally cheaper without making
+the *choice* better. This engine's ordering is a genuinely strong local optimum,
+now established five ways.
+
+**Session 25 ledger.** No Elo gained, and that is the honest headline. What the
+session produced instead is the thing s24's handoff said was the blocker: an
+instrument that can resolve the effects still on the table. External strength is
+now a tracked number (2743 ±26, re-measurable in 38 minutes), gates run ~8× faster
+with the parallelism proven unbiased against a byte-identical control, and the
+first hypothesis run through it got a verdict with a ±19 error bar instead of ±90.
+
 ---
 
 ## 2026-07-24 — Session 24: external Elo calibration + true 2nd-best move (MultiPV)
