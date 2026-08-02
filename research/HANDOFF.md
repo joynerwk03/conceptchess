@@ -25,6 +25,22 @@ engines: 375k nodes per 0.3s search solo vs ~363k under 8-way load).
 - Sacred invariants hold: C eval == Python eval to 0.000000 over 6204 positions,
   perft passes, 77 fast tests green, tactics 24/24.
 
+## Screening: use it, it is 3–10x faster than a gate
+
+```bash
+# SPRT screen of a search variant. Variant lives in its own worktree, main stays
+# at the baseline, and the run stops as soon as the verdict is decisive.
+research/screen.sh <name> 'python3 /path/to/patch.py' [movetime] [maxgames]
+```
+
+A clearly-bad change is rejected in **76 games / 5 min**; a mildly-bad one in
+~300 games / 10 min; only genuinely ambiguous ones run the full 800. Measured
+against the old workflow (patch main, 800 games, revert) this is 3–10x.
+
+**The screen NOMINATES, it never ACCEPTS.** Anything that survives gets a
+two-batch confirmation gate on *disjoint* openings, and the confirmation is the
+number you report — see the winner's-curse note below.
+
 ## The instrument (built s25–s26 — use it, don't rebuild it)
 
 ```bash
@@ -88,6 +104,17 @@ Read the **paired** Elo line, not the per-game one.
    diagnosis — acting on it directly (threat weights) gated at −3.
 5. **Transfer rules.** Search changes deliver ~half their self-play number
    externally (RFP+LMP 0.55, SMP 0.51). Eval changes deliver ~0.
+6. **Selection creates winner's curse even when the CI clears zero.** LMR for
+   late captures screened at **+24 Elo, 95% CI [+6, +43]** over 754 games — an
+   interval excluding zero — and then measured **+4 [−15, +23]** on 800 games of
+   *independent* openings. It was picked *because* its screen was the best of
+   five, so its screen estimate is biased upward and its interval is not a
+   real 95% interval. Never report a screen number; report the confirmation.
+7. **A suite screen is trustworthy in one direction only.** The mined
+   `blunders_v1.epd` suite is built from positions the BASELINE got wrong, so
+   variants get a free decorrelation bonus. Baseline-wins is strong evidence
+   (it overcame a handicap); variant-wins is weak — RFP_MARGIN 130 led the suite
+   by +8 positions and gated at −4 Elo.
 
 ## Next actions
 

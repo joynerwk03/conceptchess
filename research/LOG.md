@@ -245,6 +245,60 @@ The general lesson is uncomfortable and worth carrying: **a 0.3s gate is not
 neutral evidence about a feature whose value grows with depth**, and the mined
 blunder suite is a cheap second instrument for exactly that question.
 
+**RFP_MARGIN 90→130 — REJECTED at 1.0s, and it calibrates the suite screen.**
+The long-TC parameter sweep (below) nominated this one: it led the mined blunder
+suite by +8 positions at 1.0s against a ±2 noise floor, and s24's 0.3s sweep had
+already seen margin 110 come in at "+12, noise" on an underpowered gate — same
+direction, twice. Gated at **1.0s** (where the signal was, and the project's
+first long-TC Elo gate at scale): batch A 49.0% (−7), batch B 49.8% (−2),
+**pooled 800g 49.38%, −4 Elo, 95% CI [−23, +14]**. Reverted.
+
+The useful part is what it says about the suite: **that screen is trustworthy in
+one direction only.** `blunders_v1.epd` is built from positions the BASELINE got
+wrong, so every variant enjoys a free decorrelation bonus. Baseline-wins is
+therefore strong evidence (it overcame a handicap) — which is why the quiescence
+-check decision above stands — while variant-wins is weak, as this +8 → −4
+demonstrates. The bias was flagged when the suite was built; now it is measured.
+
+**FIXING THE LOOP ITSELF (the session's most valuable output).** The research
+cycle had a throughput problem worth naming: every gate ran a fixed 800 games
+(~50 min at 0.3s, 2.4h at 1.0s), so ~6 hypotheses could be tested in a 12-hour
+block. Three specific defects, all mine:
+
+1. **SPRT was implemented, self-tested, wired into the harness — and never
+   used.** Every gate played all 800 games even when the verdict was obvious by
+   game 200.
+2. **No tiering.** Screening and confirmation got the same expensive treatment.
+3. **Worst: hypotheses were chosen without regard to validation cost.** A change
+   that leaves the search tree byte-identical is validated by node counts and
+   nps in *minutes, with zero games*. That class was available and mostly ignored.
+
+Built `research/screen.sh`: the variant lives in **its own worktree** (main never
+leaves the baseline — no build/revert churn, no risk of gating a dirty tree), the
+eval invariant is checked before any game is played, and SPRT stops the run as
+soon as it is decisive. Also added `research.match --ours-cwd` to make that
+possible. Measured speedup: a known-bad control (null-move disabled) is rejected
+in **76 games / 5 min** instead of 800 / 50 min; a mildly-bad change in ~300
+games / 10 min. **The screen nominates; it never accepts.**
+
+**Five untried standard techniques, screened in 110 minutes** (the old workflow
+would have spent 250):
+
+| technique | screen result | games |
+|---|---|---|
+| mate-distance pruning | −18 Elo, REJECTED | 312 |
+| bounded history with gravity | −29 Elo, REJECTED | 227 |
+| double extension (singular ×2) | −3 Elo, REJECTED | 622 |
+| **LMR for late captures** | **+24 Elo [+6, +43]** | 754 |
+| recapture extension | (patch anchor wrong; re-run) | — |
+
+Two of these deserve comment. *Bounded history with gravity* losing is a genuine
+surprise — the history table is **unbounded**, entries just accumulate depth²
+forever, which is unusual and in principle overflowable; the standard fix made
+things clearly worse, which is one more entry in this engine's long record of
+move-ordering changes failing. And *mate-distance pruning* is finally off the
+ROADMAP after several sessions of sitting there unimplemented.
+
 **Is the engine mis-tuned for the regime it is actually used in? No — four
 "more aggressive at depth" variants all lose at 3.0s.** Every tuned parameter in
 this engine was swept at 0.3s, the analysis board thinks far longer, and the

@@ -368,6 +368,11 @@ def main():
                         "Set different for time-odds / time-scaling tests.")
     p.add_argument("--opponent", default="stockfish:1400")
     p.add_argument("--opponent-cwd", default=None)
+    p.add_argument("--ours-cwd", default=None,
+                   help="run OUR side from this worktree instead of the repo root. "
+                        "Lets a variant live in its own worktree while main stays "
+                        "clean at the baseline -- no build/revert churn on main, "
+                        "and no risk of gating a dirty tree.")
     p.add_argument("--concurrency", type=int, default=1,
                    help="play this many games at once (default 1 = old behaviour). "
                         "Each game is an independent pair of engine processes. Keep "
@@ -417,7 +422,8 @@ def main():
 
     res = run_match(games=args.games, opponent=args.opponent,
                     movetime=args.movetime, opp_movetime=args.opp_movetime,
-                    opponent_cwd=args.opponent_cwd, concurrency=args.concurrency,
+                    opponent_cwd=args.opponent_cwd, ours_cwd=args.ours_cwd,
+                    concurrency=args.concurrency,
                     openings=openings, opening_offset=args.opening_offset,
                     clock=args.clock, inc=args.inc, sprt=sprt,
                     collect_pgn=bool(args.pgn_out))
