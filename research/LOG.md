@@ -187,6 +187,64 @@ so weights.py and eval_data.h disagreed. `eval_check` caught it immediately with
 max |C−Python| = 114.5 over 4286 positions. The sacred invariant did exactly its
 job.)*
 
+**Where the remaining time actually goes (cycle-profiled), and two refactors
+declined on the evidence.** No `perf` on this box, so the C core was temporarily
+instrumented with `__rdtsc` counters. Over five 1.0s searches:
+
+| region | share of search | notes |
+|---|---|---|
+| `eval_core` | **29.0%** | confirms s16's 32–34% "faithfulness tax" |
+| `order()` | **18.4%** | of which `see()` is 6.8% of total (6.8M calls, 155 cyc each) |
+| qsearch first-ply check scan | **10.2%** | 517k nodes, finds only **0.56** checking moves each |
+| everything else | ~42% | movegen, make, TT probes, recursion — diffuse |
+
+*Deferred move ordering — NOT DONE, and the measurement is why.* `order()` runs
+BEFORE any move is searched, so a node that cuts on its TT move paid to score
+(with SEE) and sort ~35 moves it never looked at. The obvious fix is to try the
+TT move first and only order if it fails to cut. Counted how often that would
+help: 58.6% of ordered nodes cut on their first move, but only **26.0%** cut on
+the TT move specifically — so deferring saves 26% of 18.4% = **~4.8% of search
+time, worth ~+5 Elo**. That is below what even an 800-game gate resolves (±19),
+and it would break byte-identity (the TT subtree updates history before the
+remaining moves get ordered), so it could only be validated by a match it is too
+small to win. Declined. Full staged generation (captures before quiets) tops out
+around 8–10% by the same arithmetic, and is blocked anyway by the history table
+being unbounded, which breaks the score bands staging relies on.
+
+*Bigger eval hash — NOT DONE.* EH_BITS 20→22 cut `eval_core` calls 13.5% and
+looked like a 7% win in the profiler, with **byte-identical node counts**
+(635,444 and 2,459,264 at fixed depth, both builds) confirming the search shape
+is untouched. But on a fair wall-clock basis it is only **+1–2% nps at 2.0s and
+~0 at 0.3s** — the extra cache pressure eats the hit-rate gain, the same
+mechanism that sank the bigger-TT experiments twice before. Not worth 48MB for an
+unmeasurable gain. (EH_BITS 24 is actively worse.)
+
+**Quiescence first-ply quiet checks: audited by removal — KEPT, and the reason is
+a TIME-CONTROL FLIP that a blitz gate alone would have got wrong.** This block is
+10.2% of search time and finds 0.56 checking moves per node, so most of it is
+scanning quiets that give no check — a fat target. Gated its removal:
+- batch A (400g): 52.4% (+137 =145 −118), **+17** Elo [−8, +41]
+- batch B (400g): 50.4% (+139 =125 −136), **+3** Elo [−24, +29]
+- **pooled 800g: 51.38%, +10 Elo, 95% CI [−10, +29]** — neutral, but with a
+  positive point estimate and 10% of the search time freed.
+
+By the usual rule ("a neutral change doesn't earn its complexity", applied in
+reverse to a removal) that argues for deleting it. So before deciding, an
+independent quality measure on the 216 REAL positions the engine got wrong in
+games (`research/suites/blunders_v1.epd`, Stockfish-verified best moves):
+
+| | 0.3s (gate TC) | 1.0s (nearer real use) |
+|---|---|---|
+| without the checks | 42/216 (19.4%) | 52/216 (24.1%) |
+| **with them** | 37/216 (17.1%) | **57/216 (26.4%)** |
+
+**The sign flips with time control**: at blitz the 10% speed saving wins, with
+more thinking time the tactical vision wins. The analysis board — the actual
+product — runs long thinks, and every gate this project runs is at 0.3s. Kept.
+The general lesson is uncomfortable and worth carrying: **a 0.3s gate is not
+neutral evidence about a feature whose value grows with depth**, and the mined
+blunder suite is a cheap second instrument for exactly that question.
+
 **HEADLINE: what the engine is actually worth as it is really played — ~2840
 external.** Every external number this project has ever quoted is
 SINGLE-THREADED, because gates export `CC_THREADS=1` to stay clean. But nobody

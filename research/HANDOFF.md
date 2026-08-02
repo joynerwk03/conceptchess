@@ -1,121 +1,120 @@
 # Handoff — where the research loop stands
 
-Updated 2026-08-01 (end of session 25). `research/LOG.md` is the full record;
-this file is just "where we are and what to do next" so a fresh session can
-resume without replaying history.
+Updated 2026-08-02 (end of session 26). `research/LOG.md` is the full record;
+this file is just "where we are and what to do next".
 
 ## Setup
 
-**The Windows/WSL2 box is now set up and verified** — no migration work left.
-Repo lives at `~/mission-control/projects/conceptchess` (WSL2's own ext4, NOT
-`/mnt/c/...`, or match timings distort). If you ever need to rebuild it:
+The Windows/WSL2 box is set up and verified — no migration work left. Repo lives
+at `~/mission-control/projects/conceptchess` (WSL2's own ext4, NOT `/mnt/c/...`,
+or match timings distort). Stockfish 18 is at `~/.local/bin/stockfish` (installed
+without root), and **`~/.local/bin` is only on PATH in a LOGIN shell** — scripts
+that shell out must `export PATH="$HOME/.local/bin:$PATH"`.
 
-```bash
-python3 -m venv .venv && .venv/bin/pip install chess pytest matplotlib
-sh core/build.sh                                    # -> core/libcengine.so
-PYTHONPATH=. .venv/bin/python core/eval_check.py    # must print 0.000000
-.venv/bin/python core/perft_check.py                # must print ALL PERFT PASS
-.venv/bin/python -m pytest -q -m 'not slow'         # 69 green
-```
-
-Stockfish 18 is at `~/.local/bin/stockfish` (installed without root — this box
-has no passwordless sudo). Everything finds it via `shutil.which`, but
-**`~/.local/bin` is only on PATH in a LOGIN shell** — scripts that shell out
-should `export PATH="$HOME/.local/bin:$PATH"` or they will fail to find it.
-
-Hardware: i9-10900K, 10 physical cores / 20 threads, 918 GB free. ~1.7× slower
-per core than the old Mac, but parallel gating makes total throughput far higher.
-**Use `--concurrency 8`** (validated; see below). Disk is no longer a constraint,
-so keeping a baseline worktree alive between gates is fine.
+Hardware: i9-10900K, 10 physical cores / 20 threads, 918 GB free. Use
+`--concurrency 8` for gates (validated unbiased, and measured NOT to weaken the
+engines: 375k nodes per 0.3s search solo vs ~363k under 8-way load).
 
 ## Where the engine stands
 
-- **External Elo 2743, 95% CI [2717, 2769]** — single-threaded, 0.3s/move, vs
-  Stockfish 18 `UCI_LimitStrength` anchors at 2600/2700/2800, 600 games.
-  Recorded in `research/data/elo_history.json`. Full-width Lazy SMP is the
-  default in real play and adds roughly +150 on top.
-- Sacred invariants all hold: C eval == Python eval to 0.000000 over 6204
-  positions, perft passes, 69 fast tests green, tactics 24/24.
-- Benchmark on this box: avg depth 16.33, 2.62M nps at 2.0s/position.
+- **Single-threaded external Elo 2743, 95% CI [2717, 2769]** (600 games vs SF-18
+  anchors at 0.3s) — `research/data/elo_history.json`.
+- **As actually played (full-width SMP): ~2840.** Lazy SMP measured at **+96
+  external Elo [+45, +147]**, which puts the engine at or slightly past the
+  chess.com "Hikaru 2820" bot that motivated the whole search push.
+- Sacred invariants hold: C eval == Python eval to 0.000000 over 6204 positions,
+  perft passes, 77 fast tests green, tactics 24/24.
 
-## The instrument (built in s25 — use it, don't rebuild it)
+## The instrument (built s25–s26 — use it, don't rebuild it)
 
 ```bash
-# external Elo: ~38 min, gives +-26. Anchors are fixed on purpose; don't change them.
-.venv/bin/python -m research.calibrate --games 200 --movetime 0.3 \
-    --concurrency 8 --label "what changed"
-.venv/bin/python -m research.calibrate --show     # the tracked history
+# external Elo, ~38 min, +-26. Anchors are fixed on purpose; don't change them.
+.venv/bin/python -m research.calibrate --games 200 --movetime 0.3 --concurrency 8
+.venv/bin/python -m research.calibrate --show
 
-# a strength gate: 400 games in ~25 min
+# a strength gate: 400 games in ~25 min. ALWAYS run two batches with disjoint
+# --opening-offset (0 and 200) and quote the pooled figure.
 .venv/bin/python -m research.match --games 400 --movetime 0.3 --concurrency 8 \
     --opening-offset 0 --book research/books/uho_1000.epd \
     --opponent "cmd:$PWD/.venv/bin/python -m engine.uci" \
     --opponent-cwd research/worktrees/<baseline>
+
+# EVAL changes only: external, paired on openings (self-play does not transfer)
+.venv/bin/python -m research.abgate --games 400 --opponent stockfish:2700 \
+    --baseline-cwd research/worktrees/<baseline>
+
+# where does strength leak / is a mistake search or eval?
+.venv/bin/python -m research.postmortem <pgn> --depth 14 --workers 8
+.venv/bin/python -m research.blunders --pgn <pgn> --out research/suites/blunders_v2.epd
+
+# cheap second opinion on any change, esp. depth-sensitive ones:
+.venv/bin/python -m research.tactics research/suites/blunders_v1.epd --movetime 1.0
 ```
 
-Read the **paired** Elo line, not the per-game one. Run two batches with
-disjoint `--opening-offset` ranges (0 and 200) — see lesson 2 below.
+Read the **paired** Elo line, not the per-game one.
 
-## The four lessons that govern this work
+## What is settled (do not re-litigate without new evidence)
 
-1. **Gate eval changes against Stockfish, not against ourselves.** Two eval
-   concepts gated at +55 and +29 in self-play and transferred ~ZERO externally.
-   Self-play rewards fixing *our own lineage's* blind spots, which Stockfish
-   never had. Search changes did transfer — a better move is better against
-   anyone.
-2. **One batch is never enough.** Capture history went +7 then −17; SEE pruning
-   went +53 then −21. Always confirm with an independent batch and quote the
-   pooled figure.
-3. **Keep the A-vs-identical-A control in mind.** It scores ~51%/+7 Elo on this
-   harness. A batch landing there is indistinguishable from the engine playing
-   itself — that is the null, not a small win.
-4. **Never rebuild the engine while a gate against it is running.** It silently
-   mixes two binaries mid-match. (Editing C *source* mid-gate is safe; only
-   `core/build.sh` is destructive.)
+- **Move ordering is closed.** Six experiments neutral-or-worse: continuation
+  history, history-modulated LMR, root-move ordering, aggressive log-LMR (retested
+  s26 at 800 games: +6 [−13,+25]), capture history, and the deferred-ordering
+  refactor (declined on a measured ~4.8% ceiling).
+- **Eval weights are on a plateau.** Threat weights tested higher (s24, neutral)
+  and 30% lower (s26, −3 [−22,+16]). The Texel flywheel converged three sessions
+  ago. Only a genuinely NEW concept could move eval, and its ceiling is low:
+  **only 18% of real blunders survive 10x thinking time.**
+- **Endgame knowledge is not a strength lever.** We play endgames at parity with
+  SF-2800 (+0.6 cp/move excess vs +5.2 opening, +4.4 middlegame).
+- **The three borderline search features are real**: removing singular extensions
+  + null-move R tier + LMP together costs −44 Elo [−64, −24].
+- **Speed is capped**: eval_core 29% (the faithfulness tax, and lazy eval is
+  off-limits by design), order() 18.4% with ~5% recoverable, the rest diffuse.
 
-## Both original levers are at their ceiling
+## Traps this project has now walked into and out of
 
-- **Eval**: three straight neutral results in s24, and the two "wins" didn't
-  transfer externally.
-- **Search**: after RFP (+114), IIR (+48) and probcut (+50), *seven* consecutive
-  neutral results — razoring, bigger TT, improving-aware RFP, RFP margin sweep,
-  multi-cut, correction history, SEE pruning, and now capture history. The
-  standard techniques are all in.
-- **Move ordering specifically is a closed door**: five experiments
-  (continuation history, history-modulated LMR, root-move ordering, aggressive
-  log-LMR, capture history) all neutral-or-worse. Don't reopen it without a
-  diagnosis pointing there.
+1. **Every depth-shaped proxy has lied at least once.** Time-to-depth picks T=16
+   for SMP where depth-at-fixed-time picks T=10 (correct); disabling three good
+   features searched +3.2 plies deeper and played 44 Elo worse. Only the match
+   decides.
+2. **At fixed TIME the engine is not deterministic even at one thread** — two
+   0.3s searches disagree on the move 18% of the time, a full game replay
+   reproduces 71% of its own moves. The byte-identical guarantee is a
+   fixed-DEPTH property. Do not build a classifier on a short re-search.
+3. **A 0.3s gate is not neutral evidence about depth-sensitive features.**
+   Quiescence checks gate as neutral-to-positive to REMOVE at 0.3s but clearly
+   want keeping at 1.0s. Every gate here is blitz; the product is not.
+4. **Concept attribution names the concept that DIFFERS, not the one that is
+   WRONG.** `research.blunders`' culprit table is a place to look, never a
+   diagnosis — acting on it directly (threat weights) gated at −3.
+5. **Transfer rules.** Search changes deliver ~half their self-play number
+   externally (RFP+LMP 0.55, SMP 0.51). Eval changes deliver ~0.
 
 ## Next actions
 
-1. **Pick a direction that isn't more of the same tuning.** Untried, roughly by
-   expected value:
-   - **SMP scaling.** `MAX_THREADS` is hardcoded to 8 in `core/csearch.c:21` and
-     `engine/core.py:play_threads()` caps at 8 — this box has 10 physical cores,
-     so the analysis board currently leaves two idle. Raising the cap is a small
-     change with a real product payoff, and SMP gains are *search* gains, which
-     the record says transfer. Measure with benchmark avg-depth at T=8/10/16
-     first (SMP-vs-SMP matches contend for cores and gate badly).
-   - **Quiescence quality** — never systematically examined.
-   - **Hand-built endgame knowledge** — the ROADMAP's unstoppable-passer /
-     wrong-bishop items, gated at long TC where they actually fire.
-   - **Time management in real play.** The analysis board thinks indefinitely and
-     no gate has ever measured that regime.
-2. **Re-gate the borderline-ACCEPTED search features** now that 800-game gates
-   cost ~50 min: singular extensions (+29, CI [−7,+66]), null-move R tier (+29,
-   CI [−6,+64]), LMP (+30, CI [+0,+60]). All three are in the tree on evidence
-   that would not survive the current instrument. Converting them to confirmed —
-   or removing them — is real progress toward "provably stronger".
-3. **Re-calibrate after anything accepted**, and let `elo_history.json` accumulate.
+1. **The most valuable untested regime is LONG TC.** Every gate in this project's
+   history is 0.3s, but the analysis board thinks indefinitely, and s26 found one
+   feature whose sign flips between 0.3s and 1.0s. A 3.0s gate of the current
+   engine against the s24 pre-search engine, or simply re-running the borderline
+   audits at 3.0s, is the highest-information thing left. Budget ~2h for 200
+   games at 3.0s, concurrency 8.
+2. **An unresolved robustness flag** from s24 is still open: an intermittent hang
+   at long TC (a 16x scaling rung crashed at game 27/40 and could not be
+   reproduced in isolation). ~6000 games at 0.3s this session hit nothing, so if
+   it is real it is long-TC specific — item 1 would double as the repro run.
+3. **If attempting eval work**, it must be a new CONCEPT (weights are exhausted),
+   gated with `research.abgate`, and expect a low ceiling.
+4. **Re-calibrate after anything accepted** and let `elo_history.json` accumulate.
 
 ## Watch out for
 
+- `research/worktrees/base26` is a worktree at bfc40a9 with a built `.so`, kept
+  as the ready-made gate baseline. `git worktree list` to see it.
 - `research/graphs/make_graphs.py` is tracked by BOTH this repo and
-  mission-control; mission-control's copy is a stale duplicate and shows as a
-  permanent uncommitted modification there. Harmless, but the fix is to untrack
-  it in mission-control (`git rm --cached`) and ignore `projects/conceptchess/`.
-- `research/worktrees/selfcheck` is a worktree at 647ee7d with a built `.so`,
-  kept as a ready-made baseline. `git worktree list` to see it.
-- When driving WSL from a Windows-side shell, prefer running a script file over
-  a long inline `bash -lc '...'` — quoting/expansion of `$VAR` and `&&` chains
-  across the boundary silently misbehaved and cost time this session.
+  mission-control; mission-control's copy is a stale duplicate showing as a
+  permanent uncommitted modification there. The fix is `git rm --cached` it in
+  mission-control and ignore `projects/conceptchess/` — not done, it is a
+  different repo.
+- Driving WSL from a Windows-side shell: `&&` chains and `$VAR` inside
+  `bash -lc '...'` silently misbehave across the boundary. **Write a script file
+  and run it.** This bit twice, once shipping a Python eval the C core did not
+  mirror (caught immediately by `eval_check`).
