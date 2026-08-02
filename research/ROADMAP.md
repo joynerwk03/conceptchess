@@ -46,14 +46,26 @@ entry reference; add new ideas as they come up.
 - [x] Passed pawns: blockade detection (s2), king proximity in endgame (s12:
       **+110 marginal Elo, the project's strongest eval change**) —
       [ ] still todo: connected passers, rook behind passer
-- [ ] Unstoppable passer (square rule): in pawn-only endgames, a passer the
-      defending king can't catch is nearly a queen — interpretable, and would
-      fix the s7 KPvK weakness without a bitbase
+- [x] ~~Unstoppable passer (square rule) / wrong-bishop draws / endgame
+      knowledge generally~~ **(s26: RETIRED as a strength lever.** The
+      phase-resolved post-mortem over 200 games vs SF-2800 measured our EXCESS
+      centipawn loss at **+0.6/move in endgames** against +5.2 opening and +4.4
+      middlegame — we play endgames at parity with a 2800 opponent, and our worst
+      move of the game lands in an endgame only 16% of the time in losses while
+      30% of our moves are endgame moves. Still fair game as *coach* value, but
+      not as Elo.)
 - [ ] New concept: threats/hanging pieces (statically detect en prise material)
 - [ ] New concept: space (advanced-square control behind pawn chains)
 - [ ] Knight outposts (in piece_activity)
 - [ ] Endgame knowledge: wrong-bishop draws, KX vs K mop-up term to actually finish games
 - [ ] Tempo/initiative refinement
+- [ ] **Diagnosis-pointed eval work (s26).** `research.blunders` says 82% of our
+      real blunders are fixed by more thinking time, but the 18% that survive it
+      are genuine eval errors, and the concepts most often favouring our worse
+      move are **threats (9 pos), material (4 pos but +1330cp of mass — poisoned
+      grabs) and king_attack (4 pos)**. Threats were guessed weights in s22 and a
+      test of HIGHER values gated neutral in s24; nobody has tested LOWER. Gate
+      any of this with `research.abgate` (external), never self-play.
 
 ## Search quality
 

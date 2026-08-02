@@ -117,6 +117,60 @@ distorting things:**
    identical depth (11.08 vs 11.17). **Parallel gating is sound**, which retires
    the last doubt about the s25 instrument.
 
+**Log-log LMR table, re-tested at 40x the power — REJECTED, and this time the
+bound means something.** The standing LMR scheme keys off the move INDEX alone
+(2 plies from move 3, 3 from move 12, capped there) with **no depth term at
+all** — a late quiet at depth 20 is reduced exactly as much as one at depth 4,
+which no modern engine does. s21 tried the standard `0.85 + ln(d)·ln(m)/2.20`
+table and measured "exactly 50%, −0 Elo (95% −90..+90)" over 60 games. That
+interval is wide enough to hide a +30 Elo effect completely, and the technique
+buys real plies, so it was the best re-test candidate in the log.
+
+Re-implemented (build-once table, `red` clamped to leave a ply; eval untouched →
+C==Python 0.000000, perft, 77 tests, tactics 24/24). Gate vs HEAD:
+- batch A (400g, openings 0–199): 48.8% (+119 =152 −129), **−9** Elo [−34, +16]
+- batch B (400g, openings 200–399): 53.0% (+143 =138 −119), **+21** Elo [−5, +47]
+- **pooled 800g: 50.88% (+262 =290 −248), +6 Elo, 95% CI [−13, +25]**
+
+Reverted. s21's verdict stands, but the useful part is the new bound: the modern
+LMR table is worth **less than +25 Elo** on this engine, where before we only
+knew "somewhere in ±90". Two footnotes worth keeping. First, the benchmark did
+NOT reproduce s21's "+1–2 plies deeper" claim (16.33 vs 16.50 avg) — with LMP,
+RFP and probcut now doing the shallow-node pruning, there is little left for a
+more aggressive LMR table to save. Second, **batch A −9 and batch B +21 is a
+30-Elo swing between two 400-game batches**: the confirmation rule matters at
+every sample size, not just small ones.
+
+**The three borderline-accepted search features, audited by REMOVAL — CONFIRMED,
+collectively +44 Elo.** Singular extensions (+29, CI [−7,+66]), the null-move R
+tier (+29, CI [−6,+64]) and LMP (+30, CI [+0,+60]) were each accepted on an
+interval that grazed or crossed zero. Three features sitting in the tree on
+evidence that would not survive the current instrument is exactly the debt the
+"provably stronger" goal is about, so rather than re-gate each addition, gate
+their **removal** — one experiment that asks whether the bundle earns its place:
+
+- batch A (400g): 41.9% (+101 =133 −166), **−57** Elo [−82, −32]
+- batch B (400g): 45.6% (+121 =123 −156), **−30** Elo [−57, −4]
+- **pooled 800g: 43.75%, −44 Elo, 95% CI [−64, −24]**
+- → **the three are collectively worth +44 Elo [+24, +64]**. Kept, now on an
+  interval that clears zero by a wide margin.
+
+Note the arithmetic: individually they claimed +29/+29/+30 ≈ **+88**, and
+measured together they are **+44** — the single-batch estimates *were* inflated
+roughly 2×, exactly as the winner's-curse pattern predicts, but the features are
+real. Both things are true at once, which is why removal-auditing is worth doing
+rather than trusting either the optimistic sum or the pessimistic "borderline".
+
+**And the finding that most deserves to outlive this session: the removal build
+searched +3.2 plies DEEPER and played 44 Elo WORSE.** Disabling the three took
+avg benchmark depth from 16.50 to **19.67** and nps from 2.83M to 3.51M, because
+singular extension's verification search is expensive. Nominal depth is not
+strength — an extension spends nodes buying *quality* on forced lines, and the
+depth counter cannot see that. Combined with the SMP metric trap earlier this
+session (time-to-depth picked T=16 while depth-at-fixed-time picked T=10), the
+rule is now well evidenced: **on this engine, every depth-shaped proxy has lied
+at least once; only the match decides.**
+
 ---
 
 ## 2026-08-01 — Session 25: migrated to WSL2; the measuring instrument, rebuilt
