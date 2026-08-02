@@ -1,0 +1,47 @@
+[
+  {
+    "date": "2026-08-01",
+    "commit": "647ee7d",
+    "label": "s25 baseline: full search stack, WSL2/i9-10900K, SF18 anchors",
+    "elo": 2742.7,
+    "ci": [
+      2716.8,
+      2768.8
+    ],
+    "ci_bootstrap": [
+      2717.7,
+      2766.9
+    ],
+    "draw_elo": 121.8,
+    "games": 600,
+    "movetime": 0.3,
+    "threads": 1,
+    "concurrency": 8,
+    "book": "uho_1000.epd",
+    "opponent": "Stockfish 18",
+    "anchors": [
+      {
+        "elo": 2600,
+        "w": 110,
+        "d": 48,
+        "l": 42,
+        "score_pct": 67.0
+      },
+      {
+        "elo": 2700,
+        "w": 85,
+        "d": 61,
+        "l": 54,
+        "score_pct": 57.75
+      },
+      {
+        "elo": 2800,
+        "w": 39,
+        "d": 81,
+        "l": 80,
+        "score_pct": 39.75
+      }
+    ],
+    "machine": "Linux x86_64 / 20 cpus"
+  }
+]
