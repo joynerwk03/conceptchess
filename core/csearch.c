@@ -441,6 +441,7 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
             int red=1;
             if(depth>=3 && quiet && !checked){ if(i>=12)red=3; else if(i>=3)red=2;
                 if(red>1 && !improving) red++; }
+            else if(depth>=3 && !quiet && !checked && i>=10) red=2;
             sc=-negamax(&c,depth-red,-alpha-1,-alpha,ply+1,m);
             if(sc>alpha && (red>1 || beta>alpha+1)) sc=-negamax(&c,depth-1+ext,-beta,-alpha,ply+1,m);
         }
