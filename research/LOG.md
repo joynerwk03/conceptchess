@@ -161,6 +161,65 @@ roughly 2×, exactly as the winner's-curse pattern predicts, but the features ar
 real. Both things are true at once, which is why removal-auditing is worth doing
 rather than trusting either the optimistic sum or the pessimistic "borderline".
 
+**Threat weights x0.7, the first diagnosis-pointed eval test — REJECTED (−3 Elo),
+and it teaches something about the new tool.** `research.blunders` named `threats`
+as the concept most often favouring our worse move (9 of 27 eval-limited
+blunders). Threat weights were *guessed* in s22; s23's Texel tuner drove them
+into their upper bounds and s24 tested HIGHER and got neutral. Nobody had tested
+lower. Scaled the four threat magnitudes by 0.7 (hanging .0562→.0393, pawn
+.10→.07, minor .06→.042, rook .04→.028; `initiative` left alone as a separate
+hypothesis). Faithful: `gen_eval_data` + rebuild, C==Python 0.000000, perft, 77
+tests, tactics 24/24. Gate vs HEAD: batch A 49.9% (−1), batch B 49.4% (−4),
+**pooled 800g 49.62%, −3 Elo, 95% CI [−22, +16]**. Reverted.
+
+Two things worth keeping from this. First, **the threat weights sit on a
+plateau**: higher does nothing (s24), 30% lower does nothing (now), both measured.
+Second, and more useful: **concept attribution names the concept that DIFFERS
+between our move and the best move, not the concept that is WRONG.** Those are
+not the same claim, and the natural reading of a "top culprit" table is the wrong
+one. `threats` shows up most often because it is a high-variance term that moves
+a lot between candidate moves — not because its weight is miscalibrated. Future
+sessions should treat that table as a place to look, never as a diagnosis.
+
+*(Method note: the first attempt at this change silently shipped a Python eval
+that the C core did not mirror — a `&&` chain failed to run `gen_eval_data.py`,
+so weights.py and eval_data.h disagreed. `eval_check` caught it immediately with
+max |C−Python| = 114.5 over 4286 positions. The sacred invariant did exactly its
+job.)*
+
+**HEADLINE: what the engine is actually worth as it is really played — ~2840
+external.** Every external number this project has ever quoted is
+SINGLE-THREADED, because gates export `CC_THREADS=1` to stay clean. But nobody
+plays it that way: UCI, the web opponent and the analysis board all run
+full-width Lazy SMP. s20's "+140/+187 for SMP" was **self-play**, and s24/s25
+proved self-play overstates. So: the same SF-2800 anchor, same book, same 0.3s,
+concurrency 1 (our side wants the whole machine), full-width T=10.
+
+| config | vs SF-2800 | Elo vs anchor |
+|---|---|---|
+| single-thread (400 games) | 41.2% (+83 =164 −153) | −61 [−88, −35] |
+| **full width, T=10 (160 games)** | **55.0% (+60 =56 −44)** | **+35 [−8, +79]** |
+
+**Lazy SMP is worth +96 external Elo, 95% CI [+45, +147]** — so the engine as
+actually played sits at roughly **2840** (2743 single-threaded + 96), give or
+take ~55 once both measurements' error is carried.
+
+Two things fall out of this. First, it closes the loop on the question that
+started the whole search push in s24: William was losing to a chess.com "Hikaru
+2820" bot, and the honest single-threaded answer then was "we are ~2650, that is
+expected". **The engine as he actually runs it is now ~2840 — at or slightly past
+that bot's level.** Second, and more useful for future work: SMP's self-play
+claim was +187 and it delivered +96 externally, a ratio of **0.51**. The RFP+LMP
+search push measured +144 self-play → +80 external, a ratio of **0.55**. Two
+independent search changes, both transferring at ~half their self-play value.
+That is now a usable planning rule: **for SEARCH changes, expect roughly half the
+self-play number externally** (eval changes, per s24, transfer ~0).
+
+Caveats kept honest: 160 games is a wide interval, the anchor Stockfish is
+1-threaded (standard, but it is a handicapped opponent whose own scaling is not
+measured), and this is 0.3s — the analysis board's long thinks may scale
+differently, which is untested.
+
 **And the finding that most deserves to outlive this session: the removal build
 searched +3.2 plies DEEPER and played 44 Elo WORSE.** Disabling the three took
 avg benchmark depth from 16.50 to **19.67** and nps from 2.83M to 3.51M, because

@@ -43,5 +43,33 @@
       }
     ],
     "machine": "Linux x86_64 / 20 cpus"
+  },
+  {
+    "date": "2026-08-02",
+    "commit": "d934f34",
+    "label": "s26: FULL-WIDTH play config (T=10). Single-anchor delta measurement, not a 3-anchor ML fit -- derived as the s25 single-thread 2743 plus the measured +96 SMP gain.",
+    "elo": 2839.0,
+    "ci": [
+      2784.0,
+      2894.0
+    ],
+    "ci_bootstrap": null,
+    "draw_elo": null,
+    "games": 160,
+    "movetime": 0.3,
+    "threads": 10,
+    "concurrency": 1,
+    "book": "uho_1000.epd",
+    "opponent": "Stockfish 18",
+    "anchors": [
+      {
+        "elo": 2800,
+        "w": 60,
+        "d": 56,
+        "l": 44,
+        "score_pct": 55.0
+      }
+    ],
+    "machine": "Linux x86_64 / 20 cpus"
   }
 ]

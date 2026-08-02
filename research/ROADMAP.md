@@ -59,13 +59,19 @@ entry reference; add new ideas as they come up.
 - [ ] Knight outposts (in piece_activity)
 - [ ] Endgame knowledge: wrong-bishop draws, KX vs K mop-up term to actually finish games
 - [ ] Tempo/initiative refinement
-- [ ] **Diagnosis-pointed eval work (s26).** `research.blunders` says 82% of our
-      real blunders are fixed by more thinking time, but the 18% that survive it
-      are genuine eval errors, and the concepts most often favouring our worse
-      move are **threats (9 pos), material (4 pos but +1330cp of mass — poisoned
-      grabs) and king_attack (4 pos)**. Threats were guessed weights in s22 and a
-      test of HIGHER values gated neutral in s24; nobody has tested LOWER. Gate
-      any of this with `research.abgate` (external), never self-play.
+- [x] ~~Threat weight recalibration~~ (s26: REJECTED, x0.7 gated −3 Elo
+      [−22,+16] over 800 games. Combined with s24's neutral test of HIGHER
+      values, **the threat weights sit on a measured plateau in both
+      directions**.) Lesson for the new tooling: `research.blunders`' culprit
+      table names the concept that DIFFERS most between our move and the best
+      move, which is not the concept that is WRONG — `threats` tops it because it
+      is high-variance across candidate moves. Treat it as a place to look, never
+      as a diagnosis.
+- [ ] Eval headroom, if any, is a NEW CONCEPT rather than a weight — and only
+      ~18% of real blunders survive 10x thinking time, so the ceiling on all eval
+      work is low. Winning concepts historically are concrete + beyond the search
+      horizon + not already handled by search. Gate with `research.abgate`
+      (external), never self-play.
 
 ## Search quality
 
