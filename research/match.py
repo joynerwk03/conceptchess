@@ -190,6 +190,172 @@ def pentanomial_elo(pair_scores):
     return _elo(p), (_elo(p - 1.96 * se_p), _elo(p + 1.96 * se_p)), p, m
 
 
+def load_book(path):
+    """EPD/FEN opening file -> list of 4-field FEN strings.
+
+    EPD lines may carry opcodes after the 4 FEN fields; python-chess Board()
+    accepts 4-field FENs, so keep just those.
+    """
+    lines = [ln.strip() for ln in Path(path).read_text().splitlines() if ln.strip()]
+    return [" ".join(ln.split()[:4]) for ln in lines]
+
+
+class MatchResult:
+    """A finished match, scored from OUR side's perspective."""
+
+    def __init__(self, games, wins, draws, losses, scores, pgns):
+        self.games = games            # games REQUESTED (pairs are indexed off this)
+        self.wins = wins
+        self.draws = draws
+        self.losses = losses
+        self.scores = scores          # game index -> our score (0/0.5/1)
+        self.pgns = pgns
+
+    @property
+    def n(self):
+        return self.wins + self.draws + self.losses
+
+    @property
+    def score(self):
+        return self.wins + 0.5 * self.draws
+
+    @property
+    def pairs(self):
+        """Scores of colour-swapped game pairs (2k, 2k+1) that both finished."""
+        return [self.scores[2 * k] + self.scores[2 * k + 1]
+                for k in range(self.games // 2)
+                if 2 * k in self.scores and 2 * k + 1 in self.scores]
+
+    def elo(self):
+        return trinomial_elo(self.wins, self.draws, self.losses)
+
+    def paired_elo(self):
+        return pentanomial_elo(self.pairs)
+
+
+def run_match(*, games, opponent, movetime=0.5, opp_movetime=None,
+              opponent_cwd=None, concurrency=1, openings=None,
+              opening_offset=0, clock=None, inc=0.1, sprt=None,
+              collect_pgn=False, progress=True):
+    """Play `games` games and return a MatchResult.
+
+    Split out of main() so other tools (research.calibrate) drive the same
+    harness rather than reimplementing the pairing/concurrency logic -- the
+    colour-swapped pairing in particular is what the paired estimator relies on.
+    """
+    openings = openings or OPENINGS
+
+    def play_one(g):
+        """Play game #g start-to-finish with its own engine pair (thread-safe)."""
+        opening = openings[(opening_offset + g // 2) % len(openings)]
+        we_are_white = g % 2 == 0
+        # Alternate which side is spawned first. Otherwise "ours" is always the
+        # first process created, and if the OS were to favour first-spawned
+        # processes for the fast (performance) cores, that would be a systematic
+        # bias in our favour on a big.LITTLE machine. Alternating launders it.
+        if g % 2 == 0:
+            ours = open_ours()
+            opp = open_opponent(opponent, opponent_cwd)
+        else:
+            opp = open_opponent(opponent, opponent_cwd)
+            ours = open_ours()
+        try:
+            white, black = (ours, opp) if we_are_white else (opp, ours)
+            if clock is not None:
+                white_score, board = play_game_clock(white, black, opening, clock, inc)
+            else:
+                our_t = movetime
+                opp_t = opp_movetime if opp_movetime is not None else movetime
+                white_time, black_time = (our_t, opp_t) if we_are_white else (opp_t, our_t)
+                white_score, board = play_game(white, black, opening, white_time, black_time)
+        finally:
+            for e in (ours, opp):
+                try:
+                    e.quit()
+                except Exception:
+                    pass
+        return g, white_score, board, we_are_white
+
+    wins = draws = losses = 0
+    pgns = []
+    scores = {}                       # game index -> our score (for pair stats)
+    lock = threading.Lock()
+    stop = threading.Event()
+    done = 0
+
+    def record(res):
+        nonlocal wins, draws, losses, done
+        g, white_score, board, we_are_white = res
+        our_score = white_score if we_are_white else 1 - white_score
+        with lock:
+            scores[g] = our_score
+            if our_score == 1:
+                wins += 1
+            elif our_score == 0:
+                losses += 1
+            else:
+                draws += 1
+            done += 1
+            res_s = {1.0: "1-0", 0.0: "0-1", 0.5: "1/2-1/2"}[white_score]
+            outcome = "win" if our_score == 1 else "loss" if our_score == 0 else "draw"
+            if progress:
+                print(f"game {g + 1:3d}: {'W' if we_are_white else 'B'} {res_s:<7} "
+                      f"(us: {outcome})  [{wins}+{draws}={losses}-]  ({done}/{games})",
+                      flush=True)
+            if collect_pgn:
+                import chess.pgn
+                game = chess.pgn.Game.from_board(board)
+                game.headers["White"] = "ConceptChess" if we_are_white else opponent
+                game.headers["Black"] = opponent if we_are_white else "ConceptChess"
+                game.headers["Result"] = res_s
+                pgns.append(str(game))
+            if sprt is not None:
+                sprt.record(our_score)
+                verdict = sprt.status()
+                if verdict and not stop.is_set():
+                    stop.set()
+                    print(f"SPRT stop after {done} games: "
+                          f"{'H1 (better)' if verdict == 'H1' else 'H0 (not better)'}",
+                          flush=True)
+
+    if concurrency <= 1:
+        for g in range(games):
+            if stop.is_set():
+                break
+            record(play_one(g))
+    else:
+        # Games are fully independent processes, so they parallelise cleanly.
+        # Keep concurrency <= the performance-core count: at fixed MOVETIME an
+        # engine squeezed onto a slow core simply searches fewer nodes, and if
+        # the two sides of one game land on different core classes that game is
+        # skewed. Colour/spawn alternation makes the effect zero-mean rather
+        # than systematic, but over-subscribing still inflates variance.
+        with cf.ThreadPoolExecutor(max_workers=concurrency) as ex:
+            futures = {}
+            pending = iter(range(games))
+            for _ in range(min(concurrency, games)):
+                g = next(pending, None)
+                if g is not None:
+                    futures[ex.submit(play_one, g)] = g
+            while futures:
+                for fut in cf.as_completed(list(futures)):
+                    del futures[fut]
+                    try:
+                        record(fut.result())
+                    except Exception as e:      # one bad game must not kill the match
+                        print(f"  game failed: {type(e).__name__}: {e}", flush=True)
+                    if not stop.is_set():
+                        g = next(pending, None)
+                        if g is not None:
+                            futures[ex.submit(play_one, g)] = g
+                    break                        # re-enter as_completed with the new set
+            if stop.is_set():
+                for fut in futures:
+                    fut.cancel()
+
+    return MatchResult(games, wins, draws, losses, scores, pgns)
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--games", type=int, default=10)
@@ -231,146 +397,37 @@ def main():
 
     openings = OPENINGS
     if args.book:
-        lines = [ln.strip() for ln in Path(args.book).read_text().splitlines() if ln.strip()]
-        # EPD lines may carry opcodes after the 4 FEN fields; python-chess
-        # Board() accepts 4-field FENs, so keep just those.
-        openings = [" ".join(ln.split()[:4]) for ln in lines]
+        openings = load_book(args.book)
         print(f"book: {len(openings)} unbalanced openings from {args.book}")
 
-    def play_one(g):
-        """Play game #g start-to-finish with its own engine pair (thread-safe)."""
-        opening = openings[(args.opening_offset + g // 2) % len(openings)]
-        we_are_white = g % 2 == 0
-        # Alternate which side is spawned first. Otherwise "ours" is always the
-        # first process created, and if the OS were to favour first-spawned
-        # processes for the fast (performance) cores, that would be a systematic
-        # bias in our favour on a big.LITTLE machine. Alternating launders it.
-        if g % 2 == 0:
-            ours = open_ours()
-            opp = open_opponent(args.opponent, args.opponent_cwd)
-        else:
-            opp = open_opponent(args.opponent, args.opponent_cwd)
-            ours = open_ours()
-        try:
-            white, black = (ours, opp) if we_are_white else (opp, ours)
-            if args.clock is not None:
-                white_score, board = play_game_clock(white, black, opening,
-                                                     args.clock, args.inc)
-            else:
-                our_t = args.movetime
-                opp_t = args.opp_movetime if args.opp_movetime is not None else args.movetime
-                white_time, black_time = (our_t, opp_t) if we_are_white else (opp_t, our_t)
-                white_score, board = play_game(white, black, opening, white_time, black_time)
-        finally:
-            for e in (ours, opp):
-                try:
-                    e.quit()
-                except Exception:
-                    pass
-        return g, white_score, board, we_are_white
+    res = run_match(games=args.games, opponent=args.opponent,
+                    movetime=args.movetime, opp_movetime=args.opp_movetime,
+                    opponent_cwd=args.opponent_cwd, concurrency=args.concurrency,
+                    openings=openings, opening_offset=args.opening_offset,
+                    clock=args.clock, inc=args.inc, sprt=sprt,
+                    collect_pgn=bool(args.pgn_out))
 
-    wins = draws = losses = 0
-    pgns = []
-    scores = {}                       # game index -> our score (for pair stats)
-    lock = threading.Lock()
-    stop = threading.Event()
-    done = 0
-
-    def record(res):
-        nonlocal wins, draws, losses, done
-        g, white_score, board, we_are_white = res
-        our_score = white_score if we_are_white else 1 - white_score
-        with lock:
-            scores[g] = our_score
-            if our_score == 1:
-                wins += 1
-            elif our_score == 0:
-                losses += 1
-            else:
-                draws += 1
-            done += 1
-            res_s = {1.0: "1-0", 0.0: "0-1", 0.5: "1/2-1/2"}[white_score]
-            outcome = "win" if our_score == 1 else "loss" if our_score == 0 else "draw"
-            print(f"game {g + 1:3d}: {'W' if we_are_white else 'B'} {res_s:<7} "
-                  f"(us: {outcome})  [{wins}+{draws}={losses}-]  ({done}/{args.games})",
-                  flush=True)
-            if args.pgn_out:
-                import chess.pgn
-                game = chess.pgn.Game.from_board(board)
-                game.headers["White"] = "ConceptChess" if we_are_white else args.opponent
-                game.headers["Black"] = args.opponent if we_are_white else "ConceptChess"
-                game.headers["Result"] = res_s
-                pgns.append(str(game))
-            if sprt is not None:
-                sprt.record(our_score)
-                verdict = sprt.status()
-                if verdict and not stop.is_set():
-                    stop.set()
-                    print(f"SPRT stop after {done} games: "
-                          f"{'H1 (better)' if verdict == 'H1' else 'H0 (not better)'}",
-                          flush=True)
-
-    if args.concurrency <= 1:
-        for g in range(args.games):
-            if stop.is_set():
-                break
-            record(play_one(g))
-    else:
-        # Games are fully independent processes, so they parallelise cleanly.
-        # Keep concurrency <= the performance-core count: at fixed MOVETIME an
-        # engine squeezed onto a slow core simply searches fewer nodes, and if
-        # the two sides of one game land on different core classes that game is
-        # skewed. Colour/spawn alternation makes the effect zero-mean rather
-        # than systematic, but over-subscribing still inflates variance.
-        with cf.ThreadPoolExecutor(max_workers=args.concurrency) as ex:
-            futures = {}
-            pending = iter(range(args.games))
-            for _ in range(min(args.concurrency, args.games)):
-                g = next(pending, None)
-                if g is not None:
-                    futures[ex.submit(play_one, g)] = g
-            while futures:
-                for fut in cf.as_completed(list(futures)):
-                    del futures[fut]
-                    try:
-                        record(fut.result())
-                    except Exception as e:      # one bad game must not kill the match
-                        print(f"  game failed: {type(e).__name__}: {e}", flush=True)
-                    if not stop.is_set():
-                        g = next(pending, None)
-                        if g is not None:
-                            futures[ex.submit(play_one, g)] = g
-                    break                        # re-enter as_completed with the new set
-            if stop.is_set():
-                for fut in futures:
-                    fut.cancel()
-
-    n = wins + draws + losses
-    if n == 0:
+    if res.n == 0:
         print("no games completed")
         return
-    score = wins + 0.5 * draws
     _tc = f"{args.movetime}s"
     if args.opp_movetime is not None and args.opp_movetime != args.movetime:
         _tc = f"us {args.movetime}s vs opp {args.opp_movetime}s"
     conc = f", concurrency {args.concurrency}" if args.concurrency > 1 else ""
-    print(f"\nresult vs {args.opponent} [{_tc}{conc}]: +{wins} ={draws} -{losses}  "
-          f"({100 * score / n:.1f}%)")
+    print(f"\nresult vs {args.opponent} [{_tc}{conc}]: "
+          f"+{res.wins} ={res.draws} -{res.losses}  "
+          f"({100 * res.score / res.n:.1f}%)")
 
-    elo, ci = trinomial_elo(wins, draws, losses)
+    elo, ci = res.elo()
     print(f"elo diff: {elo:+.0f}  (95% ~ {ci[0]:+.0f}..{ci[1]:+.0f})   [per-game]")
 
-    # Pair the colour-swapped games (2k, 2k+1) that both finished.
-    pairs = [scores[2 * k] + scores[2 * k + 1]
-             for k in range(args.games // 2)
-             if 2 * k in scores and 2 * k + 1 in scores]
-    pent = pentanomial_elo(pairs)
+    pent = res.paired_elo()
     if pent:
         pelo, pci, pp, m = pent
         print(f"elo diff: {pelo:+.0f}  (95% ~ {pci[0]:+.0f}..{pci[1]:+.0f})   "
               f"[paired, {m} pairs, {100 * pp:.1f}%]  <-- use this one")
-    if args.pgn_out and pgns:
-        Path(args.pgn_out).write_text("\n\n".join(pgns) + "\n")
+    if args.pgn_out and res.pgns:
+        Path(args.pgn_out).write_text("\n\n".join(res.pgns) + "\n")
         print(f"pgn written to {args.pgn_out}")
 
 
