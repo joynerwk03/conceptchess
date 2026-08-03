@@ -367,6 +367,36 @@ idea is bad — the framework worked mechanically throughout, C==Python held at
 handling multiplicity is not optional. The standing "screen nominates,
 confirmation decides" discipline caught it without ever putting it in the tree.
 
+*Bishop pair scaled by pawn count (Kaufman)* — the pair is worth little with the
+board full of pawns and a great deal once it opens, an INTERACTION between
+material and pawn structure that a sum of independent terms cannot express.
+Deliberately **centered on 12 pawns** (roughly the average in the positions the
+weight was fitted on) so the mean value of the term is unchanged and only its
+spread is new — this is what makes it a test of the shape rather than of a
+rescaling, and it is exactly the discipline the concave-mobility failure taught.
+Faithful (C==Python 0.000000). **+7 Elo [−11, +25]** over the full 800 games.
+
+Weakly positive and unresolved — as is `iir_shallow` (+7) from the search batch.
+Neither is evidence: across 24 screens with ±19 intervals, several landing near
+±7 by chance is exactly what a null predicts, and the lmrcap precedent says a +7
+screen is worth ~+3 after selection is accounted for. Both are recorded as open,
+neither is in the tree.
+
+**METHOD TEST (running): are eval effects systematically under-measured at
+0.3s?** This is the most valuable open question in the project, and it follows
+from this session's own diagnosis. `research.blunders` measured that **82% of
+real blunders at 0.3s are fixed by more thinking time** — at blitz, SEARCH error
+dominates and eval error is a small residual. If that is right, an eval
+improvement should be *systematically under-measured at 0.3s and grow with the
+clock*, which would mean every eval result this project has ever gated is an
+underestimate, and would explain three sessions of barren eval work far better
+than "the eval is at its ceiling" does.
+
+`bpair_pawns` is the right probe — a clean eval change with no known defect,
+measured at +7 [−11, +25] over 800 games at 0.3s. Re-running the **same 800
+games on the same openings at 1.0s**: same variant, same positions, only the
+clock differs, so any change in the measured effect is the TC dependence itself.
+
 *Trapped pieces* — a NEW additive concept rather than a reshaping, chosen
 specifically to dodge the tuning confound below: leave mobility alone and add a
 separate penalty that fires only at the cliff edge (zero safe squares), since
