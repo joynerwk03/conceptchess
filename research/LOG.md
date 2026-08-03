@@ -367,6 +367,42 @@ idea is bad — the framework worked mechanically throughout, C==Python held at
 handling multiplicity is not optional. The standing "screen nominates,
 confirmation decides" discipline caught it without ever putting it in the tree.
 
+*Trapped pieces* — a NEW additive concept rather than a reshaping, chosen
+specifically to dodge the tuning confound below: leave mobility alone and add a
+separate penalty that fires only at the cliff edge (zero safe squares), since
+linear mobility rates "cramped" and "trapped" as points on the same gentle slope
+when the real difference is an order of magnitude. Faithful (C==Python 0.000000).
+**−16 Elo, rejected** — and the *reason* is the useful part.
+
+**New instrument: `research/firing_rate.py`.** Before trusting that gate, the
+firing rate was measured, and the concept turned out to fire **8 times on the
+STARTING POSITION** — both bishops and both rooks, both colours, all of which
+have zero safe squares behind their own pawns. It was never measuring trapped
+pieces; it was measuring *undeveloped* ones, which the piece-square tables
+already price. Tightening it to "zero mobility AND under attack" fires in
+**0.5%** of real positions — too rare for any affordable number of games. Both
+verdicts were reached **without playing a single game**.
+
+That check is now a permanent tool, and pointing it at the existing eval
+immediately paid again:
+
+| | fires in | note |
+|---|---|---|
+| `mate_drive` | 1.4% | below the gateable threshold |
+| **`ocb` modifier** | **0.0%** | **never fires in 216 real positions** |
+
+**The opposite-bishop modifier is, in practice, dead code.** s24 kept it "not
+for Elo but because it makes the eval correct where it fires" — which remains a
+defensible reason, and it is the framework's proof-of-concept — but it should be
+labelled as correctness rather than strength, and *it was never measurable*.
+That retroactively explains its +17 [−45, +81] gate, and it is the same failure
+mode the broadened-OCB experiment above was trying to fix.
+
+Standing rule added to the handoff: **run `research.firing_rate` before gating
+any new or changed eval concept.** A term firing under ~2% of the time cannot be
+resolved by any number of games this project can afford, and a term that fires
+on the start position is measuring something other than its name.
+
 *Concave mobility* — the one large concept still modelled as a straight line.
 `weight * (count - typical)` says a queen's 20th square is worth as much as her
 14th, and that a trapped knight is only three weight-units worse than a

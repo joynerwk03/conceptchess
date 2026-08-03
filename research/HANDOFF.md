@@ -69,6 +69,19 @@ number you report — see the winner's-curse note below.
 
 Read the **paired** Elo line, not the per-game one.
 
+**Before gating ANY new or changed eval concept, run this — it costs seconds:**
+
+```bash
+.venv/bin/python -m research.firing_rate
+```
+
+A concept firing under ~2% of the time cannot be resolved by any number of games
+this project can afford (the `ocb` modifier fires in **0.0%** of 216 real
+positions — that is why it gated as noise for two sessions). A concept with a
+non-zero value on the *start position* is measuring something other than its
+name: a "trapped pieces" term defined as zero-safe-squares fired 8 times there,
+on the undeveloped bishops and rooks, and gated −16.
+
 ## The s26 screening run: 22 hypotheses, 1 accepted
 
 Worth knowing before planning more of the same. With SPRT screening making an

@@ -45,7 +45,8 @@ entry reference; add new ideas as they come up.
 - [x] King safety: attack-unit model (session 2, kept)
 - [x] Passed pawns: blockade detection (s2), king proximity in endgame (s12:
       **+110 marginal Elo, the project's strongest eval change**) —
-      [ ] still todo: connected passers, rook behind passer
+      (both connected passers and rook-behind-passer are DONE -- s23/earlier;
+      this line was stale)
 - [x] ~~Unstoppable passer (square rule) / wrong-bishop draws / endgame
       knowledge generally~~ **(s26: RETIRED as a strength lever.** The
       phase-resolved post-mortem over 200 games vs SF-2800 measured our EXCESS
