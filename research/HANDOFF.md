@@ -69,6 +69,40 @@ number you report — see the winner's-curse note below.
 
 Read the **paired** Elo line, not the per-game one.
 
+## The s26 screening run: 22 hypotheses, 1 accepted
+
+Worth knowing before planning more of the same. With SPRT screening making an
+attempt cost ~20 minutes instead of ~50, twenty-two ideas were tested in a
+single block. **One landed** (LMR for late captures, +9). The rest:
+
+* *Search, 18 tried* — mate-distance pruning, bounded history w/ gravity, double
+  extension, recapture extension, SEE-filtered quiescence checks, eval-scaled
+  null-move R, reduce-killers-less, ProbCut margin, exempt-checking-quiets from
+  LMR, singular extension depth, qsearch delta margin, aspiration width,
+  **cutNode** (SF's expected-fail-high flag — we had no such concept, measured
+  exactly +0), TT-based ProbCut, two `improving` variants, IIR on shallow TT
+  entries (+7, weak, unconfirmed).
+* *Eval, 4 tried* — broadened opposite-bishops (−19), winning-difficulty
+  modifier v1 and v2, concave mobility (−37).
+
+Three conclusions that should shape the next session:
+
+1. **The search is saturated.** Not "we ran out of ideas" — the standard
+   technique list is now *exhaustively* tested, including one structural signal
+   (cutNode) that every strong engine uses and that measures zero here. Our
+   reduction schedule is at an optimum for depth ~11; importing a stronger
+   engine's tuning does not cross that gap.
+2. **Eval experiments are confounded by the tuning.** Any change to a concept's
+   FUNCTIONAL FORM (concave mobility) is tested against weights Texel-fitted to
+   the old form, so the experiment measures the mismatch as much as the idea.
+   This project cannot currently afford to re-tune per experiment, so eval work
+   is limited to *additive new terms* and *multiplicative modifiers*, not
+   reshaping existing ones.
+3. **At this screening volume, multiplicity is not optional.** ~20 SPRT screens
+   at alpha=0.05 produced ~1 false H1, exactly as expected — the
+   winning-difficulty modifier screened **+68 Elo [+29, +109]** and confirmed at
+   **+6**. The screen nominates; only a confirmation on disjoint openings decides.
+
 ## What is settled (do not re-litigate without new evidence)
 
 - **Move ordering is closed.** Six experiments neutral-or-worse: continuation

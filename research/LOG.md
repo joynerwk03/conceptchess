@@ -331,6 +331,62 @@ against actual games; **all four turn out to be at or near their optimum
 already**, which is the same verdict the long-TC sweep reached from the other
 direction.
 
+**EVAL: two new multiplicative modifiers — both REJECTED, and one of them is the
+session's cleanest lesson about its own instrument.** (William: "have you
+considered adding any other nonlinear features? … we need to get more creative
+with making the evaluation function better.") The modifier framework from s24
+existed to express what a concept SUM cannot, and had sat with exactly one term
+in it — opposite-coloured bishops, whose condition (one bishop each and *no
+other pieces at all*) is so narrow it essentially never fires, which is why it
+originally gated as noise.
+
+*Broadened OCB* — allow the rooks-on case at a milder factor (0.8), queens still
+excluded because queens make opposite bishops sharper, not drawer. Faithful
+(C==Python 0.000000). **−19 Elo, rejected.** Opposite-bishops-with-rooks is not
+as drawish at this engine's level as the folklore says.
+
+*Winning difficulty* — a pawnless leader whose non-pawn edge is under a rook
+cannot convert (K+B vs K, K+2N vs K are dead draws; R vs minor and R+B vs R are
+book draws). Integer piece counts only, so the C mirror is exact by construction.
+This produced the strongest screen of the entire session: **SPRT accepted H1 at
+176 games, +68 Elo [+29, +109]**. Then, on independent openings: **+28, then
+−16 — pooled +6 [−14, +26]**.
+
+The 44-Elo gap between those batches looked like a real defect in the rule, and
+there IS one: with N=B=3, R=5, Q=9, "edge below a rook" also catches **Q vs R
+(edge 4)** and **Q vs B+N (edge 3)**, which are theoretical WINS being damped by
+0.65. So v2 additionally required equal queen counts, removing every
+queen-vs-lesser case. v2 screened **−8** — *worse than v1 on the same openings*.
+
+That kills the diagnosis and gives the real explanation: **v1's +68 was a false
+positive.** ~20 SPRT screens were run this session at alpha=0.05, so roughly one
+spurious H1 was expected, and this was it. The lesson is not that the modifier
+idea is bad — the framework worked mechanically throughout, C==Python held at
+0.000000 for every variant — but that **an SPRT screen accepting H1 means
+"worth confirming", never "true"**, and at this volume of screening a rule for
+handling multiplicity is not optional. The standing "screen nominates,
+confirmation decides" discipline caught it without ever putting it in the tree.
+
+*Concave mobility* — the one large concept still modelled as a straight line.
+`weight * (count - typical)` says a queen's 20th square is worth as much as her
+14th, and that a trapped knight is only three weight-units worse than a
+comfortable one; neither matches chess, and strong engines all use a concave
+curve. Replaced with `w * 2*sqrt(T+1) * (sqrt(n+1) - sqrt(T+1))`, chosen to be
+scale-COMPATIBLE rather than a free re-parameterisation: it is zero at the
+typical count and has slope exactly `w` there, so only the tails bend. (The
+C==Python invariant survives `sqrt` exactly — IEEE requires correctly-rounded
+square root, and the operation order was written identically on both sides;
+verified 0.000000 over 6204 positions.) **−37 Elo, rejected in 171 games.**
+
+The likely reason is the same one that has now sunk several eval experiments:
+the mobility weights were Texel-tuned *against the linear form*, so bending the
+curve re-prices every piece relative to weights fitted for a different shape.
+Testing it properly would require a full re-tune under the new functional form —
+and the tuning flywheel has been measured as converged three times. That is a
+real limit on eval experimentation here, and worth stating plainly: **any change
+to a concept's FUNCTIONAL FORM is confounded with the weights fitted to the old
+form, and this project cannot currently afford to re-tune per experiment.**
+
 **Mining Stockfish's source and commit history (William's suggestion) — and the
 single most useful thing it produced was a calibration, not an idea.** Cloned
 the repo (7196 commits) and read `search.cpp`'s step list against ours. *Ideas
