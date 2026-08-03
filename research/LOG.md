@@ -281,6 +281,98 @@ possible. Measured speedup: a known-bad control (null-move disabled) is rejected
 in **76 games / 5 min** instead of 800 / 50 min; a mildly-bad change in ~300
 games / 10 min. **The screen nominates; it never accepts.**
 
+**LMR for late captures — ACCEPTED (+9 Elo), the session's one real gain.** LMR
+only ever reduced QUIET moves. Bad captures sort last (score −1e6+SEE), so a
+capture appearing late in the list is almost always a losing one, and searching
+it at full depth is waste. One line. It had never been tried because
+"LMR for quiets" reads as "LMR is done" — precisely the sort of gap that only
+turns up when screening is cheap enough to try things on spec.
+
+The screen is EXCLUDED from the estimate: it read **+24 Elo, 95% CI [+6, +43]**
+over 754 games — an interval that excludes zero — but this change was selected
+as the best of five candidates, so that interval is not a real 95% interval.
+Independent evidence only:
+
+| batch | score | Elo |
+|---|---|---|
+| 0.3s, openings 400–599 | 52.4% | +17 [−10, +44] |
+| 0.3s, openings 600–799 | 48.9% | −8 [−35, +19] |
+| 0.3s, openings 800–999 | 52.4% | +17 [−10, +44] |
+| 1.0s, openings 400–599 | 51.5% | +10 [−15, +36] |
+| **pooled, 1600 games** | **51.28%** | **+9, 95% [−4, +22]** |
+
+Accepted on the balance of three things rather than on significance: it
+replicated in three of four independent batches, held at two time controls, and
+the mechanism is a missing CASE in an existing heuristic rather than a new
+heuristic that might backfire. Benchmark agrees (avg depth 16.50 → 16.83). The
+1.0s tie-breaker was **pre-registered** — its decision rule fixed before the
+result was seen — because by that point the analysis had accumulated enough
+forks to manufacture whichever answer was wanted.
+
+**Thirteen techniques screened, one accepted.** Batches 2 and 3 went 0-for-8:
+
+| technique | result | games |
+|---|---|---|
+| SEE-filtered quiescence checks | −2 | 643 |
+| eval-scaled null-move R | −2 | 665 |
+| reduce killers/countermoves less | −23 | 239 |
+| ProbCut margin 180→120 | +4 | 800 |
+| exempt checking quiets from LMR | −12 | 363 |
+| singular extension from depth 6 | −17 | 320 |
+| qsearch delta margin 200→100 | −11 | 430 |
+| aspiration delta 20→10 | −13 | 370 |
+
+Two of these are worth noting. *Exempting checking moves from LMR* is standard
+everywhere else and lost here — because a checking move already gets the check
+extension at the child, so declining to reduce it double-counts. And four of the
+eight are first-guess constants behind large accepted features (probcut margin,
+qsearch delta, aspiration width, singular depth) that had never been swept
+against actual games; **all four turn out to be at or near their optimum
+already**, which is the same verdict the long-TC sweep reached from the other
+direction.
+
+**Mining Stockfish's source and commit history (William's suggestion) — and the
+single most useful thing it produced was a calibration, not an idea.** Cloned
+the repo (7196 commits) and read `search.cpp`'s step list against ours. *Ideas
+only — SF is GPL, so nothing was copied; everything below was implemented
+independently from understanding.*
+
+The calibration first, because it reframes the whole exercise: **modern
+Stockfish improvements are sub-1-Elo each.** The "small ProbCut" commit passed
+with SPRT bounds `{0.25, 1.25}` over **33,440 games**. Our instrument resolves
+±19 Elo at 800 games. So copying modern SF micro-tuning is not merely low-yield,
+it is *unmeasurable here* — and those constants are tuned to SF's own eval and
+search shape anyway. What is worth mining is **structural signals we lack
+entirely**, not tuned numbers.
+
+By that filter SF's step list turned up exactly one real gap, and four ideas:
+
+| from SF | result |
+|---|---|
+| **cutNode** — thread "is this node expected to fail high" through the search | **+0 [−18, +18]**, 777 games |
+| TT-based ProbCut (a far-above-beta lower bound at depth−4 cuts immediately) | −14 |
+| `improving \|= staticEval >= beta` | −18 |
+| IIR also on a SHALLOW TT entry, not just a missing one | +7 [−11, +26], weak |
+| `improving` skipping the in-check sentinel (our own bug-shaped variant) | −7 |
+
+**cutNode deserves the note.** We genuinely had no such concept — we distinguish
+only PV from non-PV, lumping together cut nodes (expect a cutoff) and all-nodes
+(expect to fail low), which want opposite treatment. SF uses it in five places.
+Threading it through and reducing harder at cut nodes measured **exactly zero**.
+The likely reason is depth: SF reduces 5–6 plies at depth 30+, where an extra
+ply of reduction on a doomed move is cheap; we search depth ~11, where our LMR
+already caps near 4 and there is simply no room. Same story as the log-LMR table
+(more reduction, neutral) and reduce-killers-less (less reduction, −23). **Our
+reduction schedule is at an optimum for the depth we actually reach**, and
+importing a stronger engine's tuning does not transfer across that gap.
+
+*(`improving` also carries a real latent bug worth recording even though fixing
+it lost: in-check plies store a −S_MATE sentinel in `seval`, so any node two
+plies after a check compares against −100000 and is declared "improving"
+unconditionally, silently disabling an extra ply of LMR and loosening LMP there.
+Fixing it properly gated −7, so the accidental behaviour is apparently the
+better one — but the next person to read that line should know it is accidental.)*
+
 **Five untried standard techniques, screened in 110 minutes** (the old workflow
 would have spent 250):
 
