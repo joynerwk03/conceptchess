@@ -63,6 +63,20 @@ data from the current engine. The flywheel "converged" three sessions ago — bu
 converged on *today's* parameterisation. A richer one has capacity it never had.
 Gate the tuned result as one bundle.
 
+### Phase 2b — Re-run the taper tune to CONVERGENCE (added 2026-08-04)
+
+Phase 2 tuned with `--passes 5` and gated neutral (+12). Bundle A then showed
+what that number is worth: its six-pass tune stopped with two weights having
+moved by *exactly* the maximum the 5%-per-pass step allows, still travelling in
+one direction; thirty passes took one of them a further 36% and drove another to
+zero, and the re-gate moved **+31 Elo**. Phase 2's verdict is therefore a verdict
+on a step-limited tune, not on tapering.
+
+Cheap to redo — minutes, no games — and it must be done before concluding
+anything about the doubled parameter set. **Check the stopping condition, not
+just the loss: if every weight that changed is still moving the same way on the
+last pass, the run reported a step limit.**
+
 ### Phase 3 — Term bundles from SF 11, four at a time
 Each bundle: implement → `research.firing_rate` (kill anything firing <2% or
 non-zero on the start position) → `eval_check` 0.000000 → SPRT screen → confirm
