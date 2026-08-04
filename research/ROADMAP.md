@@ -104,6 +104,30 @@ entry reference; add new ideas as they come up.
       false-positive was caught by a confirmation batch)
 - [ ] Repetition-aware TT (avoid TT cutoffs masking repetition draws)
 - [ ] Better time management (spend more on unstable root evals)
+- [ ] **Concept-aware search control — the one idea only this engine can try.**
+      Every other engine's evaluation is a single number, so its search has to
+      *guess* whether a node is sharp or quiet from scalar proxies: the
+      `improving` flag, static-eval-versus-beta, whether the last move was a
+      capture. Ours is a typed decomposition, and the type tells us directly.
+      Split the eval's running sum into a **volatile** part (threats +
+      king_attack — worth a lot now, gone in two plies) and a **stable** part
+      (pawn structure, placement, mobility). Cost in C is two extra `+=` in
+      sections that already exist; the split is exact, so it stays faithful.
+      Then spend it, cheapest first:
+      1. **Reverse-futility margin scaled by volatility.** RFP's claim is "the
+         static eval is so far above beta that a swing of X cannot matter" — and
+         X is currently a constant, when the decomposition already says how
+         swingy this position is. Uses an eval the node has *already computed*,
+         so the experiment costs one formula. Do this one first.
+      2. **Reduce less when volatile, more when stable.** A principled version
+         of what `improving` approximates.
+      3. **Null move gated on the mobility subtotal** rather than piece counts —
+         zugzwang is a mobility fact, and we have the number.
+      Worth doing even at modest Elo: it inverts the project's usual trade, where
+      interpretability is a constraint that costs strength. Here the explanation
+      is *why* the search is better. Note the five dead move-ordering experiments
+      above — this is not ordering, it is pruning policy, which is where the
+      accepted search gains (LMR, RFP, aspiration) have all come from.
 
 ## Test/benchmark infrastructure
 
