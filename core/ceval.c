@@ -41,7 +41,13 @@ static void eval_init(void){
  * equal -- which is all of them until the tuner fills engine/weights.py's W_EG
  * -- both arguments are the same compile-time constant, so this folds away
  * entirely and the generated code is what it was before tapering existed.
- * `phase` is eval_core's local: 1.0 with all the pieces on, 0.0 at bare kings. */
+ * `phase` is eval_core's local: 1.0 with all the pieces on, 0.0 at bare kings.
+ *
+ * Because it reads `phase`, a TAP is only a constant expression while the two
+ * arguments are equal. Never use one to initialise a `static` -- that compiles
+ * today and stops compiling the moment the tuner gives that weight a distinct
+ * endgame value. Plain locals are fine; when the fold applies, gcc emits the
+ * same constant load either way. */
 #define TAP(MG, EG) ((MG) == (EG) ? (MG) : (phase) * (MG) + (1.0 - (phase)) * (EG))
 
 double eval_core(U64 bb[2][6], int side){
@@ -81,7 +87,7 @@ double eval_core(U64 bb[2][6], int side){
     for(int p=0;p<5;p++) s += MATV[p]*(popcnt(bb[WHITE][p])-popcnt(bb[BLACK][p]));
 
     /* piece placement (PST) */
-    static const double PSTSCALE[6]={TAP(W_PST_PAWN_MG, W_PST_PAWN_EG),TAP(W_PST_KNIGHT_MG, W_PST_KNIGHT_EG),TAP(W_PST_BISHOP_MG, W_PST_BISHOP_EG),TAP(W_PST_ROOK_MG, W_PST_ROOK_EG),TAP(W_PST_QUEEN_MG, W_PST_QUEEN_EG),TAP(W_PST_KING_MG, W_PST_KING_EG)};
+    const double PSTSCALE[6]={TAP(W_PST_PAWN_MG, W_PST_PAWN_EG),TAP(W_PST_KNIGHT_MG, W_PST_KNIGHT_EG),TAP(W_PST_BISHOP_MG, W_PST_BISHOP_EG),TAP(W_PST_ROOK_MG, W_PST_ROOK_EG),TAP(W_PST_QUEEN_MG, W_PST_QUEEN_EG),TAP(W_PST_KING_MG, W_PST_KING_EG)};
     for(int c=0;c<2;c++){
         int flip=c==WHITE?0:56, sign=c==WHITE?1:-1;
         for(int p=0;p<6;p++){
