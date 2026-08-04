@@ -68,6 +68,69 @@ nothing uses yet, run one throwaway build with the capacity actually used.* Ten
 minutes of that would have caught all three of the above; instead they surfaced
 one at a time across four failed gate launches.
 
+**Phase 3 bundle A — minor-piece placement. Untuned −14, tuned +17: the terms
+were fine, the numbers were not.** Five terms this eval never had, ideas from
+SF 11, reimplemented in both languages: knight/bishop outposts, minor behind a
+pawn, bad bishop (own pawns on its colour, amplified by a blocked centre),
+bishop on a long diagonal raking the centre. `eval_check` 0.000000 over 6204
+positions on the first build, 88 tests green, every sub-term firing between 5.6%
+and 72.7% on the blunder suite.
+
+Priors were Stockfish 11's own middlegame values scaled by pawn ratio (its pawn
+is 128, ours 100). **Screened −14 Elo, 95% [−40, +12]** — SPRT rejected H1 at 358
+games.
+
+The instinct was that the terms double-count what mobility and the PSTs already
+say. **Wrong, and worth checking before acting on it:** correlating each new
+sub-term against all twelve existing concepts over 216 positions gave a maximum
+|r| of 0.33 (behind-pawn vs mobility, which is just true — a minor behind a pawn
+has fewer squares). The terms carry independent information.
+
+So it was calibration. Tuning **only** the five new weights, everything settled
+frozen, bounds reaching **zero** so the tuner could answer "worth nothing":
+
+| weight | prior | tuned |
+|---|---|---|
+| `minor.outpost_knight` | 24.0 | 26.4 |
+| `minor.outpost_bishop` | 12.0 | **0.0 — term deleted** |
+| `minor.behind_pawn` | 14.0 | 6.3 |
+| `minor.bishop_pawns` | 2.5 | 2.25 |
+| `minor.long_diagonal` | 35.0 | 15.75 |
+
+Loss 0.090537 → 0.090287 (0.276%) on five parameters over 20k samples — far too
+few parameters to overfit that much data. Two lessons:
+
+1. **Six passes was not convergence.** The first run stopped with
+   `long_diagonal` at 24.5 and `behind_pawn` at 9.8, each having fallen by
+   *exactly* the maximum the 5%-per-pass step allows in six passes. They were
+   still moving. Thirty passes took them to 15.75 and 6.3, and drove
+   `outpost_bishop` to zero. A tuner that stops while every changed weight is
+   still travelling in one direction has reported a step limit, not an optimum.
+2. **Borrowed weights do not transfer even when borrowed terms do.** SF's
+   numbers are calibrated against SF's mobility and SF's PSTs. Rescaling by the
+   pawn ratio is not enough.
+
+The tuner's verdict on bishop outposts is also just good chess: a knight needs a
+permanent square because it is short-range; a bishop already radiates down a
+diagonal from anywhere safe. Term removed from both languages.
+
+**Re-screened tuned: +240 =358 −202 (52.4%), paired +17 Elo, 95% [−0, +33]** over
+the full 800 games. Calibration alone moved the bundle **+31 Elo**.
+
+That nominates, it does not accept — self-play overstates eval changes. The
+external gate against Stockfish 2700 is running as this is written; **the
+external number decides**, and it is the first external gate ever run on this
+machine (see below).
+
+**Stockfish was not installed on the PC.** Every external number this project
+owns — 2743 single-thread [2717,2769], ~2840 as played — was measured on the
+MacBook, and `research.abgate` / `research.calibrate` both resolve the binary
+with `shutil.which`. So since the machine move, *every* gate has been forced to
+be self-play, which is precisely the instrument s24 proved does not transfer for
+evaluation work. No sudo here, so the official static build now lives in
+`~/bin/stockfish` (`CLAUDE.md` records it). This was a silent capability loss:
+nothing failed, the gates just quietly stopped meaning what they used to.
+
 **Concept-aware search control: premise tested, NOT SUPPORTED — killed for one
 script instead of an 800-game gate.** The idea worth the most if it had worked:
 every other engine's eval is a single number, so its search guesses whether a
