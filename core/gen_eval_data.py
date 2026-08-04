@@ -16,10 +16,19 @@ from engine.concepts.pawn_structure import PASSED_BONUS
 OUT = Path(__file__).parent / "eval_data.h"
 
 
+# Every number crosses into C at full double precision. %g would round to six
+# significant digits, which was invisible while the weights were round numbers
+# and became a 9e-5 disagreement the moment the tuner emitted six *decimals*.
+# The invariant this project rests on is that the C eval IS the Python eval, so
+# the generator must not be the thing that makes them differ. .17g round-trips
+# an IEEE double exactly.
+NUM = ".17g"
+
+
 def c_array(name, values, per_line=8):
     lines = [f"static const double {name}[{len(values)}] = {{"]
     for i in range(0, len(values), per_line):
-        chunk = ", ".join(f"{v:g}" for v in values[i:i + per_line])
+        chunk = ", ".join(f"{v:{NUM}}" for v in values[i:i + per_line])
         lines.append("    " + chunk + ",")
     lines.append("};")
     return "\n".join(lines)
@@ -52,11 +61,11 @@ def main():
     for key, val in W.items():
         macro = "W_" + key.replace(".", "_").upper()
         eg = W_EG.get(key, val)
-        parts.append(f"#define {macro}_MG ({float(val):.6g})")
-        parts.append(f"#define {macro}_EG ({float(eg):.6g})")
+        parts.append(f"#define {macro}_MG ({float(val):{NUM}})")
+        parts.append(f"#define {macro}_EG ({float(eg):{NUM}})")
         # Back-compat alias so untapered call sites (material, which feeds SEE)
         # keep working unchanged.
-        parts.append(f"#define {macro} ({float(val):.6g})")
+        parts.append(f"#define {macro} ({float(val):{NUM}})")
     parts.append("")
     parts.append("#endif")
     OUT.write_text("\n".join(parts) + "\n")

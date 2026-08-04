@@ -46,14 +46,19 @@ sh core/build.sh >/dev/null
 # Faithfulness first: a search-only change must leave the eval identical, and a
 # broken variant must never reach a gate.
 cd "$CC"
-EV=$(cd "$WT" && PYTHONPATH=. "$CC/.venv/bin/python" core/eval_check.py 2>&1 | grep "max |C" || true)
-echo "  $EV"
-case "$EV" in
-  *"0.000000"*) : ;;
-  *) echo "!! $NAME: C eval no longer mirrors Python -- ABORTING before any game" >&2
-     echo "!! The screen measures a variant whose explanation is a lie. Fix first." >&2
-     exit 1 ;;
-esac
+# eval_check already knows the project's tolerance and encodes the verdict in
+# its exit status; grepping its output for a literal "0.000000" second-guessed
+# it, and rejected a variant that was correct to 9e-5. Trust the exit code.
+set +e   # a failing check is the thing we want to report, not an abort
+EVOUT=$(cd "$WT" && PYTHONPATH=. "$CC/.venv/bin/python" core/eval_check.py 2>&1)
+EVRC=$?
+set -e
+echo "$EVOUT" | grep "max |C" | sed 's/^/  /'
+if [ "$EVRC" -ne 0 ]; then
+  echo "!! $NAME: C eval no longer mirrors Python -- ABORTING before any game" >&2
+  echo "!! The screen measures a variant whose explanation is a lie. Fix first." >&2
+  exit 1
+fi
 
 echo "--- $NAME: SPRT screen vs baseline (H1=+25 Elo), $MT s, max $MAXG games ---"
 date
