@@ -1,15 +1,31 @@
-"""Screen a bundle on outcome loss alone: minutes instead of an hour of games.
+"""Screen a bundle on DECISIVE-GAME outcome loss: minutes instead of an hour of games.
 
-From the 2026-08-04 calibration: ~8-9 Elo per 1% of outcome-loss reduction, and
-an 800-game gate resolves +-19 Elo. So games cannot see anything under ~2.5%,
-and every bundle measured so far is worth 0.1-0.8%. Loss is the instrument that
-can actually resolve them.
+**Read this before trusting a number out of here.** Loss over *all* games is a
+forecasting metric and it does not predict Elo. Measured on two changes with real
+external gates:
 
-Two rules this encodes, both learned the expensive way:
+    phase3 stack   all-games +2.472%   decisive +2.737%   ->  +12.8 Elo
+    phase4         all-games +2.376%   decisive -0.615%   ->   +1.1 Elo
+
+The all-games column is inconsistent by a factor of ten and predicted +11 for a
+change worth +1. Positions from **drawn** games carry no information about
+whether a change helps you win: scoring a dead-drawn ending as 0.00 instead of
++170 is a huge improvement in prediction and no improvement in result. So this
+screens on decisive games only, where **~4.7 Elo per 1%** predicted the phase3
+stack to within 0.1 Elo.
+
+An 800-game gate resolves +-19 Elo, so games cannot see anything under ~4% of
+decisive loss, and every bundle measured so far is worth a fraction of that.
+Loss is the instrument that can actually resolve them; games are for
+accumulations.
+
+Three rules this encodes, all learned the expensive way:
   * measure against the bundle switched OFF, not against its own priors -- a
     tune started from bad guesses mostly measures the guesses (bundle C);
   * run enough passes that the weights stop moving, and say so when they
-    have not (bundle A's first tune reported a step limit as an optimum).
+    have not (bundle A's first tune reported a step limit as an optimum);
+  * judge on decisive games, or a term that merely predicts draws better will
+    look like the best result you have ever had (phase4).
 
 Usage:  screen_loss.py <worktree> <weight-prefix>[,<prefix>...]
 """
@@ -33,6 +49,13 @@ from research.texel import TUNABLE  # noqa: E402
 rows = [json.loads(l) for l in open(WT + "/research/data/texel5.jsonl")]
 random.Random(11).shuffle(rows)
 rows = rows[:SAMPLE]
+# Decisive games only. A drawn game's positions cannot tell you whether a change
+# helps you win, and including them is what made phase4 look like +11 Elo when
+# it was worth +1. See the module docstring.
+_all = len(rows)
+rows = [r for r in rows if r["res"] != 0.5]
+print(f"{len(rows)} of {_all} sampled positions come from DECISIVE games "
+      f"(draws carry no decision information)")
 boards = [chess.Board(r["fen"]) for r in rows]
 results = [r["res"] for r in rows]
 
@@ -116,7 +139,7 @@ for k in keys:
     print(f"  {k:32s} {priors[k]:8.3f} -> {cur[k]:8.3f}")
 print()
 gain = 100 * (off - best) / off
-print(f"VERDICT: {gain:+.3f}% loss. At ~8-9 Elo per 1%, about {8.5*gain:+.1f} Elo.")
+print(f"VERDICT: {gain:+.3f}% loss. At ~4.7 Elo per 1% of DECISIVE loss, about {4.7*gain:+.1f} Elo.")
 print("An 800-game gate resolves +-19 Elo, so this is "
-      + ("worth stacking onto phase3." if gain >= 0.3 else
+      + ("worth stacking; games are for the accumulation." if gain >= 0.3 else
          "below what games can see -- stack only if it is free."))

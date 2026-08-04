@@ -167,8 +167,60 @@ evaluation work. No sudo here, so the official static build now lives in
 `~/bin/stockfish` (`CLAUDE.md` records it). This was a silent capability loss:
 nothing failed, the gates just quietly stopped meaning what they used to.
 
-**Endgame scale factors — +2.264% outcome loss, and +29% in real endgames. The
-largest single evaluation result this project has produced.** Four rules, four
+## phase4 REJECTED at +1.1 Elo — and the diagnosis rewrites the screen
+
+Drawishness + history-scaled LMR, gated over 1600 paired slots: **+1.1 Elo, 95%
+[−17.8, +20.1]**, against a predicted **+28**. The largest prediction failure of
+the session, and worth far more than the +28 would have been.
+
+**The Texel outcome loss is a FORECASTING metric. Elo is a DECISION metric.**
+They coincide only for changes that alter move choice in contested positions.
+Splitting the same 30,000 positions by the result of the game they came from:
+
+| positions from games that were | loss change | share of total gain |
+|---|---|---|
+| **drawn** | **+27.16%** | **123%** |
+| **decisive** | **−0.615%** | **−23%** |
+
+Every bit of the drawishness gain — more than all of it — came from games that
+were **drawn anyway**. Scoring a dead-drawn rook-versus-bishop as 0.00 instead of
++170 is an enormous improvement in *prediction* and no improvement whatsoever in
+*result*. On the games that were actually decided, the modifier made the
+evaluation slightly worse.
+
+**Recalibrated against the two changes with real external numbers:**
+
+| change | all-games loss | decisive-games loss | measured Elo | Elo per 1% (all) | Elo per 1% (decisive) |
+|---|---|---|---|---|---|
+| phase3 stack | +2.472% | **+2.737%** | **+12.8** | 5.2 | **4.7** |
+| phase4 | +2.376% | **−0.615%** | **+1.1** | 0.5 | — |
+
+The all-games rate is inconsistent by a factor of ten and predicted +11 for a
+change worth +1. The decisive-games rate predicts the phase3 stack at **+12.9
+against a measured +12.8**, and correctly calls phase4 as nothing.
+**`research/screen_loss.py` now measures decisive-game loss.** Draws carry no
+decision information; screening on them was measuring forecasting skill and
+calling it strength.
+
+**The chess lesson underneath, which is not obvious.** Every configuration of
+the drawishness rules is negative on decisive games — including the ones that are
+*factually correct*. Re-tuned against decisive-game loss, the optimum for all
+four weights is **1.00: no damping at all.** Evaluating a theoretically drawn
+position as exactly zero removes the gradient that makes the engine keep
+pressing, and *"theoretically drawn" is not the same claim as "worth nothing
+against an opponent who can still go wrong."* The tuner drove `no_pawns` to 0.05
+because it was asked to minimise forecast error, which is precisely the wrong
+objective. **Correct knowledge that does not change your choices is worth zero;
+correct knowledge that removes a reason to try is worth less than zero.**
+
+Rejected: the four drawishness rules, and phase4 as a whole. Retained: the KPK
+bitbase, on interpretability grounds rather than strength — see below.
+
+---
+
+**Endgame scale factors — +2.264% outcome loss, and +29% in real endgames.
+Impressive on the wrong metric; see the phase4 entry above for why it bought
+nothing.** Four rules, four
 weights, in the multiplicative modifier framework: an extra piece with no pawns
 and too little material to force a win; two knights, which cannot mate; a bishop
 that does not control the promotion square of its own rook pawns; a lone pawn.
