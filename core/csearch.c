@@ -97,6 +97,29 @@ static _Thread_local Search SS;   /* per-thread (Lazy SMP); TT/EH stay shared */
 static double now_sec(void){ struct timespec ts; clock_gettime(CLOCK_MONOTONIC,&ts);
     return ts.tv_sec + ts.tv_nsec*1e-9; }
 
+/* Mate scores are RELATIVE TO THE NODE: -S_MATE+ply means "mated in `ply` plies
+ * from the root of THIS search". A transposition table is shared across plies,
+ * across the moves of a game, and across the analysis board's repeated calls, so
+ * storing that number raw and reading it back raw is wrong the moment the same
+ * position is reached at a different distance from the root.
+ *
+ * Store the distance measured from the NODE (root-independent), and convert back
+ * on the way out. Without this the engine reported a 3-ply mate as M2, an
+ * analysis-board position as M9, and -- much worse than the display -- could not
+ * reliably tell a fast mate from a slow one, which is what "poor endgame
+ * technique, delaying the promotion, not finding an efficient checkmate" looks
+ * like from the outside. */
+static inline int score_to_tt(int s, int ply){
+    if(s >= S_MATE_TH) return s + ply;
+    if(s <= -S_MATE_TH) return s - ply;
+    return s;
+}
+static inline int score_from_tt(int s, int ply){
+    if(s >= S_MATE_TH) return s - ply;
+    if(s <= -S_MATE_TH) return s + ply;
+    return s;
+}
+
 static int is_capture(const Board *b, Move m){
     int to=MV_TO(m);
     if(MV_FLAG(m)==1) return 1; /* ep */
@@ -235,9 +258,10 @@ static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
     {
         TTEntry *e=&TT[b->hash&TT_MASK];
         if(e->key==b->hash){
-            if(e->flag==TT_EXACTF) return e->score;
-            if(e->flag==TT_LOWERF && e->score>=beta) return e->score;
-            if(e->flag==TT_UPPERF && e->score<=alpha) return e->score;
+            int ts=score_from_tt(e->score, ply);   /* mate distances are ply-relative */
+            if(e->flag==TT_EXACTF) return ts;
+            if(e->flag==TT_LOWERF && ts>=beta) return ts;
+            if(e->flag==TT_UPPERF && ts<=alpha) return ts;
         }
     }
     int stand = eval_stm(b);
@@ -295,7 +319,15 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
     U64 h=b->hash;
     SS.path[SS.path_len++]=h;
     int ret, done=0;
-    if(is_rep(h,b->hm)||insufficient(b)){ ret=0; done=1; }
+    /* The fifty-move rule is a DRAW the search has to be able to see. Without
+     * it the engine cannot tell that a won ending is running out of clock, and
+     * research.convert measured the consequence: KR vs K drawn by fifty moves
+     * from a trivially won position. Earlier attempts (s12, s18) were rejected
+     * on 0.3s gates, where the rule essentially never bites -- but in an endgame
+     * it decides the result. Checkmate takes precedence: being mated on move 100
+     * is a loss, not a draw, so the in-check case is resolved by the move loop. */
+    if(b->hm >= 100 && !in_check(b,b->side)){ ret=0; done=1; }
+    if(!done && (is_rep(h,b->hm)||insufficient(b))){ ret=0; done=1; }
     int checked = done?0:in_check(b,b->side);
     if(!done && checked) depth++;
     if(!done && depth<=0){ ret=qsearch(b,alpha,beta,ply,0); done=1; }
@@ -303,11 +335,12 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
     Move ttm=0; int tt_hit=0, tt_depth=0, tt_flag=0, tt_score=0;
     if(!done){
         TTEntry *e=&TT[h&TT_MASK];
-        if(e->key==h){ ttm=e->move; tt_hit=1; tt_depth=e->depth; tt_flag=e->flag; tt_score=e->score;
+        if(e->key==h){ ttm=e->move; tt_hit=1; tt_depth=e->depth; tt_flag=e->flag;
+            tt_score=score_from_tt(e->score, ply);   /* mate distances are ply-relative */
             if(!excl && e->depth>=depth && ply>0){   /* no TT cutoff during a singular verification */
-                if(e->flag==TT_EXACTF){ ret=e->score; done=1; }
-                else if(e->flag==TT_LOWERF && e->score>=beta){ ret=e->score; done=1; }
-                else if(e->flag==TT_UPPERF && e->score<=alpha){ ret=e->score; done=1; }
+                if(e->flag==TT_EXACTF){ ret=tt_score; done=1; }
+                else if(e->flag==TT_LOWERF && tt_score>=beta){ ret=tt_score; done=1; }
+                else if(e->flag==TT_UPPERF && tt_score<=alpha){ ret=tt_score; done=1; }
             }
         }
     }
@@ -479,7 +512,8 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
     if(!excl){   /* don't pollute this position's TT entry from a verification search */
         int flag = best<=orig_alpha?TT_UPPERF : best>=beta?TT_LOWERF : TT_EXACTF;
         TTEntry *e=&TT[h&TT_MASK];
-        e->key=h; e->depth=depth; e->flag=flag; e->score=best; e->move=bestm;
+        e->key=h; e->depth=depth; e->flag=flag;
+        e->score=score_to_tt(best, ply); e->move=bestm;
     }
     SS.path_len--;
     return best;
@@ -659,6 +693,14 @@ int c_search(const char *startfen, const char *moves, double movetime, double ma
     if(!g_init){ init_tables(); g_init=1; }
     if(!g_search_init){ TT=calloc(TT_SIZE,sizeof(TTEntry)); EH=calloc(EH_SIZE,sizeof(EHEntry)); g_search_init=1; }
     Board b; if(set_fen(&b,startfen)){ uci_out[0]=0; return 0; }
+    /* Reject ILLEGAL positions rather than searching them. king_sq() does
+     * lsb() on the king bitboard, and lsb(0) is undefined -- with a king
+     * missing it returns 64 and attacked() reads one past PAWN_ATK[64], which
+     * segfaults. This is reachable from the GUI's paste-a-FEN box, and also
+     * from any position where the side NOT to move is in check, because the
+     * root move list then contains a king capture. */
+    if(!b.bb[WHITE][KING] || !b.bb[BLACK][KING]
+       || in_check(&b, !b.side)){ uci_out[0]=0; return 0; }
     /* replay moves to build the board + game-history hashes (to seed each
      * worker's repetition path) */
     static _Thread_local U64 ghist[4096]; int nghist=0;
@@ -735,6 +777,8 @@ void c_get_pv(char *pv_out, int maxlen){
 /* Principal variation from the TT, as space-separated UCI, into pv_out. */
 void c_pv(const char *startfen, const char *moves, char *pv_out, int maxlen){
     Board b; if(set_fen(&b,startfen)){ pv_out[0]=0; return; }
+    if(!b.bb[WHITE][KING] || !b.bb[BLACK][KING]
+       || in_check(&b, !b.side)){ pv_out[0]=0; return; }   /* illegal: see c_search */
     if(moves && *moves){
         const char *p=moves;
         while(*p){ while(*p==' ')p++; if(!*p)break;

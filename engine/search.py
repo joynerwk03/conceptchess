@@ -39,6 +39,10 @@ class SearchResult:
     root_ranking: list = field(default_factory=list)
     book: bool = False           # move came from the opening book
     book_name: str = ""
+    # Set when the move came from an endgame tablebase rather than the search:
+    # a human-readable verdict like "tablebase: win (DTZ 30)". Kept separate from
+    # the concept breakdown on purpose -- it is ground truth, not an evaluation.
+    tablebase: str = ""
 
     @property
     def nps(self):

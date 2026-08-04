@@ -14,18 +14,21 @@ import time
 
 import chess
 
-from engine.search import Searcher, SearchResult
+from engine.search import Searcher, SearchResult, MATE_SCORE
 from engine.explain import explain_move, book_explanation
 from engine.evaluation import evaluate, evaluate_detailed
 from engine import book
 from engine import core
+from engine import tablebase
 
 
 class Engine:
-    def __init__(self, use_book=True, book_seed=None, use_core=True):
+    def __init__(self, use_book=True, book_seed=None, use_core=True,
+                 use_tablebase=True):
         self.searcher = Searcher()
         self.use_book = use_book
         self.use_core = use_core and core.HAS_CORE
+        self.use_tablebase = use_tablebase
         self._rng = random.Random(book_seed)
 
     def _book_result(self, board):
@@ -45,6 +48,20 @@ class Engine:
         r, _ = self._book_result(board)
         if r is not None:
             return r
+        # Below six pieces the answer is not an estimate, it is known. Consulting
+        # the tablebase at the ROOT gives perfect technique in exactly the endings
+        # where the hand-crafted eval is weakest and the horizon helps least --
+        # `research.convert` measured a KBB vs K win being drawn by the fifty-move
+        # rule. This does NOT touch the concept sum: search still maximises the
+        # number the breakdown displays, and the tablebase is reported as its own
+        # labelled authority (see engine/tablebase.py).
+        tb_res = tablebase.best_move(board) if self.use_tablebase else None
+        if tb_res is not None:
+            move, wdl, dtz, _ = tb_res
+            score = (MATE_SCORE - 1 - abs(dtz)) if wdl > 0 else \
+                    (-(MATE_SCORE - 1 - abs(dtz)) if wdl < 0 else 0)
+            return SearchResult(move=move, score=score, depth=0, nodes=0, time=0.0,
+                                pv=[move], tablebase=tablebase.describe(board))
         if self.use_core:
             t = time.perf_counter()
             move, score, depth, nodes, pv, second = core.search(board, movetime, max_depth,
