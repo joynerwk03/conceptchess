@@ -161,10 +161,21 @@ ORIGINAL_PRIORS = {
 PRIOR_ENVELOPE = (0.5, 1.6)
 
 
-def tune(data_path, passes):
+# How far an ENDGAME value may sit from its middlegame partner. Deliberately
+# wide: the entire point of tapering is that some terms are worth very different
+# amounts in the two phases (Stockfish 11 rates a pawn 128 in the middlegame and
+# 213 in the endgame, a factor of 1.7), and a narrow bound would only rediscover
+# the single averaged value the tuner has been stuck on for three sessions.
+EG_ENVELOPE = (0.4, 2.0)
+
+
+def tune(data_path, passes, sample=0, seed=11, tune_eg=True):
     from engine import weights as wmod
     W = wmod.W
     rows = [json.loads(l) for l in open(data_path)]
+    if sample and sample < len(rows):
+        random.Random(seed).shuffle(rows)
+        rows = rows[:sample]
     boards = [chess.Board(r["fen"]) for r in rows]
     results = [r["res"] for r in rows]
     print(f"{len(rows)} samples")
@@ -180,38 +191,74 @@ def tune(data_path, passes):
 
     base = {k: W[k] for k in TUNABLE if k in W}
     current = dict(base)
+    # Endgame partners. They start EQUAL to the middlegame value, which is what
+    # W_EG being empty already means, so the first loss evaluation is unchanged.
+    eg_current = {k: base[k] for k in base} if tune_eg else {}
+
+    # One flat parameter list: ("mg", key) and ("eg", key).
+    params = [("mg", k) for k in base] + [("eg", k) for k in eg_current]
+    print(f"tuning {len(params)} parameters "
+          f"({len(base)} middlegame + {len(eg_current)} endgame)")
+
+    def apply(kind, key, value):
+        if kind == "mg":
+            W[key] = value
+        else:
+            wmod.W_EG[key] = value
+
     loss0 = best_kl
     for p in range(passes):
         improved = False
-        for key in base:
-            lo = base[key] * TUNABLE[key][0]
-            hi = base[key] * TUNABLE[key][1]
-            if key in ORIGINAL_PRIORS:   # hard envelope vs the hand priors
-                lo = max(lo, ORIGINAL_PRIORS[key] * PRIOR_ENVELOPE[0])
-                hi = min(hi, ORIGINAL_PRIORS[key] * PRIOR_ENVELOPE[1])
+        for kind, key in params:
+            cur = current[key] if kind == "mg" else eg_current[key]
+            if kind == "mg":
+                lo = base[key] * TUNABLE[key][0]
+                hi = base[key] * TUNABLE[key][1]
+                if key in ORIGINAL_PRIORS:   # hard envelope vs the hand priors
+                    lo = max(lo, ORIGINAL_PRIORS[key] * PRIOR_ENVELOPE[0])
+                    hi = min(hi, ORIGINAL_PRIORS[key] * PRIOR_ENVELOPE[1])
+            else:
+                lo = base[key] * EG_ENVELOPE[0]
+                hi = base[key] * EG_ENVELOPE[1]
+            if lo > hi:
+                lo, hi = hi, lo
             step = max(abs(base[key]) * 0.05, 0.05)
-            for cand in (current[key] + step, current[key] - step):
+            for cand in (cur + step, cur - step):
                 cand = min(max(cand, lo), hi)
-                if cand == current[key]:
+                if cand == cur:
                     continue
-                W[key] = cand
+                apply(kind, key, cand)
                 l = _loss(_eval_all(boards), results, best_k)
                 if l < loss0 - 1e-7:
                     loss0 = l
-                    current[key] = cand
+                    if kind == "mg":
+                        current[key] = cand
+                    else:
+                        eg_current[key] = cand
+                    cur = cand
                     improved = True
-                    print(f"  pass {p+1}: {key} -> {cand:.3f}  loss {l:.6f}", flush=True)
+                    print(f"  pass {p+1}: {key}[{kind}] -> {cand:.3f}  loss {l:.6f}",
+                          flush=True)
                 else:
-                    W[key] = current[key]
+                    apply(kind, key, cur)
         if not improved:
             break
+
+    # Only keep endgame values that actually moved away from their partner:
+    # an entry equal to the middlegame value is what "absent" already means, and
+    # writing it would add cost for nothing.
+    eg_out = {k: v for k, v in eg_current.items() if v != current[k]}
     out = ROOT / "research" / "data" / "texel_weights.json"
     json.dump({"k": best_k, "baseline_loss": best_kl, "tuned_loss": loss0,
-               "weights": current, "base": base}, open(out, "w"), indent=1)
+               "weights": current, "weights_eg": eg_out, "base": base},
+              open(out, "w"), indent=1)
     print(f"final loss {loss0:.6f} (baseline {best_kl:.6f}); wrote {out}")
     for k in current:
         if current[k] != base[k]:
             print(f"  {k}: {base[k]} -> {round(current[k],3)}")
+    for k, v in eg_out.items():
+        print(f"  {k}[eg]: {round(current[k],3)} (mg) -> {round(v,3)} (eg)  "
+              f"ratio {v / current[k]:.2f}" if current[k] else f"  {k}[eg] -> {v}")
 
 
 def main():
@@ -224,11 +271,15 @@ def main():
     t = sub.add_parser("tune")
     t.add_argument("--data", default="research/data/texel.jsonl")
     t.add_argument("--passes", type=int, default=6)
+    t.add_argument("--sample", type=int, default=0,
+                   help="use at most this many positions (0 = all)")
+    t.add_argument("--no-eg", action="store_true",
+                   help="tune middlegame values only (the pre-tapering behaviour)")
     a = p.parse_args()
     if a.cmd == "gen":
         gen(a.games, a.movetime, a.out)
     else:
-        tune(a.data, a.passes)
+        tune(a.data, a.passes, sample=a.sample, tune_eg=not a.no_eg)
 
 
 if __name__ == "__main__":
