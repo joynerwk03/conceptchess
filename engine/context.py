@@ -21,9 +21,39 @@ def _squares(bb):
     return sqs
 
 
+def _pawn_atk(pawns, color):
+    """Squares attacked by `color`'s pawns."""
+    if color == chess.WHITE:
+        return ((pawns << 7) & ~chess.BB_FILE_H) | ((pawns << 9) & ~chess.BB_FILE_A)
+    return ((pawns >> 7) & ~chess.BB_FILE_A) | ((pawns >> 9) & ~chess.BB_FILE_H)
+
+
+def _build_attack_spans():
+    """ATTACK_SPAN[color][sq]: squares where an ENEMY pawn could sit and, by
+    advancing, eventually attack `sq` — the adjacent files, ahead of `sq` from
+    the enemy's point of view. Empty means no enemy pawn can ever challenge the
+    square, which is what makes it an outpost."""
+    spans = {chess.WHITE: [0] * 64, chess.BLACK: [0] * 64}
+    for sq in range(64):
+        f, r = sq & 7, sq >> 3
+        for adj in (f - 1, f + 1):
+            if not 0 <= adj <= 7:
+                continue
+            for rr in range(8):
+                bit = 1 << (rr * 8 + adj)
+                if rr > r:
+                    spans[chess.WHITE][sq] |= bit   # black pawns come downward
+                elif rr < r:
+                    spans[chess.BLACK][sq] |= bit
+    return spans
+
+
+ATTACK_SPAN = _build_attack_spans()
+
+
 class EvalContext:
     __slots__ = ("board", "pieces", "pawn_files", "king_sq", "phase", "occupied_co",
-                 "attacks", "attacked_by")
+                 "attacks", "attacked_by", "pawn_attacks")
 
     def __init__(self, board: chess.Board):
         self.board = board
@@ -70,10 +100,7 @@ class EvalContext:
                 for sq in cp[pt]:
                     acc |= attacks[sq]
             pawns = board.pawns & (occ_w if color == chess.WHITE else occ_b)
-            if color == chess.WHITE:
-                acc |= ((pawns << 7) & ~chess.BB_FILE_H) | ((pawns << 9) & ~chess.BB_FILE_A)
-            else:
-                acc |= ((pawns >> 7) & ~chess.BB_FILE_A) | ((pawns >> 9) & ~chess.BB_FILE_H)
+            acc |= _pawn_atk(pawns, color)
             if cp[chess.KING]:
                 acc |= chess.BB_KING_ATTACKS[cp[chess.KING][0]]
             if color == chess.WHITE:
@@ -81,6 +108,10 @@ class EvalContext:
             else:
                 atk_b = acc
         self.attacked_by = (atk_b, atk_w)  # indexable by color bool
+        # Pawn attacks alone, indexable by color bool. Mobility needs them to
+        # subtract unsafe squares; outposts need them to find defended ones.
+        self.pawn_attacks = (_pawn_atk(board.pawns & occ_b, chess.BLACK),
+                             _pawn_atk(board.pawns & occ_w, chess.WHITE))
 
         phase = ((board.knights | board.bishops).bit_count()
                  + 2 * board.rooks.bit_count()

@@ -17,6 +17,7 @@ from engine.concepts.pawn_structure import PawnStructure
 from engine.concepts.king_safety import KingSafety
 from engine.concepts.mobility import Mobility
 from engine.concepts.piece_activity import PieceActivity
+from engine.concepts.minor_pieces import MinorPieces
 from engine.concepts.king_attack import KingAttack
 from engine.concepts.tempo import Tempo
 from engine.concepts.threats import Threats
@@ -35,6 +36,7 @@ ALL_CONCEPTS = [
     KingAttack(),
     Mobility(),
     PieceActivity(),
+    MinorPieces(),
     Tempo(),
     Threats(),
     MateDrive(),

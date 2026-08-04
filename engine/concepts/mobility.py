@@ -23,21 +23,13 @@ class Mobility:
     name = "mobility"
     display_name = "Mobility"
 
-    @staticmethod
-    def _pawn_attacks(board, color):
-        pawns = board.pawns & board.occupied_co[color]
-        if color == chess.WHITE:
-            return ((pawns << 7) & ~chess.BB_FILE_H) | ((pawns << 9) & ~chess.BB_FILE_A)
-        return ((pawns >> 7) & ~chess.BB_FILE_A) | ((pawns >> 9) & ~chess.BB_FILE_H)
-
     def score(self, ctx):
         s = 0
-        board = ctx.board
         occ = ctx.occupied_co
         attacks = ctx.attacks
         for color, sign in ((chess.WHITE, 1), (chess.BLACK, -1)):
             own = occ[color]
-            unsafe = self._pawn_attacks(board, not color)
+            unsafe = ctx.pawn_attacks[not color]
             for pt, (key, typical) in MOBILITY_PARAMS.items():
                 w = wt(key, ctx.phase)
                 for sq in ctx.pieces[color][pt]:
@@ -47,11 +39,10 @@ class Mobility:
 
     def details(self, ctx):
         items = []
-        board = ctx.board
         occ = ctx.occupied_co
         for color, sign, cname in ((chess.WHITE, 1, "White"), (chess.BLACK, -1, "Black")):
             own = occ[color]
-            unsafe = self._pawn_attacks(board, not color)
+            unsafe = ctx.pawn_attacks[not color]
             for pt, (key, typical) in MOBILITY_PARAMS.items():
                 w = wt(key, ctx.phase)
                 for sq in ctx.pieces[color][pt]:

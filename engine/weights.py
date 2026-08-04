@@ -50,6 +50,13 @@ W = {
     "act.rook_open": 17,
     "act.rook_semi": 16,
     "act.rook_seventh": 22.05,
+    # minor-piece placement (Phase 3 bundle A). Priors are Stockfish 11's own
+    # middlegame values scaled by 0.78, because its pawn is 128 and ours is 100.
+    # They are starting points for the tuner, not claims.
+    "minor.outpost_knight": 26.4,   # defended, on the 4th-6th, unchaseable
+    "minor.behind_pawn": 6.3,      # sheltered directly behind a pawn
+    "minor.bishop_pawns": 2.25,      # PENALTY per own pawn on the bishop's colour
+    "minor.long_diagonal": 15.75,    # bishop raking both centre squares
     # threats (fractions of the threatened piece's value)
     "threat.hanging": 0.0562,  # attacked and undefended (en prise)
     "threat.pawn": 0.1,   # a minor/rook/queen attacked by a pawn (must move or drop material)
