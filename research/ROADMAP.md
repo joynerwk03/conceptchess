@@ -104,7 +104,18 @@ entry reference; add new ideas as they come up.
       false-positive was caught by a confirmation batch)
 - [ ] Repetition-aware TT (avoid TT cutoffs masking repetition draws)
 - [ ] Better time management (spend more on unstable root evals)
-- [ ] **Concept-aware search control — the one idea only this engine can try.**
+- [x] ~~**Concept-aware search control**~~ (s27: **premise NOT SUPPORTED**, killed
+      before implementation. `vol = |threats| + |king_attack|` predicts
+      `|search(6) − static|` with Spearman **+0.002**, and **+0.005** controlling
+      for `|static eval|` — over 216 positions. Pearson looked better (+0.077,
+      and +0.333 for the `|static|` null) but the swing distribution is
+      heavy-tailed, so those are outliers rather than signal. Diagnosis, which is
+      the useful part: *a threat term only predicts instability if it is
+      miscalibrated*, and ours already prices in the material the threat wins.
+      Items 2 and 3 below rest on the same premise and inherit the verdict.
+      Untested variant if ever revisited: sample **interior** nodes at depth ≤6
+      rather than suite roots, since that is where RFP actually fires.
+      `ccruns/volatility_premise.py`.)
       Every other engine's evaluation is a single number, so its search has to
       *guess* whether a node is sharp or quiet from scalar proxies: the
       `improving` flag, static-eval-versus-beta, whether the last move was a

@@ -68,6 +68,51 @@ nothing uses yet, run one throwaway build with the capacity actually used.* Ten
 minutes of that would have caught all three of the above; instead they surfaced
 one at a time across four failed gate launches.
 
+**Concept-aware search control: premise tested, NOT SUPPORTED — killed for one
+script instead of an 800-game gate.** The idea worth the most if it had worked:
+every other engine's eval is a single number, so its search guesses whether a
+node is sharp from scalar proxies (`improving`, static-vs-beta). Ours is a typed
+decomposition, so it could *know* — scale the reverse-futility margin by how much
+of the score is threats + king attack, the parts a few plies can erase, versus
+pawn structure and placement, which stay put.
+
+That rests on one empirical claim, testable with no games: does
+`vol = |threats| + |king_attack|` predict `|search(6) − static|`? Over 216
+blunder-suite positions:
+
+| predictor | Pearson | Spearman |
+|---|---|---|
+| volatile (threats + king attack) | +0.077 | **+0.002** |
+| stable (pawns + placement + mobility) | +0.174 | — |
+| `\|static eval\|` (free to the search already) | +0.333 | +0.046 |
+| volatile, controlling for `\|static\|` | −0.060 | **+0.005** |
+
+**The rank column is the real one.** The swing distribution is heavy-tailed, so
+the Pearson figures — including the +0.333 that made `|static|` look like a
+strong null — are a handful of large swings, not a relationship. On ranks
+*nothing* predicts the swing, volatility least of all, and controlling for
+`|static|` leaves +0.005.
+
+One slice did look positive: inside a matched `|static| ∈ [50,300]` band, the
+high-volatility third swung 84.5cp against the low third's 38.4, a +46.0cp gap,
+95% [+2.2, +81.9]. That is a post-hoc slice with an interval grazing zero, after
+looking at several — the exact shape of the s25 `scale_win` false positive
+(screened +68 [+29,+109], confirmed +6). Not evidence.
+
+**Why it fails is more interesting than that it fails, and it is a compliment to
+the eval:** a threat term only predicts instability if it is *mis*calibrated. Ours
+already prices in the material a threat will win, so by the time qsearch resolves
+it the score has not moved. The decomposition is not a volatility signal because
+the volatile part is already correctly valued.
+
+Caveat kept honestly: this measured root positions of a tactical suite, and RFP
+fires at interior nodes at depth ≤6. A test sampling interior nodes could come
+out differently. But an idea whose first honest test returns +0.005 does not earn
+an 800-game gate ahead of things that have not been tested at all.
+`research/ROADMAP.md` keeps the entry with this result attached — items 2 and 3
+there (reductions, null-move gating) rest on the same premise and inherit the
+same verdict.
+
 **Phase 2 verdict: NEUTRAL, not accepted.** The tuned bundle (31 middlegame
 values + 29 endgame partners) against main, 800 games, 0.3s, UHO openings:
 
