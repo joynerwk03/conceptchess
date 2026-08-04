@@ -140,6 +140,17 @@ the s24 mistake. So bundle A now lives on a long-lived **`phase3` branch** that
 accumulates bundles, to be gated externally **once**, with enough games to
 resolve the sum. Main stays measured.
 
+**Caveat on every Elo number in this project, worth stating once and loudly.**
+All of them — screens, abgates, the anchor — come from `uho_1000.epd`, 1000
+*unbalanced* openings played as colour-swapped pairs with a pentanomial paired
+estimator. That is the right instrument and it is why the paired intervals are as
+tight as they are: unbalanced books cut the draw rate, and draws carry no
+information. But it means **the absolute ratings are soft**. An unbalanced book
+does not produce a rating comparable to balanced play, and Stockfish's `UCI_Elo`
+is itself calibrated on normal play, so "≈2764" is an anchor-relative figure with
+a book-shaped bias in it, not a CCRL-style rating. **The paired deltas are what
+this project should believe and quote; the absolute number is a rough locator.**
+
 **Free by-product: the first external anchor ever measured on this machine.**
 The baseline arm puts the engine at **+64 [+35, +94] over Stockfish 2700 ≈ 2764
 single-threaded** — which independently corroborates the inherited MacBook figure
