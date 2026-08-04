@@ -156,6 +156,73 @@ evaluation work. No sudo here, so the official static build now lives in
 `~/bin/stockfish` (`CLAUDE.md` records it). This was a silent capability loss:
 nothing failed, the gates just quietly stopped meaning what they used to.
 
+**Phase 3 bundle C — king safety. Killed by the tuner before any games, and the
+kill is worth more than the bundle would have been.** Three sources fed into the
+existing king-danger `units` accumulator rather than added beside it (s24
+rejected safe checks as a standalone additive term twice; inside a `units**2`
+accumulator the same contribution is amplified by every attacker already there),
+plus an endgame-linear term because the quadratic one is multiplied by `phase`
+and so vanishes with the queens off. Built in both languages, `eval_check`
+0.000000, 88 tests green.
+
+Measured *before* screening — bundle A's lesson applied. Tuned alone, bounds
+reaching zero, 40 passes:
+
+| weight | prior | tuned |
+|---|---|---|
+| `kattack.safe_check` | 3.0 | 3.0 (never moved) |
+| `kattack.weak_ring` | 2.0 | 0.4 |
+| `kattack.pawnless_flank` | 6.0 | **0.0** |
+| `kattack.eg_linear` | 1.0 | **0.0** |
+
+The tune reported a 0.325% improvement, which is misleading and worth flagging:
+its baseline was the eval with my guesses already active and *making things
+worse*, so most of that number is the tuner undoing me. The comparison the tune
+never makes is bundle-off versus bundle-tuned, on the same positions and K:
+
+| setting | loss | vs off |
+|---|---|---|
+| bundle C **off** (the pre-bundle engine) | 0.091031 | — |
+| at my guessed priors | 0.091220 | **−0.208%** (actively harmful) |
+| **tuned** | 0.090924 | **+0.117%** |
+| `safe_check` alone | 0.090931 | +0.110% |
+
+So the whole bundle is worth 0.117%, and safe checks are essentially all of it —
+weak ring contributes 0.007%, the other two nothing. **Not gated.** *A tune that
+reports a number against its own bad starting point is measuring the starting
+point. Always compare against the term switched off.*
+
+The one positive: safe checks *do* work inside the accumulator where they failed
+twice outside it. The mechanism hypothesis was right. It is just small.
+
+---
+
+**The number that reframes Phase 3, and the most useful thing this session
+produced.** Two bundles now have both a loss figure and an external Elo, against
+the same baseline (loss 0.091031):
+
+| | loss reduction | external Elo |
+|---|---|---|
+| bundle A (tuned) | **0.82%** | **+7.2** [−31.6, +46.1] |
+| bundle C (tuned) | 0.117% | not gated; ~+1 by the same rate |
+
+That is roughly **8–9 Elo per 1% of outcome-loss reduction**. It is n=1 with a
+huge interval and must not be quoted as a law — but as a planning heuristic it
+settles a question this project has been paying for in game-hours:
+
+**An 800-game gate resolves ±19 Elo, so a bundle needs ≈2.5% loss reduction to be
+measurable at all.** SF 11-style term bundles deliver 0.1–0.8% each. SCHEDULE.md
+already argued that single terms are below the floor and that the answer was
+four-term bundles; the measurement says *four-term bundles are also below the
+floor*, by a factor of three. Stacking every remaining Phase 3 bundle might reach
+2%, and might not.
+
+The practical consequence is a change of instrument, not of ambition: **loss on
+held-out outcomes is now the screen, and games are spent only on accumulations
+big enough to see.** A tune costs minutes and resolves 0.1%; a gate costs an hour
+and resolves 19 Elo ≈ 2.2%. Using games to evaluate a 0.1% change was always
+going to return "neutral", however good the change.
+
 **Concept-aware search control: premise tested, NOT SUPPORTED — killed for one
 script instead of an 800-game gate.** The idea worth the most if it had worked:
 every other engine's eval is a single number, so its search guesses whether a

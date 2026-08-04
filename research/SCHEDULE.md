@@ -23,6 +23,20 @@ So the unit of work changes: **build bundles, tune them together, gate the
 bundle.** Six terms worth +8 each is +48, which is measurable. Single terms are
 not. This is the single most important line in this document.
 
+> **Update 2026-08-04 — the above was right in direction and wrong in scale.**
+> Bundle A gave 0.82% outcome-loss reduction and **+7.2 Elo** externally
+> [−31.6, +46.1]; bundle C gave 0.117%. That is ≈**8–9 Elo per 1% of loss**
+> (n=1, wide interval, a planning heuristic and not a law). An 800-game gate
+> resolves ±19 Elo, so **a bundle needs ≈2.5% loss reduction to be visible** —
+> and a four-term bundle delivers 0.1–0.8%. Four-term bundles are below the
+> floor too, by about a factor of three.
+>
+> **Therefore: loss is the screen, games are for accumulations.** Tune a bundle
+> in isolation (`--only`, bounds reaching zero, enough passes to converge),
+> measure it against *the bundle switched off*, and only spend games once the
+> accumulated stack on `phase3` is worth ~2%. Spending an hour of games to
+> resolve a 0.1% change returns "neutral" no matter how good the change is.
+
 ## What SF 11 has that we do not
 
 | | Stockfish 11 | ConceptChess |
