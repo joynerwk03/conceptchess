@@ -68,6 +68,33 @@ nothing uses yet, run one throwaway build with the capacity actually used.* Ten
 minutes of that would have caught all three of the above; instead they surfaced
 one at a time across four failed gate launches.
 
+**Phase 2 verdict: NEUTRAL, not accepted.** The tuned bundle (31 middlegame
+values + 29 endgame partners) against main, 800 games, 0.3s, UHO openings:
+
+| | |
+|---|---|
+| score | +242 =344 −214 (51.8%) |
+| paired Elo | **+12, 95% CI [−5, +29]**, 400 pairs |
+| SPRT | ran the full 800 without reaching either boundary |
+
+`eval_check` 0.000000 this time, which is the cache and precision fixes doing
+their job. But the result straddles zero, and — the part that decides it — **this
+is a self-play measurement of an evaluation change**, which s24 measured as
+*overstating* eval gains badly (two concepts gated +55 and +29 in self-play and
+transferred ~zero against Stockfish; every *search* gain transferred). So the
+instrument that inflates eval results found +12±17. The external number is
+plausibly zero.
+
+Not rejected outright either, because the capacity is demonstrably real (54% of
+the loss reduction came from tapering, with chess-sensible ratios). The honest
+statement is: **the doubled parameter set buys descriptive capacity that this
+tuning run could not convert into measurable strength.** Retained as
+infrastructure; the weights themselves are not applied. Third consecutive
+re-tune to land neutral (s23 +3, this +12) — which is the clearest signal yet
+that *re-tuning the existing terms is exhausted* and the remaining eval Elo, if
+any, is in terms that do not exist yet. That is Phase 3, and it is where the
+effort goes now.
+
 **Tuner (committed).** `research.texel` now fits endgame partners alongside
 middlegame values — one flat `("mg"|"eg", key)` parameter list, partners
 initialised equal so the fit strictly extends the old one, wide endgame envelope
