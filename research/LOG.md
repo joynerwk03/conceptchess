@@ -156,6 +156,36 @@ evaluation work. No sudo here, so the official static build now lives in
 `~/bin/stockfish` (`CLAUDE.md` records it). This was a silent capability loss:
 nothing failed, the gates just quietly stopped meaning what they used to.
 
+**Phase 3 bundle B — threat pressure. +0.113%, killed on loss, no games and no C
+port.** The four SF 11 threats this eval lacks, and the ones that are about
+*constraint* rather than material, which the existing `threats` concept already
+covers: restricted squares (enemy squares we cover that no enemy pawn holds), a
+safe pawn push that would attack a piece, and squares a knight or slider could
+move to from which it would hit the queen. Screened **against the phase3 stack**,
+which is the honest baseline — the question is what it adds to what we now have.
+
+Tuned to convergence in 55 passes, bounds through zero: `restricted` 3.0→0.9,
+`pawn_push` 12.0→4.2, `slider_on_queen` unmoved, and `knight_on_queen`
+**5.0→18.5** — the one term with real signal, which is chess (a queen with
+several knight-fork squares available is genuinely tied down). But the bundle
+totals 0.113%, ≈+1 Elo.
+
+**The pattern across four bundles is now clean and worth stating:**
+
+| bundle | loss vs its baseline |
+|---|---|
+| D, imbalance & space | 0.967% |
+| A, minor-piece placement | 0.820% |
+| B, threat pressure | 0.113% |
+| C, king safety | 0.117% |
+
+**A and D are the ones that add a dimension the eval did not have** — material
+mix, and where a piece is *permanently* well placed. B and C refine judgements
+the eval already makes (threats; king danger), and refinements of an existing
+term are worth an order of magnitude less than a term that was missing. Useful
+prior for whatever comes after Phase 3: *ask what the evaluation cannot express
+at all, not what it expresses roughly.*
+
 **Phase 3 bundle D — material imbalance and space. +0.967% loss, the best single
 bundle, and the control that nearly killed it was worth running.** Kaufman's
 result, which `material.*` cannot express because it is a per-piece constant that
