@@ -15,6 +15,15 @@
 static U64 FILEBB[8], ADJ_FILES[8];
 static U64 PASSED_FRONT[2][64];
 static U64 LIGHT_SQ;
+/* PAWN_SPAN[c][sq]: where an ENEMY pawn could sit and, by advancing, ever
+ * attack sq -- the adjacent files ahead of sq from the enemy's side. Empty
+ * means the square can never be challenged by a pawn, which is what makes an
+ * outpost an outpost. Note this is adjacent files ONLY, unlike PASSED_FRONT. */
+static U64 PAWN_SPAN[2][64];
+static U64 CENTER_BB, CENTER_FILES_BB, LONG_DIAG_BB;
+/* SPACE_MASK[c]: the central files on that side's 2nd-4th ranks -- the squares
+ * a minor piece wants to be able to reach. */
+static U64 SPACE_MASK[2];
 static int CMD_TBL[64];
 static int e_init_done = 0;
 
@@ -33,6 +42,22 @@ static void eval_init(void){
     }
     LIGHT_SQ=0;
     for(int sq=0; sq<64; sq++){ int r=sq/8,f=sq%8; if((r+f)&1) LIGHT_SQ|=1ULL<<sq; }
+    for(int sq=0; sq<64; sq++){
+        int r=sq/8, f=sq%8; U64 wf=0, bf=0;
+        for(int rr=r+1; rr<8; rr++) wf |= (ADJ_FILES[f] & (0xFFULL<<(rr*8)));
+        for(int rr=r-1; rr>=0; rr--) bf |= (ADJ_FILES[f] & (0xFFULL<<(rr*8)));
+        PAWN_SPAN[WHITE][sq]=wf; PAWN_SPAN[BLACK][sq]=bf;
+    }
+    CENTER_BB = (1ULL<<27)|(1ULL<<28)|(1ULL<<35)|(1ULL<<36);   /* d4 e4 d5 e5 */
+    CENTER_FILES_BB = FILEBB[2]|FILEBB[3]|FILEBB[4]|FILEBB[5];
+    LONG_DIAG_BB = 0;
+    for(int sq=0; sq<64; sq++){ int r=sq/8,f=sq%8; if(f==r||f+r==7) LONG_DIAG_BB|=1ULL<<sq; }
+    {   U64 r234=0, r567=0;
+        for(int r=1;r<=3;r++) r234 |= 0xFFULL<<(r*8);   /* ranks 2-4 */
+        for(int r=4;r<=6;r++) r567 |= 0xFFULL<<(r*8);   /* ranks 5-7 */
+        SPACE_MASK[WHITE]=CENTER_FILES_BB & r234;
+        SPACE_MASK[BLACK]=CENTER_FILES_BB & r567;
+    }
     e_init_done=1;
 }
 
@@ -260,6 +285,75 @@ double eval_core(U64 bb[2][6], int side){
         while(rooks){ int sq=lsb(rooks); rooks&=rooks-1; int f=sq%8;
             if(!(ownp&FILEBB[f])) s += sign*(!(enp&FILEBB[f])?TAP(W_ACT_ROOK_OPEN_MG, W_ACT_ROOK_OPEN_EG):TAP(W_ACT_ROOK_SEMI_MG, W_ACT_ROOK_SEMI_EG));
             if(sq/8==seventh) s += sign*TAP(W_ACT_ROOK_SEVENTH_MG, W_ACT_ROOK_SEVENTH_EG);
+        }
+    }
+
+    /* imbalance and space: what the piece count alone cannot say.
+     * Mirrors engine/concepts/imbalance.py -- colour outer, and within a colour
+     * the order rook_flat, knight_pawns, rook_pawns, rook_pair, knight_pair,
+     * space, so the float sum matches term for term. Sits between activity and
+     * minor pieces because that is where Imbalance() sits in the registry. */
+    for(int c=0;c<2;c++){
+        int sign=c==WHITE?1:-1;
+        int np=popcnt(bb[c][PAWN]), nn=popcnt(bb[c][KNIGHT]), nr=popcnt(bb[c][ROOK]);
+        if(nr) s += sign*TAP(W_IMBALANCE_ROOK_FLAT_MG, W_IMBALANCE_ROOK_FLAT_EG)*nr;
+        if(nn && np!=5) s += sign*TAP(W_IMBALANCE_KNIGHT_PAWNS_MG, W_IMBALANCE_KNIGHT_PAWNS_EG)*nn*(np-5);
+        if(nr && np!=5) s -= sign*TAP(W_IMBALANCE_ROOK_PAWNS_MG, W_IMBALANCE_ROOK_PAWNS_EG)*nr*(np-5);
+        if(nr>=2) s -= sign*TAP(W_IMBALANCE_ROOK_PAIR_MG, W_IMBALANCE_ROOK_PAIR_EG);
+        if(nn>=2) s -= sign*TAP(W_IMBALANCE_KNIGHT_PAIR_MG, W_IMBALANCE_KNIGHT_PAIR_EG);
+        if(phase > 0.4){
+            U64 ownp=bb[c][PAWN];
+            U64 unsafe = c==WHITE ? BPAWN_ATK(bb[BLACK][PAWN]) : WPAWN_ATK(bb[WHITE][PAWN]);
+            U64 safe = SPACE_MASK[c] & ~ownp & ~unsafe;
+            U64 behind = ownp;
+            if(c==WHITE){ behind |= behind>>8; behind |= behind>>16; }
+            else        { behind |= behind<<8; behind |= behind<<16; }
+            /* the defender's whole attack union, king and pawns included */
+            U64 theirs = c==WHITE ? BPAWN_ATK(bb[BLACK][PAWN]) : WPAWN_ATK(bb[WHITE][PAWN]);
+            for(int p=KNIGHT;p<=QUEEN;p++)
+                for(int i=0;i<pna[!c][p];i++) theirs |= pat[!c][p][i];
+            if(bb[!c][KING]) theirs |= KING_ATK[lsb(bb[!c][KING])];
+            int bonus = popcnt(safe) + popcnt(behind & safe & ~theirs);
+            int pieces = popcnt(occ[c]);
+            int weight = pieces-3; if(weight<0) weight=0;
+            if(bonus && weight)
+                s += sign*TAP(W_SPACE_SCALE_MG, W_SPACE_SCALE_EG)*bonus*weight*weight/16.0;
+        }
+    }
+
+    /* minor pieces: outposts, minors behind pawns, bad bishops, long diagonals.
+     * Mirrors engine/concepts/minor_pieces.py — colour, then KNIGHT before
+     * BISHOP, then squares LSB-first, and within a piece: outpost, behind pawn,
+     * bad bishop, long diagonal. Same order, same float sum. */
+    for(int c=0;c<2;c++){
+        int sign=c==WHITE?1:-1;
+        U64 ownp=bb[c][PAWN], enp=bb[!c][PAWN], allp=ownp|enp;
+        U64 pawnatk = c==WHITE ? WPAWN_ATK(ownp) : BPAWN_ATK(ownp);
+        int up = c==WHITE ? 8 : -8;
+        U64 blocked = ownp & (c==WHITE ? (all>>8) : (all<<8));
+        int blocked_centre = popcnt(blocked & CENTER_FILES_BB);
+        for(int p=KNIGHT;p<=BISHOP;p++){
+            U64 x=bb[c][p];
+            while(x){ int sq=lsb(x); x&=x-1;
+                int r=sq/8, f=sq%8;
+                int rel = c==WHITE ? r : 7-r;
+                /* knights only: the tuner drove the bishop outpost weight to
+                 * exactly zero, which is chess -- a short-range piece needs a
+                 * permanent square, a bishop already radiates from anywhere. */
+                if(p==KNIGHT && rel>=3 && rel<=5 && ((pawnatk>>sq)&1) && !(PAWN_SPAN[c][sq]&enp))
+                    s += sign*TAP(W_MINOR_OUTPOST_KNIGHT_MG, W_MINOR_OUTPOST_KNIGHT_EG);
+                int ahead = sq + up;
+                if(rel<4 && ahead>=0 && ahead<64 && ((allp>>ahead)&1))
+                    s += sign*TAP(W_MINOR_BEHIND_PAWN_MG, W_MINOR_BEHIND_PAWN_EG);
+                if(p==BISHOP){
+                    U64 same = ((r+f)&1) ? LIGHT_SQ : ~LIGHT_SQ;
+                    int n = popcnt(ownp & same);
+                    if(n) s -= sign*TAP(W_MINOR_BISHOP_PAWNS_MG, W_MINOR_BISHOP_PAWNS_EG)
+                                    *n*(1+blocked_centre);
+                    if(((LONG_DIAG_BB>>sq)&1) && popcnt(bishop_atk(sq,allp)&CENTER_BB)>1)
+                        s += sign*TAP(W_MINOR_LONG_DIAGONAL_MG, W_MINOR_LONG_DIAGONAL_EG);
+                }
+            }
         }
     }
 
