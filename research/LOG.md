@@ -218,10 +218,35 @@ exists only because three individually-unmeasurable results were accumulated
 instead of each being gated and shrugged at. That is the session's thesis,
 confirmed.
 
-Remaining before the gate: bundle D needs its C mirror (bundle A already has
-one, the taper needs only `gen_eval_data`), then `eval_check` at 0.000000, then
-one external `abgate` with enough games to resolve +23 rather than the 400 slots
-that gave bundle A ±39.
+C mirror completed for all three (`eval_check` 0.000000 over 6204 positions, 88
+tests green), cost **−3.9% NPS / −0.33 average depth** — barely more than bundle
+A alone, so the taper and the imbalance terms are close to free.
+
+### The gate: +15.0 Elo, 95% [−4.1, +34.1]
+
+1600 paired slots against Stockfish 2700 — **four times bundle A's gate**,
+because a CI scales as 1/√n and resolving +23 needed it. Running gates too small
+to see the effect under test is what produced the last three "neutral" verdicts.
+
+| | score vs SF 2700 | Elo vs anchor |
+|---|---|---|
+| baseline (main) | 55.6% (+668 =444 −488) | +39 [+25, +54] |
+| **phase3 stack** | **57.8%** (+681 =486 −433) | +54 [+40, +69] |
+| **paired delta** | — | **+15.0 [−4.1, +34.1]** |
+
+**The prediction was made before the gate and it held.** 2.683% loss at ~8.5
+Elo/% predicted ≈+23 from the evaluation alone; the 3.9% NPS cost is worth
+roughly −8; +23 − 8 ≈ **+15**, which is what came back. A quantitative
+prediction made in advance and confirmed is much better evidence for the
+loss→Elo heuristic than the single calibration point it was built from.
+
+Strictly the interval still contains zero (z ≈ 1.54, one-sided p ≈ 0.06), so by
+the standing rule this is **not yet an acceptance** — and the standing rule also
+says a nomination is confirmed on a second batch. A 1600-slot confirmation on
+shifted openings is running; pooled over 3200 slots the interval narrows to
+about ±13.5, which resolves +15 either way. That is the right amount of patience
+for a result that would be the largest evaluation gain in the project's history
+and the first since Lazy SMP to clear +10.
 
 **Phase 2b — the taper tune, run to convergence. The neutral verdict was on a
 truncated tune.** Same data, same 20k sample, same parameterisation as Phase 2;
