@@ -526,6 +526,11 @@ function renderAnalysis(r){
     $("aPv").textContent=r.pv.join("  ")||"—";
   }
   if(r.score_white!==null&&r.score_white!==undefined) setEvalBar(r.score_white);
+  // Explain the number actually being shown. The score belongs to the position
+  // at the END of the expected line, so breaking down the position on the board
+  // explains something else entirely — it could read a calm +0.2 beside a
+  // reported M1.
+  if(r.breakdown) renderConcepts(r.breakdown,null,r.breakdown_scope||"end of expected line");
   state.bestArrow=r.best; state.secondArrow=r.second; drawArrows();
 }
 

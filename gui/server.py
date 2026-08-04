@@ -103,6 +103,20 @@ def analysis_step(board, max_depth, movetime, use_book):
             pv_san.append(tmp.san(m)); tmp.push(m)
         except Exception:
             break
+    # The score being displayed is the value of the position at the END of the
+    # expected line, not of the position on the board -- the search chose this
+    # move precisely because of what it leads to. Breaking down the CURRENT
+    # position therefore explains the wrong number: it can show a comfortable
+    # +0.2 while the engine reports M1. Evaluate the PV leaf instead, which is
+    # the position the search actually scored.
+    leaf = Engine.static_eval_detailed(tmp)
+    # Show the leaf's static total next to the scope. It will not always equal
+    # the headline score, and that is honest rather than a defect: the search
+    # value comes from the end of QUIESCENCE, which runs past where the
+    # principal variation stops. Displaying both lets the reader see the gap
+    # instead of wondering why a +1.4 breakdown sits under a -0.4 score.
+    scope = (f"end of the expected line ({len(pv_san)} plies) · static "
+             f"{score_string(leaf.total)}" if pv_san else "current position")
     return {
         "book": False,
         "best": move.uci(), "best_san": board.san(move),
@@ -113,6 +127,9 @@ def analysis_step(board, max_depth, movetime, use_book):
         "pv": pv_san, "pv_uci": [m.uci() for m in pv],
         "mate": mate_distance(sc) is not None,
         "done": mate_distance(sc) is not None,
+        "breakdown": leaf.as_dict(),
+        "breakdown_scope": scope,
+        "breakdown_fen": tmp.fen(),
     }
 
 
