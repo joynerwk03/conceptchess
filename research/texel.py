@@ -169,7 +169,7 @@ PRIOR_ENVELOPE = (0.5, 1.6)
 EG_ENVELOPE = (0.4, 2.0)
 
 
-def tune(data_path, passes, sample=0, seed=11, tune_eg=True):
+def tune(data_path, passes, sample=0, seed=11, tune_eg=True, only=None):
     from engine import weights as wmod
     W = wmod.W
     rows = [json.loads(l) for l in open(data_path)]
@@ -190,6 +190,16 @@ def tune(data_path, passes, sample=0, seed=11, tune_eg=True):
     print(f"K={best_k}  baseline loss {best_kl:.6f}")
 
     base = {k: W[k] for k in TUNABLE if k in W}
+    if only:
+        # Isolate a new bundle: hold the settled eval fixed and ask what the new
+        # terms are worth GIVEN it. Tuning everything at once answers a
+        # different question, because the old weights absorb the new terms'
+        # signal and the result no longer says whether the new terms earn their
+        # place. s27 used this to find that bundle A's Stockfish-scaled priors
+        # were ~2x too large and that one of them was worth exactly zero.
+        base = {k: v for k, v in base.items() if any(k.startswith(p) for p in only)}
+        if not base:
+            raise SystemExit(f"--only {only} matched no tunable weight")
     current = dict(base)
     # Endgame partners. They start EQUAL to the middlegame value, which is what
     # W_EG being empty already means, so the first loss evaluation is unchanged.
@@ -273,13 +283,18 @@ def main():
     t.add_argument("--passes", type=int, default=6)
     t.add_argument("--sample", type=int, default=0,
                    help="use at most this many positions (0 = all)")
+    t.add_argument("--only", default="",
+                   help="tune only weights whose key starts with one of "
+                        "these comma-separated prefixes; isolates a new "
+                        "bundle against a frozen eval")
     t.add_argument("--no-eg", action="store_true",
                    help="tune middlegame values only (the pre-tapering behaviour)")
     a = p.parse_args()
     if a.cmd == "gen":
         gen(a.games, a.movetime, a.out)
     else:
-        tune(a.data, a.passes, sample=a.sample, tune_eg=not a.no_eg)
+        tune(a.data, a.passes, sample=a.sample, tune_eg=not a.no_eg,
+             only=[x for x in a.only.split(",") if x])
 
 
 if __name__ == "__main__":
