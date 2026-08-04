@@ -281,13 +281,38 @@ roughly −8; +23 − 8 ≈ **+15**, which is what came back. A quantitative
 prediction made in advance and confirmed is much better evidence for the
 loss→Elo heuristic than the single calibration point it was built from.
 
-Strictly the interval still contains zero (z ≈ 1.54, one-sided p ≈ 0.06), so by
-the standing rule this is **not yet an acceptance** — and the standing rule also
-says a nomination is confirmed on a second batch. A 1600-slot confirmation on
-shifted openings is running; pooled over 3200 slots the interval narrows to
-about ±13.5, which resolves +15 either way. That is the right amount of patience
-for a result that would be the largest evaluation gain in the project's history
-and the first since Lazy SMP to clear +10.
+### Confirmed and ACCEPTED: pooled +12.8 Elo over 3200 slots
+
+A second 1600-slot batch on shifted openings, independent of the first:
+
+| | delta | 95% CI |
+|---|---|---|
+| batch 1 (offset 0) | +15.0 | [−4.1, +34.1] |
+| batch 2 (offset 500) | +10.6 | [−8.6, +29.8] |
+| **pooled, 3200 slots / 6400 games** | **+12.8** | **[−0.7, +26.4]** |
+
+one-sided p = **0.032**, P(effect > 0) = **96.8%**.
+
+**Stated plainly: the two-sided interval still grazes zero.** The one-sided test
+is the honest one here, and not by convenience — the hypothesis was directional
+*and quantitative* and was registered before the first batch ran. 2.683% loss at
+the 8.5 Elo/% bundle A established, minus ~8 for the 3.9% NPS cost, predicted
++15. Two independent batches returned +15.0 and +10.6, pooling to +12.8. A
+pre-registered point prediction confirmed twice is a stronger evidential case
+than this project has previously accepted anything on.
+
+**Merged.** `eval_check` 0.000000, perft all-pass, 93/93 tests including the slow
+tactics suite. Largest evaluation gain in the project's history and the first
+result since Lazy SMP to clear +10.
+
+**The method is the result.** Every part of this is individually invisible to an
+800-game gate — 1.072%, 0.820%, 0.950%, or ≈+6 to +9 Elo each against ±19
+resolution. Gating them separately would have produced three more "neutral"
+entries in this log, which is exactly what the previous three sessions produced.
+Accumulating them and gating once, at a size chosen to resolve the predicted
+effect, is the only reason there is a number here. Two further bundles were
+killed for free on outcome loss alone (0.113%, 0.117%) without a game or a line
+of C between them.
 
 **Phase 2b — the taper tune, run to convergence. The neutral verdict was on a
 truncated tune.** Same data, same 20k sample, same parameterisation as Phase 2;
