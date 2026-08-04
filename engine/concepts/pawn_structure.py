@@ -24,15 +24,24 @@ class PawnStructure:
     display_name = "Pawn structure"
 
     def __init__(self):
-        # (white_pawn_bb, black_pawn_bb) -> (base_score, [(sign, sq, raw_bonus)]).
+        # (white_pawn_bb, black_pawn_bb, phase) -> (base, [(sign, sq, raw, conn)]).
         # Pawn structure only changes on pawn moves/captures, so this hits
-        # nearly always. Phase scaling and blockade checks (which depend on
-        # piece occupancy, not just pawns) are applied outside the cache.
+        # nearly always. Blockade checks (which depend on piece occupancy, not
+        # just pawns) are applied outside the cache.
+        #
+        # `phase` is in the key because `base` is not phase-free: doubled,
+        # isolated, backward and connected are tapered, so the same pawn
+        # skeleton scores differently once the pieces come off. Leaving it out
+        # was correct only while every weight had one value -- it cost 17.7cp
+        # on 101 of 6204 positions the moment W_EG was filled, and only in long
+        # runs, because a single position never collides with itself. It is
+        # ph/24 for an integer ph in 0..24, so this adds at most 25 buckets.
         self._cache = {}
 
     def score(self, ctx):
         board = ctx.board
-        key = (board.pawns & ctx.occupied_co[1], board.pawns & ctx.occupied_co[0])
+        key = (board.pawns & ctx.occupied_co[1], board.pawns & ctx.occupied_co[0],
+               ctx.phase)
         cached = self._cache.get(key)
         if cached is None:
             cached = self._compute(ctx)

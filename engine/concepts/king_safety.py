@@ -14,7 +14,10 @@ class KingSafety:
     display_name = "King safety"
 
     def __init__(self):
-        # (wp_bb, bp_bb, wk_sq, bk_sq) -> phase-free raw penalty.
+        # (wp_bb, bp_bb, wk_sq, bk_sq, phase) -> raw penalty, before the phase
+        # factor score() applies. The raw penalty is no longer phase-free: both
+        # shield_gap and open_file are tapered, so phase belongs in the key.
+        # See the note in pawn_structure.py -- same bug, same fix.
         self._cache = {}
 
     def score(self, ctx):
@@ -23,7 +26,7 @@ class KingSafety:
             return 0.0
         board = ctx.board
         key = (board.pawns & ctx.occupied_co[1], board.pawns & ctx.occupied_co[0],
-               ctx.king_sq[chess.WHITE], ctx.king_sq[chess.BLACK])
+               ctx.king_sq[chess.WHITE], ctx.king_sq[chess.BLACK], phase)
         raw = self._cache.get(key)
         if raw is None:
             raw = self._compute(ctx)

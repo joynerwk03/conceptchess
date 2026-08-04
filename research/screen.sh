@@ -50,7 +50,9 @@ EV=$(cd "$WT" && PYTHONPATH=. "$CC/.venv/bin/python" core/eval_check.py 2>&1 | g
 echo "  $EV"
 case "$EV" in
   *"0.000000"*) : ;;
-  *) echo "!! $NAME: eval no longer mirrors Python -- not a search-only change" >&2 ;;
+  *) echo "!! $NAME: C eval no longer mirrors Python -- ABORTING before any game" >&2
+     echo "!! The screen measures a variant whose explanation is a lie. Fix first." >&2
+     exit 1 ;;
 esac
 
 echo "--- $NAME: SPRT screen vs baseline (H1=+25 Elo), $MT s, max $MAXG games ---"
