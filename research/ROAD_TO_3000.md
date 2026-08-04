@@ -50,6 +50,25 @@ a single change gets there is guessing.
 5. **Three runs, not one.** The pawn hash read +1.06% on one benchmark and
    −1.02% on three.
 
+## Progress against the budget
+
+| lever | budgeted | status |
+|---|---|---|
+| remaining evaluation terms | +30 to +50 | **drawishness: +2.264% loss, gating now** — on its own nearly the size of all of Phase 3 |
+| evaluation speed | ≤ +20, likely ~0 | **spent and empty.** Pawn hash byte-identical and −1.0% NPS; incremental PST killed by a 2.3% struct-copy cost. The ~20 Elo is the measured price of the C==Python invariant and is not recoverable without integer eval |
+| tablebases inside the search | +20 to +40 | **KPK bitbase built and verified exact** (0 mismatches vs Syzygy on 4000 positions). The rest of the 3–5 piece space remains |
+| search pruning / reductions | +0 to +40 | history-scaled LMR screened +13 self-play, gating now |
+| SMP beyond +96 | +10 to +30 | untouched |
+| time management under a clock | +10 to +30 | untouched |
+| opening book | +10 to +20 | untouched |
+
+**A note on how tablebase work should be judged.** KPK is not a heuristic with an
+optimum — it is *exact knowledge*, verified against the authority it was derived
+from. A change that is provably correct and costs no measurable speed does not
+need an Elo gate any more than a bug fix does; the questions are only "is it
+right" (verified) and "what does it cost" (measure NPS). Demanding 1600 games to
+license a fact is how a project spends its time on ceremony.
+
 ## Order of work
 
 1. **History-scaled LMR** (screening now). Search change, so it transfers and
