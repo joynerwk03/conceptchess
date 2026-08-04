@@ -156,6 +156,35 @@ evaluation work. No sudo here, so the official static build now lives in
 `~/bin/stockfish` (`CLAUDE.md` records it). This was a silent capability loss:
 nothing failed, the gates just quietly stopped meaning what they used to.
 
+**Phase 2b — the taper tune, run to convergence. The neutral verdict was on a
+truncated tune.** Same data, same 20k sample, same parameterisation as Phase 2;
+the only change is 40 passes instead of 5.
+
+| | loss | vs baseline 0.091031 |
+|---|---|---|
+| Phase 2 (5 passes) | 0.090336 | 0.763% |
+| **Phase 2b (converged)** | **0.090055** | **1.072%** |
+
+**Convergence alone bought 40% more loss reduction**, and at ~8.5 Elo per 1%
+that is ≈+9 Elo rather than ≈+6.5 — the largest single item measured this
+session. Phase 2 gated +12 self-play [−5, +29] on the truncated weights; the
+converged ones have not been gated, and on the new policy they should not be
+gated alone, because +9 is still under half of what 800 games can resolve.
+
+The endgame ratios read as chess, which is the main reason to believe the fit
+rather than suspect it: queen mobility **2.67×** its middlegame value in the
+endgame, rook mobility 1.85×, rook-on-semi-open-file 2.00×, hanging pieces
+2.12×, passed-pawn blockade 1.88×. A few look like noise and are worth
+distrusting individually — threat-by-minor at 3.33× and threat-by-rook at 0.27×
+move in opposite directions with no chess reason.
+
+**The general lesson, which cost this project a gate:** *a coordinate-descent
+tune that stops while weights are still travelling has reported its step size,
+not an optimum.* Both the 5-pass Phase 2 run and bundle A's 6-pass run did
+exactly that, and both were read as results. `research/bundle_worth.py` and the
+loss screen now print an explicit **NOT CONVERGED** warning naming the weights
+still moving on the last pass.
+
 **Phase 3 bundle C — king safety. Killed by the tuner before any games, and the
 kill is worth more than the bundle would have been.** Three sources fed into the
 existing king-danger `units` accumulator rather than added beside it (s24
