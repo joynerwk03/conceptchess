@@ -167,6 +167,56 @@ evaluation work. No sudo here, so the official static build now lives in
 `~/bin/stockfish` (`CLAUDE.md` records it). This was a silent capability loss:
 nothing failed, the gates just quietly stopped meaning what they used to.
 
+**Endgame scale factors — +2.264% outcome loss, and +29% in real endgames. The
+largest single evaluation result this project has produced.** Four rules, four
+weights, in the multiplicative modifier framework: an extra piece with no pawns
+and too little material to force a win; two knights, which cannot mate; a bishop
+that does not control the promotion square of its own rook pawns; a lone pawn.
+
+These answer a question nothing else in the evaluation asks. Every other term
+says *who is better and by how much*; these say **whether it can be converted**.
+A rook against a bishop with no pawns is +170 of material and a dead draw, and
+no amount of tuning an additive term expresses that, because the correction
+scales whatever the rest of the evaluation concluded.
+
+| positions | loss before | after | change |
+|---|---|---|---|
+| all | 0.088399 | 0.086469 | **+2.183%** |
+| ≤12 pieces | 0.033719 | 0.028566 | **+15.28%** |
+| ≤8 pieces (real endgames) | 0.029966 | 0.021226 | **+29.17%** |
+
+Those are the **hand-set priors**, never fitted to this data — an out-of-sample
+measurement. Tuning moved it only to +2.264%, which is the strongest evidence
+available that the rules are chess and not curve-fitting: the tuner pushed the
+theoretically-drawn cases harder (`no_pawns` 0.2 → 0.05, `wrong_rook_pawn`
+0.1 → 0.05) and left opposite bishops exactly where chess knowledge put it.
+
+**Verified against endgame theory before being believed.** Fifteen named
+classical cases: KB/KN/KNN/KR-vs-KB/KR-vs-KN damped, KBN/KBB/KQ/KQ-vs-KR/KR-vs-K
+untouched, wrong-colour rook-pawn bishop damped and the right-colour one not.
+**0 disagreements.** Two of the three initial flags were errors in *my test's
+labels* (a bishop on g1 is dark, not light); the third was a real gap — two
+knights cannot force mate — and is now handled.
+
+**The methodological finding, which matters beyond this term.**
+`research.firing_rate` reported the new modifier at **0.0%** — the same reading
+it gives the dead `ocb` modifier — and the standing rule says kill anything under
+2%. That reading was an artefact: the tool reads one blunder suite, which is
+middlegame-heavy, and **an endgame term cannot fire on middlegame positions**.
+Measured on real game positions instead, it fires in **5.24% overall, 16.85% of
+positions with ≤8 pieces, and 22.76% with ≤6**. *A firing-rate floor computed on
+the wrong distribution kills exactly the terms that specialise.* The same applies
+to the loss screen: this term is diluted roughly six-fold by middlegames, so
+endgame ideas must be reported per-bucket, not just overall.
+
+It also **supersedes and deletes** `opposite_bishops`: that modifier demanded a
+*pure* bishops-and-pawns ending and fired in 0.0% of real positions. The
+broadened rule covers it as a strict subset.
+
+C mirror written, `eval_check` 0.000000 over 6204 positions on the first build,
+91 tests green including five new ones that pin the behaviour on won versus drawn
+endings — because the one way this modifier could do real harm is damping a win.
+
 **Phase 3 bundle B — threat pressure. +0.113%, killed on loss, no games and no C
 port.** The four SF 11 threats this eval lacks, and the ones that are about
 *constraint* rather than material, which the existing `threats` concept already
