@@ -2,7 +2,7 @@
 
 import chess
 
-from engine.weights import W
+from engine.weights import W, wt
 
 
 class Tempo:
@@ -10,7 +10,7 @@ class Tempo:
     display_name = "Tempo"
 
     def score(self, ctx):
-        return W["tempo"] if ctx.board.turn == chess.WHITE else -W["tempo"]
+        return (wt("tempo", ctx.phase) if ctx.board.turn == chess.WHITE else -wt("tempo", ctx.phase))
 
     def details(self, ctx):
         side = "White" if ctx.board.turn == chess.WHITE else "Black"

@@ -8,7 +8,7 @@ pieces and a penalty for cramped ones.
 
 import chess
 
-from engine.weights import W
+from engine.weights import W, wt
 
 # piece type -> (weight key, typical square count)
 MOBILITY_PARAMS = {
@@ -39,7 +39,7 @@ class Mobility:
             own = occ[color]
             unsafe = self._pawn_attacks(board, not color)
             for pt, (key, typical) in MOBILITY_PARAMS.items():
-                w = W[key]
+                w = wt(key, ctx.phase)
                 for sq in ctx.pieces[color][pt]:
                     n = chess.popcount(attacks[sq] & ~own & ~unsafe)
                     s += sign * w * (n - typical)
@@ -53,7 +53,7 @@ class Mobility:
             own = occ[color]
             unsafe = self._pawn_attacks(board, not color)
             for pt, (key, typical) in MOBILITY_PARAMS.items():
-                w = W[key]
+                w = wt(key, ctx.phase)
                 for sq in ctx.pieces[color][pt]:
                     n = chess.popcount(ctx.attacks[sq] & ~own & ~unsafe)
                     v = sign * w * (n - typical)

@@ -2,10 +2,10 @@
 
 import chess
 
-from engine.weights import W
+from engine.weights import W, wt
 
 # Passed pawn base bonus by rank (from the pawn's own side; rank index 0-7),
-# scaled by W["pawn.passed_scale"].
+# scaled by wt("pawn.passed_scale", ctx.phase).
 PASSED_BONUS = [0, 10, 15, 20, 35, 60, 100, 0]
 
 
@@ -41,12 +41,12 @@ class PawnStructure:
             self._cache[key] = cached
         base, passers = cached
         phase = ctx.phase
-        scale = phase + (1 - phase) * W["pawn.passed_eg_scale"]
+        scale = phase + (1 - phase) * wt("pawn.passed_eg_scale", ctx.phase)
         occupied = ctx.board.occupied
-        blocked_mult = W["pawn.blocked_passer"]
+        blocked_mult = wt("pawn.blocked_passer", ctx.phase)
         # king race: escorting your passer / catching theirs (endgame-scaled;
         # depends on king squares, so applied outside the pawn-keyed cache)
-        kd_w = W["pawn.passer_king_dist"] * (1 - phase)
+        kd_w = wt("pawn.passer_king_dist", ctx.phase) * (1 - phase)
         wk = ctx.board.king(chess.WHITE)
         bk = ctx.board.king(chess.BLACK)
         s = base
@@ -55,16 +55,16 @@ class PawnStructure:
             mult = blocked_mult if (0 <= front <= 63 and (occupied >> front) & 1) else 1.0
             s += raw * mult * scale
             if connected:
-                s += sign * W["pawn.connected_passer"] * mult * scale
+                s += sign * wt("pawn.connected_passer", ctx.phase) * mult * scale
             if kd_w and 0 <= front <= 63:
                 ok, ek = (wk, bk) if sign > 0 else (bk, wk)
                 s += sign * kd_w * (chess.square_distance(ek, front)
                                     - chess.square_distance(ok, front))
             color = sign > 0
             if _rook_behind(board, sign, sq, color):
-                s += sign * W["pawn.rook_behind_passer"] * scale
+                s += sign * wt("pawn.rook_behind_passer", ctx.phase) * scale
             if _rook_behind(board, sign, sq, not color):
-                s -= sign * W["pawn.rook_behind_enemy_passer"] * scale
+                s -= sign * wt("pawn.rook_behind_enemy_passer", ctx.phase) * scale
         return s
 
     def _compute(self, ctx):
@@ -88,22 +88,22 @@ class PawnStructure:
                     continue
                 n = len(ranks)
                 if n > 1:
-                    base -= sign * W["pawn.doubled"] * (n - 1)
+                    base -= sign * wt("pawn.doubled", ctx.phase) * (n - 1)
                 if not ((f > 0 and own[f - 1]) or (f < 7 and own[f + 1])):
-                    base -= sign * W["pawn.isolated"] * n
+                    base -= sign * wt("pawn.isolated", ctx.phase) * n
                 for r in ranks:
                     if is_passed(color, f, r, enemy):
                         rel_rank = r if color == chess.WHITE else 7 - r
                         connected = (f - 1 in pfiles) or (f + 1 in pfiles)
                         passers.append((sign, chess.square(f, r),
-                                        sign * PASSED_BONUS[rel_rank] * W["pawn.passed_scale"],
+                                        sign * PASSED_BONUS[rel_rank] * wt("pawn.passed_scale", ctx.phase),
                                         connected))
         return base, passers
 
     def details(self, ctx):
         items = []
         phase = ctx.phase
-        passed_scale = phase + (1 - phase) * W["pawn.passed_eg_scale"]
+        passed_scale = phase + (1 - phase) * wt("pawn.passed_eg_scale", ctx.phase)
         for color, sign, cname in ((chess.WHITE, 1, "White"), (chess.BLACK, -1, "Black")):
             own = ctx.pawn_files[color]
             enemy = ctx.pawn_files[not color]
@@ -118,27 +118,27 @@ class PawnStructure:
                     continue
                 if len(ranks) > 1:
                     items.append((f"{cname} doubled pawns on {chr(97 + f)}-file",
-                                  -sign * W["pawn.doubled"] * (len(ranks) - 1)))
+                                  -sign * wt("pawn.doubled", ctx.phase) * (len(ranks) - 1)))
                 neighbors = (own[f - 1] if f > 0 else []) + (own[f + 1] if f < 7 else [])
                 if not neighbors:
                     items.append((f"{cname} isolated pawn(s) on {chr(97 + f)}-file",
-                                  -sign * W["pawn.isolated"] * len(ranks)))
+                                  -sign * wt("pawn.isolated", ctx.phase) * len(ranks)))
                 for r in ranks:
                     if self._is_passed(color, f, r, enemy):
                         rel_rank = r if color == chess.WHITE else 7 - r
                         sq = chess.square(f, r)
                         front = sq + 8 if color == chess.WHITE else sq - 8
                         blocked = 0 <= front <= 63 and (ctx.board.occupied >> front) & 1
-                        mult = W["pawn.blocked_passer"] if blocked else 1.0
+                        mult = wt("pawn.blocked_passer", ctx.phase) if blocked else 1.0
                         tag = " (blockaded)" if blocked else ""
                         items.append((f"{cname} passed pawn on {chess.square_name(sq)}{tag}",
                                       sign * PASSED_BONUS[rel_rank] * mult
-                                      * W["pawn.passed_scale"] * passed_scale))
+                                      * wt("pawn.passed_scale", ctx.phase) * passed_scale))
                         if (f - 1 in pfiles) or (f + 1 in pfiles):
                             items.append((f"{cname} connected passer on {chess.square_name(sq)}",
-                                          sign * W["pawn.connected_passer"] * mult * passed_scale))
+                                          sign * wt("pawn.connected_passer", ctx.phase) * mult * passed_scale))
                         # king race (same arithmetic as score(); omit when 0)
-                        kd_w = W["pawn.passer_king_dist"] * (1 - phase)
+                        kd_w = wt("pawn.passer_king_dist", ctx.phase) * (1 - phase)
                         if kd_w and 0 <= front <= 63:
                             wk = ctx.board.king(chess.WHITE)
                             bk = ctx.board.king(chess.BLACK)
@@ -152,10 +152,10 @@ class PawnStructure:
                         col = sign > 0
                         if _rook_behind(ctx.board, sign, sq, col):
                             items.append((f"{cname} rook behind {chess.square_name(sq)} passer",
-                                          sign * W["pawn.rook_behind_passer"] * passed_scale))
+                                          sign * wt("pawn.rook_behind_passer", ctx.phase) * passed_scale))
                         if _rook_behind(ctx.board, sign, sq, not col):
                             items.append((f"Enemy rook behind {cname} {chess.square_name(sq)} passer",
-                                          -sign * W["pawn.rook_behind_enemy_passer"] * passed_scale))
+                                          -sign * wt("pawn.rook_behind_enemy_passer", ctx.phase) * passed_scale))
         return items
 
     @staticmethod

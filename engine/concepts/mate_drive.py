@@ -13,7 +13,7 @@ toward the corner" with the two components.
 
 import chess
 
-from engine.weights import W
+from engine.weights import W, wt
 
 # Center-manhattan distance: 0 at the four central squares, 6 at the corners.
 # Larger = enemy king more cornered = better for the mating side.
@@ -75,8 +75,8 @@ class MateDrive:
                 scale = 1.0 if full else 0.5
                 md = (abs(chess.square_file(lk) - chess.square_file(wk))
                       + abs(chess.square_rank(lk) - chess.square_rank(wk)))
-                corner = W["mate_drive.corner"] * _CMD[lk] * scale
-                kingprox = W["mate_drive.king_prox"] * (14 - md) * scale
+                corner = wt("mate_drive.corner", ctx.phase) * _CMD[lk] * scale
+                kingprox = wt("mate_drive.king_prox", ctx.phase) * (14 - md) * scale
                 return sign, wname, sign * corner, sign * kingprox
         return None
 

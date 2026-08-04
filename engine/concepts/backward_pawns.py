@@ -14,7 +14,7 @@ Summed per pawn in a fixed order so the compiled C eval mirrors it byte-for-byte
 
 import chess
 
-from engine.weights import W
+from engine.weights import W, wt
 
 
 def _pawn_attacks(pawns, color):
@@ -35,7 +35,7 @@ class BackwardPawns:
 
     def _items(self, ctx, labels):
         items = []
-        w = W["pawn.backward"]
+        w = wt("pawn.backward", ctx.phase)
         board = ctx.board
         for color, sign, cname in ((chess.WHITE, 1, "White"), (chess.BLACK, -1, "Black")):
             own = board.pawns & ctx.occupied_co[color]

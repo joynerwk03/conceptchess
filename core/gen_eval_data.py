@@ -9,7 +9,7 @@ Run: .venv/bin/python core/gen_eval_data.py
 
 from pathlib import Path
 
-from engine.weights import W
+from engine.weights import W, W_EG
 from engine.concepts import piece_placement as pp
 from engine.concepts.pawn_structure import PASSED_BONUS
 
@@ -40,10 +40,22 @@ def main():
     parts.append(c_array("PASSED_BONUS", PASSED_BONUS))
     parts.append("")
 
-    # Weights as #defines (identifier-safe names)
-    parts.append("/* weights from engine/weights.py */")
+    # Weights as #defines (identifier-safe names).
+    #
+    # Each one is emitted as a MIDDLEGAME/ENDGAME pair. Where the two are equal
+    # -- which is every key until the tuner fills W_EG -- the TAP() macro in
+    # core/ceval.c compares two compile-time constants, so the compiler folds it
+    # to the plain middlegame value and the generated code is identical to what
+    # it was before tapering existed. Introducing the machinery therefore costs
+    # nothing at all, in speed or in behaviour.
+    parts.append("/* weights from engine/weights.py, as (middlegame, endgame) pairs */")
     for key, val in W.items():
         macro = "W_" + key.replace(".", "_").upper()
+        eg = W_EG.get(key, val)
+        parts.append(f"#define {macro}_MG ({float(val):.6g})")
+        parts.append(f"#define {macro}_EG ({float(eg):.6g})")
+        # Back-compat alias so untapered call sites (material, which feeds SEE)
+        # keep working unchanged.
         parts.append(f"#define {macro} ({float(val):.6g})")
     parts.append("")
     parts.append("#endif")

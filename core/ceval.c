@@ -36,6 +36,14 @@ static void eval_init(void){
     e_init_done=1;
 }
 
+/* A weight at the current game phase. Every weight is emitted by
+ * core/gen_eval_data.py as a (middlegame, endgame) pair; where the two are
+ * equal -- which is all of them until the tuner fills engine/weights.py's W_EG
+ * -- both arguments are the same compile-time constant, so this folds away
+ * entirely and the generated code is what it was before tapering existed.
+ * `phase` is eval_core's local: 1.0 with all the pieces on, 0.0 at bare kings. */
+#define TAP(MG, EG) ((MG) == (EG) ? (MG) : (phase) * (MG) + (1.0 - (phase)) * (EG))
+
 double eval_core(U64 bb[2][6], int side){
     if(!e_init_done) eval_init();
     U64 occ[2];
@@ -73,7 +81,7 @@ double eval_core(U64 bb[2][6], int side){
     for(int p=0;p<5;p++) s += MATV[p]*(popcnt(bb[WHITE][p])-popcnt(bb[BLACK][p]));
 
     /* piece placement (PST) */
-    static const double PSTSCALE[6]={W_PST_PAWN,W_PST_KNIGHT,W_PST_BISHOP,W_PST_ROOK,W_PST_QUEEN,W_PST_KING};
+    static const double PSTSCALE[6]={TAP(W_PST_PAWN_MG, W_PST_PAWN_EG),TAP(W_PST_KNIGHT_MG, W_PST_KNIGHT_EG),TAP(W_PST_BISHOP_MG, W_PST_BISHOP_EG),TAP(W_PST_ROOK_MG, W_PST_ROOK_EG),TAP(W_PST_QUEEN_MG, W_PST_QUEEN_EG),TAP(W_PST_KING_MG, W_PST_KING_EG)};
     for(int c=0;c<2;c++){
         int flip=c==WHITE?0:56, sign=c==WHITE?1:-1;
         for(int p=0;p<6;p++){
@@ -91,8 +99,8 @@ double eval_core(U64 bb[2][6], int side){
     }
 
     /* pawn structure */
-    double passed_scale = phase + (1-phase)*W_PAWN_PASSED_EG_SCALE;
-    double kd_w = W_PAWN_PASSER_KING_DIST*(1-phase);  /* king race, endgame-scaled */
+    double passed_scale = phase + (1-phase)*TAP(W_PAWN_PASSED_EG_SCALE_MG, W_PAWN_PASSED_EG_SCALE_EG);
+    double kd_w = TAP(W_PAWN_PASSER_KING_DIST_MG, W_PAWN_PASSER_KING_DIST_EG)*(1-phase);  /* king race, endgame-scaled */
     for(int c=0;c<2;c++){
         int sign=c==WHITE?1:-1;
         U64 ownp=bb[c][PAWN], enp=bb[!c][PAWN];
@@ -103,16 +111,16 @@ double eval_core(U64 bb[2][6], int side){
         for(int f=0; f<8; f++){
             U64 onfile=ownp&FILEBB[f]; int cnt=popcnt(onfile);
             if(!cnt) continue;
-            if(cnt>1) s -= sign*W_PAWN_DOUBLED*(cnt-1);
-            if(!(ownp&ADJ_FILES[f])) s -= sign*W_PAWN_ISOLATED*cnt;
+            if(cnt>1) s -= sign*TAP(W_PAWN_DOUBLED_MG, W_PAWN_DOUBLED_EG)*(cnt-1);
+            if(!(ownp&ADJ_FILES[f])) s -= sign*TAP(W_PAWN_ISOLATED_MG, W_PAWN_ISOLATED_EG)*cnt;
             U64 x=onfile;
             while(x){ int sq=lsb(x); x&=x-1;
                 if(!(enp&PASSED_FRONT[c][sq])){
                     int r=sq/8, rel=c==WHITE?r:7-r, front=c==WHITE?sq+8:sq-8;
-                    double mult=(front>=0&&front<64&&(all&(1ULL<<front)))?W_PAWN_BLOCKED_PASSER:1.0;
-                    s += sign*PASSED_BONUS[rel]*W_PAWN_PASSED_SCALE*mult*passed_scale;
+                    double mult=(front>=0&&front<64&&(all&(1ULL<<front)))?TAP(W_PAWN_BLOCKED_PASSER_MG, W_PAWN_BLOCKED_PASSER_EG):1.0;
+                    s += sign*PASSED_BONUS[rel]*TAP(W_PAWN_PASSED_SCALE_MG, W_PAWN_PASSED_SCALE_EG)*mult*passed_scale;
                     if(passers&ADJ_FILES[f])
-                        s += sign*W_PAWN_CONNECTED_PASSER*mult*passed_scale;
+                        s += sign*TAP(W_PAWN_CONNECTED_PASSER_MG, W_PAWN_CONNECTED_PASSER_EG)*mult*passed_scale;
                     if(kd_w!=0.0 && front>=0 && front<64){
                         /* mirror of pawn_structure.py: escort your passer /
                          * catch theirs (Chebyshev distance to the front sq) */
@@ -127,8 +135,8 @@ double eval_core(U64 bb[2][6], int side){
                     /* rook behind the passer (Tarrasch); mirrors pawn_structure._rook_behind:
                      * own rook supports (bonus), enemy rook attacks it from behind (penalty) */
                     { U64 behind = c==WHITE ? ((1ULL<<(r*8))-1) : ~((1ULL<<((r+1)*8))-1);
-                      if((bb[c][ROOK]&FILEBB[f]) & behind)  s += sign*W_PAWN_ROOK_BEHIND_PASSER*passed_scale;
-                      if((bb[!c][ROOK]&FILEBB[f]) & behind) s -= sign*W_PAWN_ROOK_BEHIND_ENEMY_PASSER*passed_scale; }
+                      if((bb[c][ROOK]&FILEBB[f]) & behind)  s += sign*TAP(W_PAWN_ROOK_BEHIND_PASSER_MG, W_PAWN_ROOK_BEHIND_PASSER_EG)*passed_scale;
+                      if((bb[!c][ROOK]&FILEBB[f]) & behind) s -= sign*TAP(W_PAWN_ROOK_BEHIND_ENEMY_PASSER_MG, W_PAWN_ROOK_BEHIND_ENEMY_PASSER_EG)*passed_scale; }
                 }
             }
         }
@@ -154,7 +162,7 @@ double eval_core(U64 bb[2][6], int side){
             if(stop<0||stop>63) continue;
             if(!(enemy_atk & (1ULL<<stop))) continue;  /* can advance safely */
             int half_open = !(enemy & FILEBB[f]);
-            s -= sign * W_PAWN_BACKWARD * (half_open?2:1);
+            s -= sign * TAP(W_PAWN_BACKWARD_MG, W_PAWN_BACKWARD_EG) * (half_open?2:1);
         }
     }
 
@@ -172,7 +180,7 @@ double eval_core(U64 bb[2][6], int side){
                 if(own & (1ULL<<(r*8+af))) conn=1;                          /* phalanx */
                 if(back>=0 && back<8 && (own & (1ULL<<(back*8+af)))) conn=1; /* supported */
             }
-            if(conn) s += sign * W_PAWN_CONNECTED * adv;
+            if(conn) s += sign * TAP(W_PAWN_CONNECTED_MG, W_PAWN_CONNECTED_EG) * adv;
         }
     }
 
@@ -191,7 +199,7 @@ double eval_core(U64 bb[2][6], int side){
                 if(!shielded) missing++;
                 if(!(ownp&FILEBB[f]) && !(enp&FILEBB[f])) openf++;
             }
-            s -= sign*(W_KING_SHIELD_GAP*missing + W_KING_OPEN_FILE*openf)*phase;
+            s -= sign*(TAP(W_KING_SHIELD_GAP_MG, W_KING_SHIELD_GAP_EG)*missing + TAP(W_KING_OPEN_FILE_MG, W_KING_OPEN_FILE_EG)*openf)*phase;
         }
     }
 
@@ -207,7 +215,7 @@ double eval_core(U64 bb[2][6], int side){
                     int hits=popcnt(pat[c][p][i]&zone);
                     if(hits){ units+=UNIT[p]*hits; attackers++; }
                 }
-            if(attackers>=2) s += sign*W_KATTACK_SCALE*units*units/10.0*phase;
+            if(attackers>=2) s += sign*TAP(W_KATTACK_SCALE_MG, W_KATTACK_SCALE_EG)*units*units/10.0*phase;
             /* proximity gradient (mirrors king_attack.py): pieces closing in
              * on the king matter before they attack the zone */
             int prox=0;
@@ -220,12 +228,12 @@ double eval_core(U64 bb[2][6], int side){
                     if(d<4) prox += UNIT[p]*(4-d);
                 }
             }
-            if(prox) s += sign*W_KATTACK_PROXIMITY*prox*phase;
+            if(prox) s += sign*TAP(W_KATTACK_PROXIMITY_MG, W_KATTACK_PROXIMITY_EG)*prox*phase;
         }
     }
 
     /* mobility (safe squares) */
-    double MOBW[6]={0,W_MOB_KNIGHT,W_MOB_BISHOP,W_MOB_ROOK,W_MOB_QUEEN,0};
+    double MOBW[6]={0,TAP(W_MOB_KNIGHT_MG, W_MOB_KNIGHT_EG),TAP(W_MOB_BISHOP_MG, W_MOB_BISHOP_EG),TAP(W_MOB_ROOK_MG, W_MOB_ROOK_EG),TAP(W_MOB_QUEEN_MG, W_MOB_QUEEN_EG),0};
     static const int TYP[6]={0,4,6,7,13,0};
     for(int c=0;c<2;c++){
         int sign=c==WHITE?1:-1; U64 own=occ[c];
@@ -240,17 +248,17 @@ double eval_core(U64 bb[2][6], int side){
     /* piece activity */
     for(int c=0;c<2;c++){
         int sign=c==WHITE?1:-1;
-        if(popcnt(bb[c][BISHOP])>=2) s += sign*W_ACT_BISHOP_PAIR;
+        if(popcnt(bb[c][BISHOP])>=2) s += sign*TAP(W_ACT_BISHOP_PAIR_MG, W_ACT_BISHOP_PAIR_EG);
         U64 ownp=bb[c][PAWN], enp=bb[!c][PAWN];
         int seventh=c==WHITE?6:1; U64 rooks=bb[c][ROOK];
         while(rooks){ int sq=lsb(rooks); rooks&=rooks-1; int f=sq%8;
-            if(!(ownp&FILEBB[f])) s += sign*(!(enp&FILEBB[f])?W_ACT_ROOK_OPEN:W_ACT_ROOK_SEMI);
-            if(sq/8==seventh) s += sign*W_ACT_ROOK_SEVENTH;
+            if(!(ownp&FILEBB[f])) s += sign*(!(enp&FILEBB[f])?TAP(W_ACT_ROOK_OPEN_MG, W_ACT_ROOK_OPEN_EG):TAP(W_ACT_ROOK_SEMI_MG, W_ACT_ROOK_SEMI_EG));
+            if(sq/8==seventh) s += sign*TAP(W_ACT_ROOK_SEVENTH_MG, W_ACT_ROOK_SEVENTH_EG);
         }
     }
 
     /* tempo */
-    s += (side==WHITE?1:-1)*W_TEMPO;
+    s += (side==WHITE?1:-1)*TAP(W_TEMPO_MG, W_TEMPO_EG);
 
     /* threats: pieces pressured by a lower-value attacker, plus hanging pieces.
      * Mirrors engine/concepts/threats.py — per enemy piece, add the pawn / minor
@@ -271,8 +279,8 @@ double eval_core(U64 bb[2][6], int side){
         for(int c=0;c<2;c++){
             int sign=c==WHITE?1:-1;
             /* the side to move can execute its threats now, so scale them up */
-            double w = (c==side) ? (1.0+W_THREAT_INITIATIVE) : 1.0;
-            double wp=W_THREAT_PAWN*w, wm=W_THREAT_MINOR*w, wr=W_THREAT_ROOK*w, wh=W_THREAT_HANGING*w;
+            double w = (c==side) ? (1.0+TAP(W_THREAT_INITIATIVE_MG, W_THREAT_INITIATIVE_EG)) : 1.0;
+            double wp=TAP(W_THREAT_PAWN_MG, W_THREAT_PAWN_EG)*w, wm=TAP(W_THREAT_MINOR_MG, W_THREAT_MINOR_EG)*w, wr=TAP(W_THREAT_ROOK_MG, W_THREAT_ROOK_EG)*w, wh=TAP(W_THREAT_HANGING_MG, W_THREAT_HANGING_EG)*w;
             for(int p=0;p<5;p++){            /* PAWN..QUEEN (0-indexed here) */
                 U64 x=bb[!c][p];
                 while(x){ int sq=lsb(x); x&=x-1; U64 m=1ULL<<sq;
@@ -305,7 +313,7 @@ double eval_core(U64 bb[2][6], int side){
         double scale=full?1.0:0.5;
         int lk=lsb(bb[lose][KING]), wk=lsb(bb[win][KING]);
         int md=abs((lk%8)-(wk%8))+abs((lk/8)-(wk/8));
-        s += sign*(W_MATE_DRIVE_CORNER*CMD_TBL[lk]*scale + W_MATE_DRIVE_KING_PROX*(14-md)*scale);
+        s += sign*(TAP(W_MATE_DRIVE_CORNER_MG, W_MATE_DRIVE_CORNER_EG)*CMD_TBL[lk]*scale + TAP(W_MATE_DRIVE_KING_PROX_MG, W_MATE_DRIVE_KING_PROX_EG)*(14-md)*scale);
     }
 
     /* opposite-colored-bishop drawishness (multiplicative modifier; mirrors

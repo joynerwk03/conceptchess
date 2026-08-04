@@ -13,7 +13,7 @@ this sum byte-for-byte.
 
 import chess
 
-from engine.weights import W
+from engine.weights import W, wt
 
 _VALUE = {chess.PAWN: 100, chess.KNIGHT: 320, chess.BISHOP: 330,
           chess.ROOK: 500, chess.QUEEN: 900}
@@ -37,9 +37,11 @@ class Threats:
 
     def _items(self, ctx, labels):
         items = []
-        w_pawn, w_minor = W["threat.pawn"], W["threat.minor"]
-        w_rook, w_hang = W["threat.rook"], W["threat.hanging"]
-        init = W["threat.initiative"]
+        w_pawn = wt("threat.pawn", ctx.phase)
+        w_minor = wt("threat.minor", ctx.phase)
+        w_rook = wt("threat.rook", ctx.phase)
+        w_hang = wt("threat.hanging", ctx.phase)
+        init = wt("threat.initiative", ctx.phase)
         board = ctx.board
         attacked_by = ctx.attacked_by
         for color, sign, cname in ((chess.WHITE, 1, "Black"), (chess.BLACK, -1, "White")):

@@ -7,7 +7,7 @@ Scaled by phase — attacks need material on the board.
 
 import chess
 
-from engine.weights import W
+from engine.weights import W, wt
 
 _UNIT = {chess.KNIGHT: 2, chess.BISHOP: 2, chess.ROOK: 3, chess.QUEEN: 5}
 
@@ -28,7 +28,7 @@ class KingAttack:
         if phase < 0.05:
             return items
         board = ctx.board
-        scale = W["kattack.scale"]
+        scale = wt("kattack.scale", ctx.phase)
         for color, sign, cname in ((chess.WHITE, 1, "White"), (chess.BLACK, -1, "Black")):
             ksq = ctx.king_sq[not color]
             if ksq is None:
@@ -59,7 +59,7 @@ class KingAttack:
                     if d < 4:
                         prox += w * (4 - d)
             if prox:
-                pv = sign * W["kattack.proximity"] * prox * phase
+                pv = sign * wt("kattack.proximity", ctx.phase) * prox * phase
                 if labels:
                     items.append((f"{cname} pieces near the enemy king "
                                   f"({prox} closeness units)", pv))

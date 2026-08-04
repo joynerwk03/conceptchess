@@ -6,7 +6,7 @@ not in a pawn endgame.
 
 import chess
 
-from engine.weights import W
+from engine.weights import W, wt
 
 
 class KingSafety:
@@ -55,7 +55,7 @@ class KingSafety:
                     missing += 1
                 if not own[f] and not enemy[f]:
                     open_files += 1
-            raw -= sign * (W["king.shield_gap"] * missing + W["king.open_file"] * open_files)
+            raw -= sign * (wt("king.shield_gap", ctx.phase) * missing + wt("king.open_file", ctx.phase) * open_files)
         return raw
 
     def details(self, ctx):
@@ -86,8 +86,8 @@ class KingSafety:
                     open_files += 1
             if missing:
                 items.append((f"{cname} king shield gaps ({missing})",
-                              -sign * W["king.shield_gap"] * missing * phase))
+                              -sign * wt("king.shield_gap", ctx.phase) * missing * phase))
             if open_files:
                 items.append((f"Open file(s) near {cname} king ({open_files})",
-                              -sign * W["king.open_file"] * open_files * phase))
+                              -sign * wt("king.open_file", ctx.phase) * open_files * phase))
         return items

@@ -66,3 +66,38 @@ W = {
     # tempo
     "tempo": 10,
 }
+
+
+# ---------------------------------------------------------------------------
+# Endgame counterparts.
+#
+# Every weight above is conceptually a MIDDLEGAME value. In every strong
+# classical engine each term is really a (middlegame, endgame) PAIR -- a rook on
+# the seventh is not worth the same with queens on the board as it is in a pawn
+# ending, and Stockfish 11 carries two numbers for literally every term. This
+# engine tapers only the pawn and king piece-square tables, so the evaluation has
+# roughly half the descriptive capacity it could have, and the Texel tuner has
+# been converging against that limit for three sessions.
+#
+# W_EG holds the ENDGAME value for keys where it differs from the middlegame one.
+# A key absent from this dict means "the same in both phases", and wt() then
+# returns the middlegame number completely unchanged.
+#
+# It starts EMPTY on purpose. With no entries the evaluation is bit-for-bit what
+# it was before this machinery existed, so introducing it is a provable no-op
+# that can be validated without playing a single game -- and tuning can then fill
+# it in one key at a time.
+#
+# material.* is deliberately NOT taperable: those values feed piece_value(),
+# which SEE uses for static exchange arithmetic, and a phase-dependent piece
+# value would change what "winning a trade" means inside the search.
+W_EG: dict[str, float] = {}
+
+
+def wt(key, phase):
+    """Weight at this game phase (1.0 = opening, 0.0 = bare kings)."""
+    mg = W[key]
+    eg = W_EG.get(key)
+    if eg is None or eg == mg:
+        return mg
+    return phase * mg + (1.0 - phase) * eg
