@@ -117,10 +117,35 @@ diagonal from anywhere safe. Term removed from both languages.
 **Re-screened tuned: +240 =358 −202 (52.4%), paired +17 Elo, 95% [−0, +33]** over
 the full 800 games. Calibration alone moved the bundle **+31 Elo**.
 
-That nominates, it does not accept — self-play overstates eval changes. The
-external gate against Stockfish 2700 is running as this is written; **the
-external number decides**, and it is the first external gate ever run on this
-machine (see below).
+**External verdict: +7.2 Elo, 95% [−31.6, +46.1] — not distinguishable from
+zero.** 400 paired slots against Stockfish 2700, identical openings and colours:
+
+| | score vs SF 2700 | Elo vs anchor |
+|---|---|---|
+| baseline | 59.1% (+181 =111 −108) | **+64 [+35, +94]** |
+| bundle A | 60.1% (+186 =109 −105) | +71 [+42, +101] |
+| paired delta | — | **+7.2 [−31.6, +46.1]** |
+
+Self-play said +17, external says +7. That is s24's finding reproducing exactly:
+self-play flatters eval changes. And the bundle costs **−3.2% NPS** (1,292,536 →
+1,251,440) and −0.16 average depth, so a +7 evaluation gain is roughly paying for
+its own speed. Net: a wash, with an interval spanning both signs.
+
+**Not accepted — and not discarded either.** SCHEDULE.md predicted this exact
+outcome in its opening argument: an 800-game gate resolves ±19 Elo, SF 11's
+individual terms are worth 5–20 each, so *a single bundle is below the
+measurement floor by construction*. Rejecting everything under the floor means
+never accumulating anything; merging on a non-significant positive is precisely
+the s24 mistake. So bundle A now lives on a long-lived **`phase3` branch** that
+accumulates bundles, to be gated externally **once**, with enough games to
+resolve the sum. Main stays measured.
+
+**Free by-product: the first external anchor ever measured on this machine.**
+The baseline arm puts the engine at **+64 [+35, +94] over Stockfish 2700 ≈ 2764
+single-threaded** — which independently corroborates the inherited MacBook figure
+of 2743 [2717, 2769] on different hardware and a different Stockfish (18 vs
+whatever brew had). Worth having: the standing number had been an assumption
+since the machine move, and it turns out to have been a sound one.
 
 **Stockfish was not installed on the PC.** Every external number this project
 owns — 2743 single-thread [2717,2769], ~2840 as played — was measured on the
