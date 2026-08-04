@@ -156,6 +156,73 @@ evaluation work. No sudo here, so the official static build now lives in
 `~/bin/stockfish` (`CLAUDE.md` records it). This was a silent capability loss:
 nothing failed, the gates just quietly stopped meaning what they used to.
 
+**Phase 3 bundle D — material imbalance and space. +0.967% loss, the best single
+bundle, and the control that nearly killed it was worth running.** Kaufman's
+result, which `material.*` cannot express because it is a per-piece constant that
+SEE also reads: a knight gains value as pawns stay on, a rook loses value as
+pawns stay on, and a second rook duplicates the first's work. Plus space —
+safe central squares to manoeuvre into, weighted by how many pieces still need
+somewhere to go.
+
+**Python only, deliberately.** With loss as the screen, a bundle needs no C
+mirror to be measured, and earns one by clearing the screen first. Bundle C cost
+a full two-language implementation to discover it was worth 0.117%.
+
+First screen gave +0.738%, and the weights were pinned at their bounds, so the
+bounds were widened (and made **symmetric about zero** — for a new term the sign
+is exactly what is unknown, and a "penalty" prior that is really a bonus cannot
+be found in a one-sided interval). That gave +0.839% with `rook_pawns` at 12.0
+and `rook_pair` at 24.6, both still climbing — **roughly double the literature
+values**, which is the signature of a tuner exploiting something rather than
+learning chess.
+
+The suspicion: `rook_pawns × (pawns − 5)` has a *constant* component whenever the
+mean pawn count is not five, so a tuner with no other way to reprice a rook —
+`material.*` is frozen — could drive it large simply because the rook is
+mispriced at a flat 500, and it would look like it had rediscovered Kaufman. Two
+runs settled it:
+
+| | loss vs baseline |
+|---|---|
+| bundle D, no flat-rook control | +0.839% |
+| bundle D **+ flat-rook control** | **+0.967%** |
+| **flat rook adjustment ALONE** | **+0.029%** |
+
+The control **cleared** the bundle instead of condemning it. A flat rook
+correction on its own is worth nothing (+0.029%, converged at −11cp), so the gain
+really is the *interactions*. And giving the tuner the honest flat term pulled
+`rook_pair` from 24.6 down to **10.2** — right on Kaufman's ~12, arrived at
+independently. That is the strongest evidence in this whole session that the
+tuner is learning chess rather than fitting noise.
+
+---
+
+## **The stack: 2.683%, and finally above the measurement floor**
+
+Three things this session each measured as real but individually invisible.
+Assembled on the `phase3` branch and measured together against untouched main,
+same 20k sample, K fitted on the baseline and held for both:
+
+| | loss reduction |
+|---|---|
+| converged taper (Phase 2b) | 1.072% |
+| bundle A, minor-piece placement | 0.820% |
+| bundle D, imbalance + space | 0.950% |
+| *sum if independent* | *2.842%* |
+| **stack, measured together** | **2.683%** |
+
+**Only 6% of the effect is shared** — they really are describing different
+things. At ~8.5 Elo per 1% that is **≈ +23 Elo**, and an 800-game gate resolves
+±19. **This is the first Phase 3 artefact big enough for games to see**, and it
+exists only because three individually-unmeasurable results were accumulated
+instead of each being gated and shrugged at. That is the session's thesis,
+confirmed.
+
+Remaining before the gate: bundle D needs its C mirror (bundle A already has
+one, the taper needs only `gen_eval_data`), then `eval_check` at 0.000000, then
+one external `abgate` with enough games to resolve +23 rather than the 400 slots
+that gave bundle A ±39.
+
 **Phase 2b — the taper tune, run to convergence. The neutral verdict was on a
 truncated tune.** Same data, same 20k sample, same parameterisation as Phase 2;
 the only change is 40 passes instead of 5.
