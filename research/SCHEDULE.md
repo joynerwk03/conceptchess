@@ -99,3 +99,9 @@ otherwise is selling something.
 - Eval changes need `research.abgate` (external) — self-play does not transfer.
 - Prefer changes whose validation needs **no games**: byte-identical refactors,
   provable no-ops, correctness fixes.
+- **A change validated as a no-op has not been validated.** Phase 1 passed
+  `eval_check` at 0.000000 with byte-identical node counts and still shipped a
+  build break, a 17.7cp cache bug and a silent rounding loss — because every
+  path it exercised had `mg == eg`. Before shipping capacity that nothing uses
+  yet, do one throwaway build with the capacity *actually used* and run the
+  same checks. See the 2026-08-04 LOG entry.

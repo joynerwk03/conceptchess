@@ -1,5 +1,94 @@
 ---
 
+## 2026-08-04 — Session 27: what Phase 2 found before it found any Elo
+
+Phase 2 of `research/SCHEDULE.md` was meant to be a tuning run. Filling `W_EG`
+for the first time instead exposed **three latent defects in the Phase 1
+machinery that a no-op change is structurally incapable of testing**, plus a
+research-harness rule that let a broken variant reach a gate. All four are
+fixed and committed. Worth its own entry, because the pattern generalises.
+
+**The pattern: a no-op proof only exercises the no-op.** Phase 1 was validated
+exactly as the standing rules ask — `eval_check` 0.000000, fixed-depth node
+counts byte-identical (2,666,298). That proof was real, and it was worthless
+for everything the feature exists to do, because every code path it exercised
+had `mg == eg`. Three separate bugs were sitting behind that condition.
+
+**1. `TAP` in a `static` initialiser (build break).** `#define TAP(MG,EG)
+((MG)==(EG) ? (MG) : phase*(MG)+(1-phase)*(EG))` reads `phase`, a runtime local.
+With equal arguments gcc folds the ternary to a constant, so
+`static const double PSTSCALE[6] = {TAP(...), ...}` compiled. With one distinct
+endgame value it does not fold, and the file stops compiling — six
+"initializer element is not constant" errors, before a single game. `PSTSCALE`
+is now a plain local; node count 455,507 before and after.
+
+**2. Phase-blind concept caches (17.7cp, and the interesting one).**
+`eval_check` went 0.000000 → **17.702383 on 101 of 6204 positions**. The endgame
+values were not at fault: checked one position at a time, C and Python agreed to
+5e-5. The fault was experiment 3 from the very first session — the pawn-keyed
+caches in `PawnStructure` and `KingSafety`, worth 51.4k → 55.1k NPS at the time,
+keyed on `(white_pawns, black_pawns[, king squares])`. The cached part was
+genuinely phase-free *until tapering*; doubled, isolated, backward, connected,
+shield_gap and open_file all read the phase once a weight has two values. So a
+position could inherit a score computed at someone else's phase.
+
+**Why it hid, and why that matters more than the bug:** a position never
+collides with itself. Every single-position check said the eval was fine. Only a
+6204-position sweep in one process disagreed — and my first instinct was to
+distrust the sweep, because the isolated re-check "proved" it wrong. *A bug
+whose reproduction depends on evaluation order will always look like a flaky
+harness.* `tests/test_taper_cache.py` now reproduces it deliberately: same pawns,
+same kings, two phases, and an **asymmetric** skeleton — the first version of
+that test passed on the broken code because a symmetric structure makes every
+tapered term cancel between the colours. It fails by 39.7cp on the old keys.
+
+Phase belongs in the key: it is `ph/24` for integer `ph` in 0..24, so this costs
+at most 25 buckets. The C eval never had the bug — it recomputes every call — so
+the fix was to make Python agree with C, not the reverse.
+
+**3. The generator quietly rounded (9e-5).** Weights crossed into C via `%g`:
+six *significant digits*. Every weight the engine has ever shipped was a short
+decimal, so this was exact and the invariant looked airtight. The tuner emits six
+*decimal places*, and `3.481958` lost its last digit. Now `.17g`, which
+round-trips an IEEE double exactly. On today's weights it only respells them
+(`0.5125` → `0.51249999999999996` is the same double); node count 455,507
+unchanged.
+
+**4. `screen.sh` played 800 games on a variant it knew was unfaithful.** It
+printed a warning and continued. That is the wrong default for this project:
+if the C eval and the Python eval disagree, the variant's explanation is a lie
+and its Elo is not worth measuring. It now exits before the first game. It also
+grepped for a literal `"0.000000"` instead of reading `eval_check`'s exit
+status, and so rejected a variant that was correct to 9e-5 — it now defers to
+the exit code, which already encodes the project's 0.05cp tolerance.
+
+**Rule added, and it is the durable output of this session:** *a change
+validated as a no-op has not been validated. Before shipping capacity that
+nothing uses yet, run one throwaway build with the capacity actually used.* Ten
+minutes of that would have caught all three of the above; instead they surfaced
+one at a time across four failed gate launches.
+
+**Tuner (committed).** `research.texel` now fits endgame partners alongside
+middlegame values — one flat `("mg"|"eg", key)` parameter list, partners
+initialised equal so the fit strictly extends the old one, wide endgame envelope
+(0.4×–2.0×) because the point of tapering is that phases differ a lot, and only
+partners that actually moved are written. On 20k positions from `texel5.jsonl`,
+5 passes:
+
+| parameterisation | loss | vs baseline |
+|---|---|---|
+| baseline (untuned) | 0.091031 | — |
+| middlegame only | 0.090711 | 0.351% |
+| middlegame + endgame | **0.090336** | **0.763%** |
+
+Tapering supplied **54%** of the total reduction, and **29 of 31** weights wanted
+a different endgame value, with ratios that read like chess rather than noise:
+queen mobility 1.67× in the endgame, passed pawns 1.63×, hanging 2.12×, doubled
+pawns 0.62×. Loss is not Elo — s23's full retune improved loss 0.57% and gated
+NEUTRAL (+3) — so this earns the bundle a gate, it does not settle it.
+
+---
+
 ## 2026-08-02 — Session 26: use the cores you have; instruments for finding the leak
 
 **Lazy SMP thread default: physical cores, not a hardcoded 8 — ACCEPTED.**
