@@ -21,6 +21,9 @@ static U64 LIGHT_SQ;
  * outpost an outpost. Note this is adjacent files ONLY, unlike PASSED_FRONT. */
 static U64 PAWN_SPAN[2][64];
 static U64 CENTER_BB, CENTER_FILES_BB, LONG_DIAG_BB;
+/* SPACE_MASK[c]: the central files on that side's 2nd-4th ranks -- the squares
+ * a minor piece wants to be able to reach. */
+static U64 SPACE_MASK[2];
 static int CMD_TBL[64];
 static int e_init_done = 0;
 
@@ -49,6 +52,12 @@ static void eval_init(void){
     CENTER_FILES_BB = FILEBB[2]|FILEBB[3]|FILEBB[4]|FILEBB[5];
     LONG_DIAG_BB = 0;
     for(int sq=0; sq<64; sq++){ int r=sq/8,f=sq%8; if(f==r||f+r==7) LONG_DIAG_BB|=1ULL<<sq; }
+    {   U64 r234=0, r567=0;
+        for(int r=1;r<=3;r++) r234 |= 0xFFULL<<(r*8);   /* ranks 2-4 */
+        for(int r=4;r<=6;r++) r567 |= 0xFFULL<<(r*8);   /* ranks 5-7 */
+        SPACE_MASK[WHITE]=CENTER_FILES_BB & r234;
+        SPACE_MASK[BLACK]=CENTER_FILES_BB & r567;
+    }
     e_init_done=1;
 }
 
@@ -276,6 +285,39 @@ double eval_core(U64 bb[2][6], int side){
         while(rooks){ int sq=lsb(rooks); rooks&=rooks-1; int f=sq%8;
             if(!(ownp&FILEBB[f])) s += sign*(!(enp&FILEBB[f])?TAP(W_ACT_ROOK_OPEN_MG, W_ACT_ROOK_OPEN_EG):TAP(W_ACT_ROOK_SEMI_MG, W_ACT_ROOK_SEMI_EG));
             if(sq/8==seventh) s += sign*TAP(W_ACT_ROOK_SEVENTH_MG, W_ACT_ROOK_SEVENTH_EG);
+        }
+    }
+
+    /* imbalance and space: what the piece count alone cannot say.
+     * Mirrors engine/concepts/imbalance.py -- colour outer, and within a colour
+     * the order rook_flat, knight_pawns, rook_pawns, rook_pair, knight_pair,
+     * space, so the float sum matches term for term. Sits between activity and
+     * minor pieces because that is where Imbalance() sits in the registry. */
+    for(int c=0;c<2;c++){
+        int sign=c==WHITE?1:-1;
+        int np=popcnt(bb[c][PAWN]), nn=popcnt(bb[c][KNIGHT]), nr=popcnt(bb[c][ROOK]);
+        if(nr) s += sign*TAP(W_IMBALANCE_ROOK_FLAT_MG, W_IMBALANCE_ROOK_FLAT_EG)*nr;
+        if(nn && np!=5) s += sign*TAP(W_IMBALANCE_KNIGHT_PAWNS_MG, W_IMBALANCE_KNIGHT_PAWNS_EG)*nn*(np-5);
+        if(nr && np!=5) s -= sign*TAP(W_IMBALANCE_ROOK_PAWNS_MG, W_IMBALANCE_ROOK_PAWNS_EG)*nr*(np-5);
+        if(nr>=2) s -= sign*TAP(W_IMBALANCE_ROOK_PAIR_MG, W_IMBALANCE_ROOK_PAIR_EG);
+        if(nn>=2) s -= sign*TAP(W_IMBALANCE_KNIGHT_PAIR_MG, W_IMBALANCE_KNIGHT_PAIR_EG);
+        if(phase > 0.4){
+            U64 ownp=bb[c][PAWN];
+            U64 unsafe = c==WHITE ? BPAWN_ATK(bb[BLACK][PAWN]) : WPAWN_ATK(bb[WHITE][PAWN]);
+            U64 safe = SPACE_MASK[c] & ~ownp & ~unsafe;
+            U64 behind = ownp;
+            if(c==WHITE){ behind |= behind>>8; behind |= behind>>16; }
+            else        { behind |= behind<<8; behind |= behind<<16; }
+            /* the defender's whole attack union, king and pawns included */
+            U64 theirs = c==WHITE ? BPAWN_ATK(bb[BLACK][PAWN]) : WPAWN_ATK(bb[WHITE][PAWN]);
+            for(int p=KNIGHT;p<=QUEEN;p++)
+                for(int i=0;i<pna[!c][p];i++) theirs |= pat[!c][p][i];
+            if(bb[!c][KING]) theirs |= KING_ATK[lsb(bb[!c][KING])];
+            int bonus = popcnt(safe) + popcnt(behind & safe & ~theirs);
+            int pieces = popcnt(occ[c]);
+            int weight = pieces-3; if(weight<0) weight=0;
+            if(bonus && weight)
+                s += sign*TAP(W_SPACE_SCALE_MG, W_SPACE_SCALE_EG)*bonus*weight*weight/16.0;
         }
     }
 
