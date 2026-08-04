@@ -90,6 +90,13 @@ on disjoint openings → re-tune → re-gate.
 - **C, king safety**: safe checks (retry — s24 rejected it standalone at weight
   10 and 3, but SF uses it *inside* a king-danger accumulator, not as a separate
   additive term), flank attacks, pawnless flank.
+  *Measured before building (2026-08-04): everything fed into `units` inherits
+  the existing `attackers >= 2` gate, which opens for at least one side in
+  **32.4%** of blunder-suite positions and for both in 3.7%. So the bundle's
+  ceiling is a third of positions — fine (`threats` fires at 54.6%, `activity`
+  at 69%), but it bounds what the terms can be worth and should be stated up
+  front rather than discovered in a gate. Note the concept's headline 74.5%
+  firing rate is mostly the separate proximity gradient, not the quadratic term.*
 - **D, structural**: imbalance table, space.
 
 ### Phase 4 — Initiative / complexity modifier
