@@ -91,7 +91,48 @@ cost twenty minutes instead of a day.*
 section, and the one place where the C core is doing work the Python reference
 already knows how to avoid.
 
-### 1. ~~Incremental material + PST accumulators~~ → **pawn hash in the C eval**
+## Result: the pawn hash was built, measured, and REJECTED (2026-08-04)
+
+Implemented as designed below — caching sets, not scores; iterated ascending so
+the float additions happen in the original order. The validation worked exactly
+as intended: `eval_check` 0.000000 and **byte-identical node counts (413621 both
+sides)**, proving the evaluation was bit-for-bit unchanged, with no games played.
+
+Then the speed measurement:
+
+| | avg NPS |
+|---|---|
+| single run, main | 1,241,377 |
+| single run, pawn hash | 1,254,503 (**+1.06%**) |
+| **three-run mean, main** | **1,253,217** |
+| **three-run mean, pawn hash** | **1,240,398 (−1.02%)** |
+
+**One run said +1.06%, three runs said −1.02%.** The truth is zero, and the
+first number was noise of exactly the size of the effect. Rejected. (Also
+hoisted two `lsb()` king lookups out of the innermost passer loop while there —
+free, and still no measurable gain.)
+
+**Why it failed, which is the useful part.** The 9% that section costs is not
+*detection* — the passer scan, the backward conditions, the connected tests are
+all cheap bitboard work, and caching them buys nothing against the cost of a
+hash probe and a 640KB table that pushes real data out of L2. The 9% is the
+**double-precision arithmetic**: `TAP()` evaluations and float multiplies, spread
+across every passer and every file. That cannot be cached away, because it *is*
+the value.
+
+**So the eval-speed direction is much smaller than the section profile implied,
+and now has a hard bound.** Deleting every positional term outright gains 28.3%
+NPS ≈ +20 Elo. Any real optimisation gets a fraction of that. Stockfish's answer
+is packed `int32` (mg, eg) arithmetic instead of doubles — and that is precisely
+the thing this project cannot do, because "the compiled eval equals the Python
+eval to 0.000000" is the interpretability guarantee and integer rounding would
+end it.
+
+**That is a genuine, quantified cost of the project's core premise: roughly 20
+Elo of headroom is spent buying provable faithfulness.** Worth it, and worth
+knowing the price. Speed work should now go to the *search*, not the eval.
+
+### 1. ~~Incremental material + PST accumulators~~ → ~~pawn hash in the C eval~~ (REJECTED, above)
 
 `engine/concepts/pawn_structure.py` caches its expensive part keyed on the pawn
 skeleton, and has since session 1 (it was worth 51.4k→55.1k NPS then).
