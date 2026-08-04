@@ -392,10 +392,55 @@ clock*, which would mean every eval result this project has ever gated is an
 underestimate, and would explain three sessions of barren eval work far better
 than "the eval is at its ceiling" does.
 
-`bpair_pawns` is the right probe — a clean eval change with no known defect,
-measured at +7 [−11, +25] over 800 games at 0.3s. Re-running the **same 800
-games on the same openings at 1.0s**: same variant, same positions, only the
-clock differs, so any change in the measured effect is the TC dependence itself.
+First probe: `bpair_pawns`, re-run on the **same 800 games and same openings** at
+1.0s so that only the clock differs. Result: **+7 [−11, +25] at 0.3s → −10
+[−27, +6] at 1.0s.** No amplification.
+
+**But that probe was too weak to answer the question, and saying so matters more
+than the number.** A probe whose true effect is ~0 cannot demonstrate
+amplification — three times nothing is still nothing. Both intervals span zero,
+so all this really established is that bishop-pair-by-pawn-count is neutral at
+both time controls. The test needs a probe with a *real, measured* 0.3s effect.
+
+Second probe (running): **remove backward pawns and connected pawns.** Those were
+accepted in s24 on 0.3s self-play at +55 and +29 — a large, real, well-documented
+blitz effect, which is exactly what the first probe lacked. Gating their removal
+at 0.3s and then over the identical 800 games at 1.0s asks the question directly:
+
+- removal costs **more** at 1.0s → eval knowledge is worth more with the clock,
+  and every eval gate this project runs at 0.3s is an underestimate;
+- removal costs **the same** → three sessions of barren eval results are real,
+  not an artifact of measuring at blitz.
+
+**RESULT — the same at both, and it answers two questions at once:**
+
+| removing backward + connected pawns | score | Elo |
+|---|---|---|
+| at 0.3s (771 games) | 49.8% | **−1 [−20, +18]** |
+| at 1.0s, same openings (800 games) | 49.5% | **−3 [−21, +14]** |
+
+1. **The time-control hypothesis is dead.** A probe with a large documented 0.3s
+   self-play effect shows no amplification whatsoever when the clock triples. Eval
+   effects are *not* systematically under-measured at blitz, so the barren eval
+   results of the last four sessions are real rather than an artifact of the
+   instrument. That closes the most plausible remaining excuse for the eval
+   ceiling, and it is worth more than another neutral experiment would have been.
+
+2. **Backward pawns and connected pawns are worth ~0 Elo — at any tested TC.**
+   They were accepted in s24 at **+55 and +29 self-play** (+84 together), and s24
+   then measured that the pair moved external strength by ~zero. This closes that
+   loop: they do not move self-play strength either, *now*. The +84 was
+   self-play against a lineage that lacked them — precisely the blind-spot
+   artefact the s24 lesson describes, measured here directly rather than inferred.
+
+**They are being KEPT, and the reason is not strength.** They cost roughly 10% of
+eval time (backward 6.0% + connected 4.1% by the concept profile, so ~3% of
+search) and buy no measurable Elo. But this engine's purpose is explanation, and
+"your d6 pawn is backward on a half-open file" is exactly the kind of thing the
+coach exists to say — the same argument that kept the OCB modifier. The honest
+labelling is what changes: **these are coach features, not strength features**,
+and the LOG should stop implying otherwise. Whether the 3% is worth the
+explanations is William's call, not a research question.
 
 *Trapped pieces* — a NEW additive concept rather than a reshaping, chosen
 specifically to dodge the tuning confound below: leave mobility alone and add a
