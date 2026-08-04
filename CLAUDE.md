@@ -95,7 +95,19 @@ git worktree add research/worktrees/base <rev> && (cd research/worktrees/base &&
 .venv/bin/python -m gui.server                 # play at http://localhost:8000
 ```
 
-Stockfish is at /opt/homebrew/bin/stockfish (used for suite mining + matches only — never inside the engine).
+**Stockfish must be on `PATH`** — `research.match --opponent stockfish:N`,
+`research.abgate` and `research.calibrate` all find it with `shutil.which`, and
+without it there is no *external* gate. That matters more than it sounds: s24
+measured that self-play does not transfer for evaluation changes, so a machine
+without Stockfish can only ever judge search changes honestly. Used for suite
+mining, calibration and matches only — never inside the engine.
+
+- macOS: `/opt/homebrew/bin/stockfish` (brew).
+- This Linux/WSL2 box: no sudo, so the official static build lives at
+  `~/bin/stockfish`, symlinked into `~/.local/bin`. To redo it, fetch the
+  `stockfish-ubuntu-x86-64-avx2` asset from the latest GitHub release and drop
+  the binary on `PATH`. Verify with `echo uci | stockfish | grep uciok`;
+  `UCI_Elo` spans 1320–3190, which covers the 2600/2700/2800 calibration anchors.
 
 ## Research loop protocol
 
