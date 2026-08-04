@@ -57,7 +57,64 @@ depth* plus `eval_check` 0.000000 — **zero games**.
 
 ## The experiments, in priority order
 
-### 1. Incremental material + PST accumulators  (speed; no-op output)
+## The profile, measured 2026-08-04 — and it changed the plan
+
+Cumulative early-return probes: insert `return s;` before a section, measure
+NPS, difference consecutive probes. Shares are of **total search runtime**, not
+of eval time. Consecutive rows disagree by up to ~0.8% where they should be
+monotone, so read each figure as ±1.
+
+| section | share of runtime |
+|---|---|
+| **pawn structure** | **~9.0%** |
+| piece placement (PST) | ~5.0% |
+| piece activity | ~3.5% |
+| king safety + king attack | ~3.1% |
+| imbalance + space | ~2.6% |
+| mobility | ~1.2% |
+| tempo, threats, mate drive | ~4.7% |
+| **everything except material** | **28.3%** |
+
+And separately, the probe that matters most for the plan below: **growing
+`Board` by 96 bytes costs 2.3% NPS on its own**, measured by adding unused
+padding. The search is copy-make — `Board c=*b` at every node — so any
+incremental scheme pays that before it saves anything.
+
+**That kills experiment 1 as designed.** Incremental material+PST could remove
+at most the 5.0% PST costs, minus 2.3% for the bigger struct, minus the
+make() update cost — call it 2.5% net, ≈+2 Elo, for a large change touching the
+hottest code in the engine and needing ~12 accumulators kept exactly in sync.
+Bad trade. *Written before the profile ran, and wrong; the profile is why it
+cost twenty minutes instead of a day.*
+
+**The real target is pawn structure, at ~9%** — the single most expensive
+section, and the one place where the C core is doing work the Python reference
+already knows how to avoid.
+
+### 1. ~~Incremental material + PST accumulators~~ → **pawn hash in the C eval**
+
+`engine/concepts/pawn_structure.py` caches its expensive part keyed on the pawn
+skeleton, and has since session 1 (it was worth 51.4k→55.1k NPS then).
+**`core/ceval.c` has no such cache and recomputes the whole thing every call.**
+The existing eval hash in `csearch.c` does not help here: it is keyed on the
+full position, so it only hits on transpositions, whereas a pawn skeleton is
+shared by enormous numbers of distinct positions — which is exactly why pawn
+hashing is standard in every classical engine.
+
+- Cache the pawn-only part (doubled, isolated, backward, connected, passer
+  list); apply blockade, king-distance and rook-behind terms outside, exactly
+  as the Python does.
+- **Key on (white pawns, black pawns, PHASE.)** Phase is not optional: the
+  tapered weights made those terms phase-dependent, and leaving phase out of a
+  pawn-keyed cache is the 17.7cp bug this session already fixed once, in the
+  Python. Do not reintroduce it in C.
+- Validation: `eval_check` 0.000000 **and byte-identical fixed-depth node
+  counts** — the value is unchanged, only when it is computed. No games.
+- No `Board` growth, so no 2.3% penalty; the table is global and thread-local.
+- Plausible: most of 9%, so ~6–7% NPS, ≈+5 Elo. Modest, but honestly measured
+  and nearly free to validate.
+
+### 1b. (superseded) Incremental material + PST accumulators  (speed; no-op output)
 Keep running `(mg, eg)` accumulators on the Board, updated on make/unmake and
 on promotion/capture. `eval_core` reads them instead of looping every piece.
 The pawn and king tables interpolate by phase, so the pair must be kept
