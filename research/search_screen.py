@@ -27,6 +27,24 @@ evaluation changes, and search changes whose benefit only appears beyond the
 reference depth. Use the decisive-game loss screen for those. A search change
 that passes this still earns a real gate; this only kills.
 
+**Measured noise floor (2026-08-05).** Identical code, three runs at 400
+positions: 2 and 6 discordant positions, paired difference +0.00 with intervals
+of +-0.7 and +-1.2 points. Fixed-TIME search is not deterministic even
+single-threaded, so this floor is real and had to be measured -- an instrument
+whose noise is unknown is a random number generator with a confident voice. For
+scale, the history-scaled LMR variant produced **77 discordant positions**,
+twenty times the floor, so its reading was genuine behaviour rather than jitter.
+
+**Resolution.** The interval scales as sqrt(discordant)/n. At ~19% discordance
+400 positions give about +-4.3 points and 1800 give about +-2.
+
+**NOT YET CALIBRATED TO ELO.** One agreement point is not a known number of Elo,
+and the one search change with a game measurement (history LMR: -2.25 points
+here, +13 self-play there) has intervals too wide to tie them together. Treat a
+reading as a quality statement -- "finds the deep move less often" -- and not as
+a strength prediction, until several game-measured search changes have pinned
+the conversion.
+
 Usage:
   # one-off, ~20 min: build ground truth with the current engine
   PYTHONPATH=. .venv/bin/python research/search_screen.py build --positions 400
@@ -86,7 +104,7 @@ def build(n, deep):
     print(f"wrote {TRUTH}: {len(truth)} positions, mean reference depth {md:.1f}")
 
 
-def score(worktree, fast):
+def score(worktree, fast, save="/tmp/search_screen_last.json"):
     truth = json.loads(TRUTH.read_text())
     code = f"""
 import os, json, sys
@@ -108,21 +126,74 @@ print(json.dumps(out))
         raise SystemExit(res.stderr[-2000:])
     got = json.loads(res.stdout)
 
+    MATE = 20000
     agree = 0
-    lost = 0.0
+    drifts = []
     depth = 0.0
+    matches = []
     for t, (mv, sc, d) in zip(truth["items"], got):
-        if mv == t["move"]:
-            agree += 1
-        # how much the shallow choice gives up, in the DEEP search's own terms,
-        # is not knowable without re-searching; report score drift as a proxy
-        lost += abs(sc - t["score"])
+        hit = (mv == t["move"])
+        matches.append(hit)
+        agree += hit
+        # Mate scores are on a different scale entirely -- one position where the
+        # deep search saw mate and the shallow one did not contributes ~30000 and
+        # swamps everything. The first version of this reported 3758cp mean drift
+        # for exactly that reason, which is a number about nothing.
+        if abs(sc) < MATE and abs(t["score"]) < MATE:
+            drifts.append(abs(sc - t["score"]))
         depth += d
     n = len(got)
+    drifts.sort()
     print(f"reference: {truth['n']} positions at {truth['deep_movetime']}s")
-    print(f"agreement with the deep best move: {100*agree/n:.1f}%  ({agree}/{n})")
-    print(f"mean |score - deep score|:         {lost/n:.1f}cp")
+    print(f"agreement with the deep best move: {100*agree/n:.1f}%  ({agree}/{n})"
+          f"   +-{196*(agree/n*(1-agree/n)/n)**0.5:.1f} (95%, unpaired)")
+    if drifts:
+        print(f"median |score - deep score|:       {drifts[len(drifts)//2]:.0f}cp"
+              f"   ({len(drifts)} of {n} non-mate)")
     print(f"mean depth reached at {fast}s:        {depth/n:.1f}")
+
+    out = pathlib.Path(save)
+    out.write_text(json.dumps(matches))
+    print(f"\nper-position hits written to {out} -- diff two runs with `compare`")
+    print("for the PAIRED number, which is the only one that can resolve a")
+    print("small change (positions both runs get right carry no information).")
+
+
+def compare(a_path, b_path):
+    """McNemar on two per-position hit vectors.
+
+    Positions both builds get right, or both get wrong, carry no information
+    about which is better -- only the DISCORDANT ones do. Comparing raw
+    percentages throws that away and is why a 1.2-point gap looked like a
+    reading when it was five positions of noise.
+    """
+    import math
+    a = json.loads(pathlib.Path(a_path).read_text())
+    b = json.loads(pathlib.Path(b_path).read_text())
+    if len(a) != len(b):
+        raise SystemExit("hit vectors are different lengths")
+    b_only = sum(1 for x, y in zip(a, b) if not x and y)   # B fixed it
+    a_only = sum(1 for x, y in zip(a, b) if x and not y)   # B broke it
+    disc = a_only + b_only
+    n = len(a)
+    print(f"{n} positions, {disc} discordant "
+          f"({100*disc/n:.1f}%) -- the rest carry no information")
+    print(f"  B finds the deep move where A did not: {b_only}")
+    print(f"  A finds it where B does not:           {a_only}")
+    if disc == 0:
+        print("\nidentical decisions: this change does not alter move choice here")
+        return
+    diff = (b_only - a_only) / n
+    se = math.sqrt(disc) / n          # McNemar standard error of the difference
+    lo, hi = 100 * (diff - 1.96 * se), 100 * (diff + 1.96 * se)
+    print(f"\npaired difference: {100*diff:+.2f} points  95% [{lo:+.2f}, {hi:+.2f}]")
+    if lo > 0:
+        print("VERDICT: finds the deep move more often. Earns a real gate.")
+    elif hi < 0:
+        print("VERDICT: finds it LESS often. Kill without spending games.")
+    else:
+        print("VERDICT: not resolved here. This screen cannot see it; either")
+        print("         enlarge the position set or spend the games.")
 
 
 def main():
@@ -134,11 +205,17 @@ def main():
     s = sub.add_parser("score")
     s.add_argument("worktree")
     s.add_argument("--fast", type=float, default=0.1)
+    s.add_argument("--save", default="/tmp/search_screen_last.json")
+    c = sub.add_parser("compare")
+    c.add_argument("baseline_hits")
+    c.add_argument("variant_hits")
     a = p.parse_args()
     if a.cmd == "build":
         build(a.positions, a.deep)
+    elif a.cmd == "compare":
+        compare(a.baseline_hits, a.variant_hits)
     else:
-        score(a.worktree, a.fast)
+        score(a.worktree, a.fast, a.save)
 
 
 if __name__ == "__main__":
