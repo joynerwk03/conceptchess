@@ -53,11 +53,18 @@ strength in a known direction:
 Stronger reads positive, weaker reads negative, at discordance comparable to the
 variants. The screen measures quality, not distance from the baseline.
 
-**Rough calibration: ~12-13 Elo per agreement point.** Doubling or halving
-thinking time at this speed is worth roughly +-60 Elo, against +4.56 and -5.06
-points. Treat that as an order of magnitude, not a constant: a time change
-perturbs every position uniformly, while a structural change hits particular
-kinds of position, so the conversion need not be the same for both.
+**Calibration is ROUGH and the two anchors disagree by 2x.** Doubling/halving
+time is worth roughly +-60 Elo against +4.56/-5.06 points, which says ~13 Elo per
+point. Going from 1 thread to 10 moves agreement 65.2% -> 68.9%, about +3.7
+points, against the +96 Elo Lazy SMP measured in s20 -- which says ~26. Use the
+sign and the magnitude ordering; do not quote a point total as an Elo figure.
+
+**USE ONE THREAD.** At `--threads 10` the search is nondeterministic enough that
+identical code disagrees with itself by up to 1.56 points with +-2 intervals --
+the same size as the effects worth finding. Measured 2026-08-05, three runs:
+-0.39 [-2.40, +1.62] and -1.56 [-3.52, +0.41]. The single-threaded floor is
++-0.7 to +-1.2. So this screen cannot test multi-thread hypotheses; those still
+need games.
 
 Usage:
   # one-off, ~20 min: build ground truth with the current engine
@@ -118,11 +125,11 @@ def build(n, deep):
     print(f"wrote {TRUTH}: {len(truth)} positions, mean reference depth {md:.1f}")
 
 
-def score(worktree, fast, save="/tmp/search_screen_last.json"):
+def score(worktree, fast, save="/tmp/search_screen_last.json", threads=1):
     truth = json.loads(TRUTH.read_text())
     code = f"""
 import os, json, sys
-os.environ["CC_THREADS"] = "1"
+os.environ["CC_THREADS"] = "{threads}"
 sys.path.insert(0, {worktree!r})
 import chess
 from engine.engine import Engine
@@ -220,6 +227,10 @@ def main():
     s.add_argument("worktree")
     s.add_argument("--fast", type=float, default=0.1)
     s.add_argument("--save", default="/tmp/search_screen_last.json")
+    s.add_argument("--threads", type=int, default=1,
+                   help="CC_THREADS for the run. Above 1 the search is "
+                        "nondeterministic, so re-measure the noise floor "
+                        "at that setting before trusting a reading.")
     c = sub.add_parser("compare")
     c.add_argument("baseline_hits")
     c.add_argument("variant_hits")
@@ -229,7 +240,7 @@ def main():
     elif a.cmd == "compare":
         compare(a.baseline_hits, a.variant_hits)
     else:
-        score(a.worktree, a.fast, a.save)
+        score(a.worktree, a.fast, a.save, a.threads)
 
 
 if __name__ == "__main__":

@@ -226,6 +226,36 @@ self-play games said +13 [−5, +30] and cost fifty minutes; the screen said
 Practical consequence for the road to 3000: **stop spending time on pruning
 parameters.** They are tuned. The remaining levers are elsewhere.
 
+**Depth-preferred TT replacement — REJECTED, and it exposes the screen's limit.**
+The table is always-replace, which is fine on one thread and looks wasteful on
+ten: every helper writes to the same shared TT, so a shallow entry routinely
+clobbers a deep one. The ROADMAP has listed depth-preferred replacement as
+untried since s21. Implemented (keep the deeper entry for the same position; a
+different position always replaces, so no slot pins and no ageing field is
+needed; an exact score counts for two ply).
+
+| | paired difference |
+|---|---|
+| 1 thread | **−2.72 [−4.43, −1.02]** — clearly worse |
+| 10 threads | −0.11 [−2.14, +1.92] — unresolvable |
+
+Clearly worse where it can be measured, unmeasurable where it was supposed to
+help. Rejected. Always-replace evidently earns its keep by keeping the table
+full of recently-visited positions, which an iterative-deepening search revisits
+constantly.
+
+**And the limit: at 10 threads the screen's noise floor is ±2 points.** Identical
+code disagrees with itself by up to 1.56 points, because Lazy SMP makes the
+search nondeterministic — the same size as the effects worth finding. Against a
+single-threaded floor of ±0.7 to ±1.2. **So the screen is a single-thread
+instrument, and multi-thread hypotheses still cost games.**
+
+A useful side-reading, and a caution about the calibration: 1 thread → 10 moves
+agreement 65.2% → 68.9%, about +3.7 points, against the +96 Elo that Lazy SMP
+measured in s20 — which implies ~26 Elo per point, where the time-doubling
+control implied ~13. **The two anchors disagree by a factor of two**, so a point
+total is not an Elo figure. Sign and ordering only.
+
 ---
 
 ## phase4 REJECTED at +1.1 Elo — and the diagnosis rewrites the screen
