@@ -38,12 +38,26 @@ twenty times the floor, so its reading was genuine behaviour rather than jitter.
 **Resolution.** The interval scales as sqrt(discordant)/n. At ~19% discordance
 400 positions give about +-4.3 points and 1800 give about +-2.
 
-**NOT YET CALIBRATED TO ELO.** One agreement point is not a known number of Elo,
-and the one search change with a game measurement (history LMR: -2.25 points
-here, +13 self-play there) has intervals too wide to tie them together. Treat a
-reading as a quality statement -- "finds the deep move less often" -- and not as
-a strength prediction, until several game-measured search changes have pinned
-the conversion.
+**VALIDATED, with known-stronger and known-weaker controls.** The obvious worry
+about a self-referential reference is that the baseline is advantaged by
+construction, so any variant that perturbs the search drifts from it regardless
+of quality -- and the first batch of seven variants all reading -2.3 to -2.8
+looked exactly like that. It is not what is happening. Running the baseline
+itself at other time limits, which perturbs the search heavily while changing
+strength in a known direction:
+
+    baseline at 0.2s  (2x time, stronger)   11.2% discordant   +4.56 [+3.01, +6.10]
+    baseline at 0.1s  (the reference point)      --                 0
+    baseline at 0.05s (half time, weaker)   12.3% discordant   -5.06 [-6.67, -3.44]
+
+Stronger reads positive, weaker reads negative, at discordance comparable to the
+variants. The screen measures quality, not distance from the baseline.
+
+**Rough calibration: ~12-13 Elo per agreement point.** Doubling or halving
+thinking time at this speed is worth roughly +-60 Elo, against +4.56 and -5.06
+points. Treat that as an order of magnitude, not a constant: a time change
+perturbs every position uniformly, while a structural change hits particular
+kinds of position, so the conversion need not be the same for both.
 
 Usage:
   # one-off, ~20 min: build ground truth with the current engine

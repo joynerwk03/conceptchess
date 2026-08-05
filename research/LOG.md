@@ -167,6 +167,67 @@ evaluation work. No sudo here, so the official static build now lives in
 `~/bin/stockfish` (`CLAUDE.md` records it). This was a silent capability loss:
 nothing failed, the gates just quietly stopped meaning what they used to.
 
+## 2026-08-05 — a screen for SEARCH changes, and what it says about the pruning schedule
+
+Evaluation changes have had a minutes-long screen since the decisive-loss work.
+Search changes had none, so each cost an hour of games — and history-scaled LMR
+spent that hour to return +13 [−5, +30], which resolves nothing.
+
+**`research/search_screen.py`.** Ground truth is our own engine at 3s over 1800
+positions (mean depth 15.6); a variant is scored on how often it finds that move
+at 0.1s, compared **paired** (McNemar — positions both builds get right carry no
+information, and comparing raw percentages throws that away).
+
+Explicitly **not** nodes-to-depth. That is a cost measure, and this project has
+been burned by it before: LOG 2692 records a variant at −7% nodes-to-depth that
+gated at **46%, −26 Elo**, because a change can reach depth N precisely by
+pruning away the lines that mattered.
+
+**Noise floor, measured before trusting anything:** identical code three times
+gives 2 and 6 discordant positions of 400, paired difference +0.00, ±0.7 and
+±1.2 points.
+
+**Validated with controls, because the first batch looked like an artefact.**
+Seven pruning variants all landed between −2.3 and −2.8, which is exactly what a
+screen biased toward its own baseline would produce. Running the baseline at
+other time limits — heavy perturbation, known direction of strength:
+
+| control | discordant | paired difference |
+|---|---|---|
+| 0.2s (2× time, stronger) | 11.2% | **+4.56 [+3.01, +6.10]** |
+| 0.05s (½ time, weaker) | 12.3% | **−5.06 [−6.67, −3.44]** |
+
+Stronger positive, weaker negative, at comparable discordance. The bias
+hypothesis is refuted and the readings are real. Doubling or halving time is
+worth roughly ±60 Elo here, giving a rough **12–13 Elo per agreement point**.
+
+**The result: every perturbation of the pruning schedule is worse.**
+
+| variant | paired difference | verdict |
+|---|---|---|
+| LMR onset 3rd → 4th quiet | −2.83 [−4.86, −0.80] | killed |
+| LMP `2 + d²` (prune more) | −2.78 [−4.86, −0.69] | killed |
+| RFP margin 90 → 120 | −2.67 [−4.59, −0.74] | killed |
+| null-move R +1 at every tier | −2.61 [−4.64, −0.58] | killed |
+| **history-scaled LMR** | **−2.61 [−4.66, −0.56]** | **killed** |
+| LMP `4 + d²` (prune less) | −2.33 [−4.36, −0.31] | killed |
+| RFP margin 90 → 70 | −1.50 [−3.49, +0.49] | unresolved, negative |
+| RFP depth 6 → 8 | −0.22 [−0.93, +0.48] | inert |
+
+Both directions on the RFP margin, both directions on LMP, later LMR onset,
+deeper null move — all worse. **The search's pruning schedule sits at a sharp
+local optimum**, which the ROADMAP has asserted since s21 and which is now
+measured across eight variants in under an hour rather than assumed.
+
+**history-scaled LMR is REJECTED**, and the manner of it is the point: 800
+self-play games said +13 [−5, +30] and cost fifty minutes; the screen said
+−2.61 [−4.66, −0.56] and cost three.
+
+Practical consequence for the road to 3000: **stop spending time on pruning
+parameters.** They are tuned. The remaining levers are elsewhere.
+
+---
+
 ## phase4 REJECTED at +1.1 Elo — and the diagnosis rewrites the screen
 
 Drawishness + history-scaled LMR, gated over 1600 paired slots: **+1.1 Elo, 95%
