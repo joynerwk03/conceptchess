@@ -7,8 +7,23 @@ most of the terms can now be bounded from measurements rather than guessed.
 
 | measure | Elo | source |
 |---|---|---|
-| single thread | ~2750 | anchor arms: +64 and +43 over SF 2700 in two batches (2764 / 2743) |
-| **as played, 10 threads** | **~2852** | tracked 2839 [2784, 2894] + this session's +12.8 |
+| single thread, 0.3s fixed | ~2750 | anchor arms: +64 and +43 over SF 2700 in two batches |
+| **as played, MEASURED** | **2839 [2794, 2889]** | **150 games at 10s+0.1, all 10 cores, concurrency 1, +80 =47 −23 (69.0%) → +139 over the anchor** |
+
+**2026-08-05: the as-played rating is now measured rather than derived.** Every
+previous figure was single-thread-at-fixed-movetime plus the +96 that Lazy SMP
+measured in s20 — a sum of two numbers taken under conditions the engine never
+plays in. This is the engine as it actually plays: a real clock, its own time
+management choosing each move's budget, every core. It lands on **2839**, which
+is where the derived estimate already sat. Two quite different roads to the same
+number is the best evidence available that the anchor-relative scale is sound.
+
+A note on cost, because it governs what can be tested here: **150 clock games at
+concurrency 1 took 69 minutes**, and concurrency cannot be raised — the engine
+runs one thread per physical core, so parallel games measure contention rather
+than strength (the first attempt put 40+ threads on 10 cores). Resolving ±20 Elo
+under a clock therefore costs about four hours. Clock-gated work must be
+batched accordingly.
 
 **Target 3000 as played ⇒ +148.** (Single-threaded 3000 would be +250 and is not
 the right target — the engine plays with all cores.)
