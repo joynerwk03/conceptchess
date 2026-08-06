@@ -264,7 +264,17 @@ Implemented the standard fix (each iteration costs roughly twice the last, so
 predict it and start only if the prediction fits) → mean 1.05×, median 0.74×,
 **p90 and max unchanged**. It spends closer to the intended budget but does *not*
 fix the tail, because an iteration already running is only stopped by the hard
-cap. Gating under a real clock now — the first clock-gated change here.
+cap.
+
+**Gated: +3 Elo, 95% [−23, +30]** — 300 games at 10s+0.1, concurrency 1, full
+thread width. The first clock-gated change in this project's history, and it is
+neutral. **Not accepted.** Spending the clock more evenly is not worth anything
+measurable; the engine was apparently not losing much to the unevenness in the
+first place.
+
+The diagnostic is kept (`research/clock_usage.py`) — the *characterisation* is
+the durable part: median 0.54× of budget with a 5.01× tail, and the structural
+reason fixed-movetime gates can never show it.
 
 **A near-miss worth recording.** The first version of that diagnostic used one
 position at eight clocks, and reported the baseline at mean 1.30×, then a variant
