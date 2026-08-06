@@ -244,6 +244,51 @@ help. Rejected. Always-replace evidently earns its keep by keeping the table
 full of recently-visited positions, which an iterative-deepening search revisits
 constantly.
 
+**The engine diagnosed its own evaluation error — and the fix was worth nothing.**
+Inspecting book exits (`research/book_probe.py`) showed the Berlin scored **+107**
+on a position theory calls balanced. Asking the engine *why* — which is the
+entire point of a concept-sum evaluation — named the culprit immediately:
+
+| concept | |
+|---|---|
+| **king_safety** | **+52.2** |
+| activity | −44.9 |
+| placement | +31.6 |
+
+Black was penalised for empty d7 and e7 in front of a king on e8 that **still had
+both castling rights**. The shelter calculation had no notion of castling at all:
+it judged every king on the pawns in front of wherever it happened to stand.
+
+Fixed by taking the best shelter over the squares the king can reach — where it
+stands plus any castled square still available, which is what a player does and
+what Stockfish does. Berlin: **+107.1 → +54.9**, king safety out of the top
+contributors.
+
+**Then measured: −0.018% decisive-game loss, about −0.1 Elo.** Neutral. The
+reason is worth keeping: the error is *symmetric* in most positions — both sides
+are uncastled early, the penalties cancel, and move choice barely moves. It bites
+only where castling status is asymmetric, as in the Berlin, and those are a
+minority of positions.
+
+**Third time this session that being more right turned out to be worth nothing**
+(drawishness, KPK, this). That is a real pattern and worth stating: *an
+evaluation error only costs Elo if it changes which move you pick.* A symmetric
+error, or a correct assessment of a position whose result was never in doubt,
+changes nothing.
+
+Banked on the `kingshelter` branch, **not merged**: `eval_core` takes bitboards
+and side to move, not castling rights, so shipping it needs a signature change
+to the hottest function in the engine for zero measured gain. The
+interpretability case is real and separate — an engine whose claim is that its
+explanation is trustworthy should not tell the user a balanced position is +107 —
+so it is kept, documented, and trivially resumable.
+
+Two bugs caught inside the fix, both familiar shapes: `details()` duplicated
+`_compute()`'s arithmetic and broke faithfulness on the first build (now both
+route through one helper, as `minor_pieces` does by design); and the cache key
+needed castling rights added, the same shape as the phase-blind key this very
+cache carried earlier in the session.
+
 **Time management, measured for the first time.** Every gate in this LOG is
 fixed movetime, which bypasses the time manager entirely — so nothing here has
 ever tested it. Driving the real UCI interface with real `go wtime/winc`
