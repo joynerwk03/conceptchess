@@ -244,6 +244,35 @@ help. Rejected. Always-replace evidently earns its keep by keeping the table
 full of recently-visited positions, which an iterative-deepening search revisits
 constantly.
 
+**Time management, measured for the first time.** Every gate in this LOG is
+fixed movetime, which bypasses the time manager entirely — so nothing here has
+ever tested it. Driving the real UCI interface with real `go wtime/winc`
+commands, 20 positions × 4 clocks:
+
+| | mean | median | p90 | max |
+|---|---|---|---|---|
+| baseline | 0.91× | **0.54×** | 2.87× | **5.01×** |
+
+**The engine typically spends half its optimum budget, and occasionally five
+times it.** The cause is structural: the soft budget is only checked *between*
+iterations, so the search starts an iteration whenever any budget remains,
+however long that iteration is about to take. At fixed movetime the hard stop
+equals the budget and clips the overrun — which is precisely why no gate ever
+showed this. In clock play the hard cap is 5× the optimum and nothing clips it.
+
+Implemented the standard fix (each iteration costs roughly twice the last, so
+predict it and start only if the prediction fits) → mean 1.05×, median 0.74×,
+**p90 and max unchanged**. It spends closer to the intended budget but does *not*
+fix the tail, because an iteration already running is only stopped by the hard
+cap. Gating under a real clock now — the first clock-gated change here.
+
+**A near-miss worth recording.** The first version of that diagnostic used one
+position at eight clocks, and reported the baseline at mean 1.30×, then a variant
+at 0.61×, then the *same* variant at 1.03× minutes later. I nearly tuned the
+budget constant on that. Eighty samples were needed before the mean meant
+anything — the same lesson as the pawn hash reading +1.06% on one benchmark run
+and −1.02% on three.
+
 **Lazy SMP helper diversity — REJECTED at −89 Elo [−137, −43].** The helpers
 stagger only their *first* depth (`2 + id%3`), which wears off within a few
 iterations, so past depth ~6 all ten threads grind the same depth simultaneously
