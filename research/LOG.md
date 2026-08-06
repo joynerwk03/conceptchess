@@ -244,6 +244,41 @@ help. Rejected. Always-replace evidently earns its keep by keeping the table
 full of recently-visited positions, which an iterative-deepening search revisits
 constantly.
 
+## 2026-08-06 — asking which concepts drive wrong MOVES, and getting a clean no
+
+Three neutral results in a row (drawishness, KPK, king shelter) established the
+rule: **an evaluation error only costs Elo if it changes which move you pick.**
+So `research/blame.py` stops hunting for positions the evaluation scores wrongly
+and hunts for positions where its error *flips the decision*: take every position
+where a 0.1s search differs from the 3s reference, evaluate after each move, and
+diff the two breakdowns **concept by concept**. A concept that consistently
+scores the wrong move higher is the one doing the misleading.
+
+Only this engine can run that. Every other evaluation is a single number, so it
+can tell you a move was wrong but never which of its own judgements caused it.
+
+**629 disagreements of 1800 positions. Unfiltered, one thing stands out:**
+
+| concept | mean | median | >0 |
+|---|---|---|---|
+| material | **+4.8** | +0.0 | **10%** |
+| everything else | within ±1.7 | 0.0 | — |
+
+Material's mean comes from 10% of cases with a median of zero — the shallow
+search grabs something the deep search rejects. That is the **horizon effect**, a
+search-depth problem, and not an evaluation bias at all.
+
+**Filtered to the 510 disagreements where neither move is a capture or
+promotion — which is what isolates positional judgement — every concept is
+neutral.** The largest bias in the table is `king_attack` at +1.2cp mean, median
+zero, and nothing else exceeds ±0.8.
+
+**Verdict: at the decision margin, the evaluation is unbiased.** No concept is
+systematically talking the engine into the wrong quiet move. That closes
+"find the miscalibrated concept" as a direction — with data, rather than by
+running out of ideas — and it is consistent with everything else measured over
+these two days: the remaining move-choice errors are search depth, not judgement.
+
 **The engine diagnosed its own evaluation error — and the fix was worth nothing.**
 Inspecting book exits (`research/book_probe.py`) showed the Berlin scored **+107**
 on a position theory calls balanced. Asking the engine *why* — which is the
