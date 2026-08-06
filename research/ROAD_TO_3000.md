@@ -65,6 +65,49 @@ a single change gets there is guessing.
 5. **Three runs, not one.** The pawn hash read +1.06% on one benchmark and
    −1.02% on three.
 
+## The arithmetic is getting tight — and what that implies
+
+Two of the seven budgeted levers are now **closed by measurement**, not by
+running out of ideas:
+
+- **Evaluation speed.** Pawn hash byte-identical and −1.0% NPS; incremental PST
+  killed by a 2.3% struct-copy cost. Deleting *all* positional evaluation would
+  gain 28.3% NPS ≈ +20 Elo, so that is the whole ceiling and the realistic share
+  of it is nearly zero.
+- **Search pruning parameters.** Eight variants screened: both directions on the
+  RFP margin, both on LMP, later LMR onset, deeper null move, history-scaled
+  reduction, depth-preferred TT — **every one worse**. The schedule is at a sharp
+  local optimum.
+
+Remaining, with honest ranges: tablebases in search +20–40, time management
++10–30, opening book +10–20, SMP +10–30, further evaluation terms +20–35. That
+sums to **+80 to +155 against a required +161**. So 3000 is at the very top edge
+of what the known levers can deliver, and only if essentially all of them pay.
+
+**Which means reaching 3000 probably needs something structural.** The strongest
+candidate, and it is not obviously blocked:
+
+### Integer evaluation, in BOTH languages
+
+The invariant is "the compiled eval equals the Python eval", *not* "the eval is
+floating point". If **both** sides move to integer centipawns the invariant holds
+exactly as before — and interpretability arguably improves, since integer
+centipawns are what a breakdown should show anyway.
+
+What that unlocks is the thing Stockfish actually gets its speed from: packing
+the (middlegame, endgame) pair into one `int32` so tapering is a single add
+instead of the two multiplies and two adds `TAP()` costs today. With every weight
+now tapered after Phase 3, that macro runs on the order of forty times per
+evaluation, and evaluation is 28.3% of runtime.
+
+Cost and risk, stated up front: every weight rounds, so the evaluation changes
+slightly and the whole thing needs re-gating; and it is a large, invasive edit to
+the most safety-critical code in the project. But it is the only identified
+change that could move NPS by a large factor rather than a few percent, and the
+faithfulness guarantee survives it intact. **Prototype the packed-`TAP` inner
+loop first and measure it before committing to the refactor** — the pawn hash is
+a fresh reminder that a plausible speed idea can measure zero.
+
 ## Progress against the budget
 
 | lever | budgeted | status |
