@@ -244,6 +244,29 @@ help. Rejected. Always-replace evidently earns its keep by keeping the table
 full of recently-visited positions, which an iterative-deepening search revisits
 constantly.
 
+**Lazy SMP helper diversity — REJECTED at −89 Elo [−137, −43].** The helpers
+stagger only their *first* depth (`2 + id%3`), which wears off within a few
+iterations, so past depth ~6 all ten threads grind the same depth simultaneously
+and differ only in how TT races resolve. The textbook fix is a persistent skip
+pattern so each helper sits on its own depth schedule. Implemented exactly that
+(main thread never skips; single-threaded play provably unchanged at +0.17
+points [−0.44, +0.77] on the search screen).
+
+**SPRT killed it after 69 games: +8 =36 −25, 37.7%, paired −89 Elo.** Not
+marginal — one of the largest negatives ever recorded here.
+
+The mechanism is in the arithmetic: with that pattern each helper skips **half**
+its iterations, so nine helpers do the work of four and a half. Evidently what
+the helpers are actually worth in this engine is *filling the shared TT at the
+depths the main thread is about to search* — and spreading them across depths
+destroys exactly that, buying diversity nobody needed at the cost of half the
+helper search. A gentler pattern would presumably be less bad; the direction is
+not in doubt.
+
+Worth noting what made this cheap: **SPRT stopped in 69 games (~35 minutes)**
+because the effect was large. A gate sized for +25 Elo finds −89 almost
+immediately.
+
 **And the limit: at 10 threads the screen's noise floor is ±2 points.** Identical
 code disagrees with itself by up to 1.56 points, because Lazy SMP makes the
 search nondeterministic — the same size as the effects worth finding. Against a
