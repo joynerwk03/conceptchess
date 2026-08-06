@@ -80,6 +80,39 @@ a single change gets there is guessing.
 5. **Three runs, not one.** The pawn hash read +1.06% on one benchmark and
    −1.02% on three.
 
+## The exchange rate: one ply ≈ 60 Elo, and what 3000 therefore costs
+
+Measured 2026-08-06 on the 1800-position search screen, single thread:
+
+| time | mean depth | agreement | paired vs 0.1s |
+|---|---|---|---|
+| 0.05s | 8.9 | 60.9% | −3.78 [−5.39, −2.17] |
+| **0.1s** | **10.0** | **64.7%** | — |
+| 0.2s | 11.1 | 69.9% | +5.28 [+3.69, +6.87] |
+| 0.4s | 12.2 | 74.9% | +10.22 [+8.23, +12.21] |
+| 0.8s | 13.4 | 81.4% | +16.72 [+14.48, +18.96] |
+
+**~5.6 agreement points and ~1.13 ply per doubling of time.** Doubling thinking
+time is worth about 60 Elo at these speeds, so **one ply ≈ 60 Elo** and one
+agreement point ≈ 11.
+
+It cross-checks against two independent measurements, which is why it is worth
+trusting: the 28.3% NPS ceiling on evaluation speed works out to 0.33 ply ≈ 20
+Elo — exactly the bound measured separately — and phase3's −3.9% NPS cost is
+≈ −2.5 Elo against a +12.8 net gain, consistent with its +15 evaluation share.
+
+**So the target has a price now. +161 Elo is ~2.7 ply, which is 5–6× the search
+speed.** No change identified in this project moves NPS by more than a few
+percent; the largest structural candidate (integer evaluation) prototyped at
+1.77× on the *arithmetic alone*, which is a fraction of 28% of runtime. There is
+no incremental path to 5×.
+
+That is the honest shape of the problem, and it is a much more useful statement
+than "we need more ideas": **3000 requires roughly five times the nodes per
+second, or an evaluation good enough to be worth three ply, and this session
+established that the evaluation is unbiased at the decision margin** — so the
+second route is not sitting in a miscalibrated concept either.
+
 ## The arithmetic is getting tight — and what that implies
 
 Two of the seven budgeted levers are now **closed by measurement**, not by
