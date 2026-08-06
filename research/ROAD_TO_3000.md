@@ -25,8 +25,23 @@ than strength (the first attempt put 40+ threads on 10 cores). Resolving ±20 El
 under a clock therefore costs about four hours. Clock-gated work must be
 batched accordingly.
 
-**Target 3000 as played ⇒ +148.** (Single-threaded 3000 would be +250 and is not
-the right target — the engine plays with all cores.)
+**Target 3000 as played ⇒ +161** from the measured 2839.
+
+> **Honest status, 2026-08-05: 3000 is not reachable with any lever currently
+> identified.** Four directions have been closed by measurement in one session —
+> evaluation speed (≈0 available), search pruning parameters (a sharp optimum in
+> every direction tested), SMP helper diversity (−89 Elo), and integer evaluation
+> (prototyped at +4 to +8 Elo for a total rewrite). What remains — tablebases in
+> search, time management, the opening book, further evaluation terms — sums
+> optimistically to **+60 to +125 against a required +161**, and those are
+> optimistic ranges for work not yet started.
+>
+> This is not a reason to stop; it is a reason to stop expecting the target from
+> incremental work. Getting to 3000 needs a lever nobody here has identified
+> yet, and the honest thing is to say so rather than to keep implying the sum
+> works out. What the levers below *will* plausibly deliver is roughly
+> **2900–2960**, which would still be the strongest interpretable engine this
+> project has built by a wide margin.
 
 All figures are UHO-anchor-relative. The two baseline arms in one session
 differed by 21 Elo purely from which openings they drew, so treat ±25 as the
@@ -102,11 +117,29 @@ evaluation, and evaluation is 28.3% of runtime.
 
 Cost and risk, stated up front: every weight rounds, so the evaluation changes
 slightly and the whole thing needs re-gating; and it is a large, invasive edit to
-the most safety-critical code in the project. But it is the only identified
-change that could move NPS by a large factor rather than a few percent, and the
-faithfulness guarantee survives it intact. **Prototype the packed-`TAP` inner
-loop first and measure it before committing to the refactor** — the pawn hash is
-a fresh reminder that a plausible speed idea can measure zero.
+the most safety-critical code in the project.
+
+**PROTOTYPED AND MEASURED (2026-08-05) — and it is not the breakthrough.**
+40 weights, 20M evaluations, `-O2`:
+
+| | time | speedup |
+|---|---|---|
+| current double `TAP` | 0.516s | 1.00× |
+| **packed int32, pair resolved ONCE at the end** | **0.291s** | **1.77×** |
+| packed int32, pair resolved per weight | 1.043s | **0.49×** |
+
+Two things follow. First, the win is real but **conditional on restructuring the
+whole evaluation to accumulate a packed score and resolve it once** — the naive
+port, where each weight unpacks itself, is *twice as slow as what we already
+have*. Second, and decisively: that 1.77× applies only to the weight arithmetic,
+which is a fraction of an evaluation that is itself 28.3% of runtime. Even
+eliminating weight arithmetic **entirely** is capped well below 28%, so the
+realistic gain is **single-digit NPS, call it +4 to +8 Elo**, in exchange for
+rewriting the most safety-critical code in the project and re-gating every weight.
+
+**Not worth it.** Recorded rather than attempted. Ten minutes of prototype
+against what could have been days of refactor — the same discipline that killed
+incremental PST on a 2.3% struct-copy measurement.
 
 ## Progress against the budget
 
