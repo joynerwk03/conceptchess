@@ -80,6 +80,32 @@ a single change gets there is guessing.
 5. **Three runs, not one.** The pawn hash read +1.06% on one benchmark and
    −1.02% on three.
 
+## The anchored rating is NOT a fixed number — it depends on the time control
+
+Measured 2026-08-13, concurrency 1, full thread width, vs `stockfish:2700`:
+
+| time control | score | anchored rating |
+|---|---|---|
+| 10s+0.1 (150 games) | 69.0% | **2839** [2794, 2889] |
+| **30s+0.3 (60 games)** | **75.8%** | **≈2899** [2825, 2994] |
+
+**+60 Elo for 3× the time**, and the reason is a property of the anchor rather
+than of us: `UCI_Elo 2700` is *skill*-limited — Stockfish deliberately plays
+below its best and gains little from extra thinking — while this engine converts
+time into depth at ~60 Elo per ply. So the gap widens with the clock.
+
+**This must not be mistaken for progress.** Extrapolating, the engine would
+measure "3000 anchored against Stockfish" at roughly 5–10 minute controls
+**without a single line changing**. That would satisfy the words of the target
+and none of its intent: it is measuring differently, not playing better. Nothing
+in this document treats it as a route to the goal.
+
+What it *is* good for is honesty about the existing number. "2839" is not the
+engine's rating, it is the engine's rating **at 10s+0.1 against a
+strength-limited anchor**. Quote the time control with it, always. And at the
+controls a human actually gives it in the GUI, the engine is meaningfully
+stronger than the headline figure suggests — about **2899 at 30s+0.3**.
+
 ## The exchange rate: one ply ≈ 60 Elo, and what 3000 therefore costs
 
 Measured 2026-08-06 on the 1800-position search screen, single thread:
