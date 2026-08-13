@@ -1,5 +1,39 @@
 # The road to 3000
 
+> ## Status 2026-08-13: not reachable with any identified lever, and here is the evidence
+>
+> The engine is **2839 at 10s+0.1** (measured, 150 games). The target needs +161.
+>
+> | direction | how it was closed |
+> |---|---|
+> | evaluation speed | pawn hash −1.0% NPS; incremental PST killed by a 2.3% struct-copy cost; whole ceiling is +20 Elo |
+> | lazy evaluation | positional terms reach **702cp**, so a *provably* safe margin never fires |
+> | packed integer eval | prototyped: **+4 to +8 Elo** for rewriting the most safety-critical code |
+> | search pruning | **13 variants, all ≤ 0** — parameters, three missing techniques, better TT information, learned correction |
+> | SMP | helper diversity **−89 Elo** |
+> | time management | **+3 Elo [−23, +30]** |
+> | evaluation terms | four bundles; the two that paid gave +12.8 together, and `blame.py` finds **no concept biased** at the decision margin |
+>
+> **The two roads out, and neither is a grind:**
+>
+> 1. **~5× the nodes per second.** One ply is 60 Elo, +161 is 2.7 ply, and EBF
+>    1.852 turns that into roughly 5× NPS. Nothing identified moves NPS more than
+>    a few percent, and the interpretability invariant closes the two techniques
+>    that could (lazy eval outright, packed integers to +4–8).
+> 2. **A markedly sharper evaluation.** This compounds — a sharper eval licenses
+>    harder pruning, which buys depth at 60 Elo/ply — so it is worth more than
+>    its direct Elo. But it is not sitting in a miscalibrated concept, because
+>    there isn't one.
+>
+> **What I would not do:** reach 3000 by lengthening the time control. The
+> anchored rating rises ~60 Elo per 3× time because the anchor is skill-limited,
+> so this engine already measures ~2899 at 30s+0.3 and would measure 3000 at
+> 5–10 minutes *with no change whatsoever*. That satisfies the words of the
+> target and none of its intent.
+>
+> Realistic ceiling for this architecture on this hardware: **~2900–2960**.
+
+
 Target set 2026-08-04. Written as a budget rather than a wish list, because
 most of the terms can now be bounded from measurements rather than guessed.
 

@@ -292,6 +292,38 @@ ignored that a sharper evaluation licenses harder pruning, which buys depth at
 also, unfortunately, no easier to reach — `blame.py` says no concept is biased at
 the decision margin.
 
+**Correction history — REJECTED, and it was the best remaining idea.** If EBF is
+eval-limited, the lever is not pruning harder but making the number the pruning
+decisions rest on more accurate. Correction history learns the systematic gap
+between static eval and search result for a given pawn structure, and applies it
+to the pruning estimate. Unlike the TT refinement it is **symmetric** — it lowers
+the estimate where the evaluation is habitually optimistic, which is exactly
+where over-pruning costs material.
+
+Designed to leave interpretability untouched, and it does: the correction reaches
+the *decisions* only, never a returned score, never qsearch stand-pat, never the
+displayed evaluation. `eval_check` stays 0.000000 and the search still optimises
+precisely the number the breakdown shows.
+
+| | paired |
+|---|---|
+| first version | −3.83 [−5.96, −1.70] |
+| **with the update rule fixed** | **−2.39 [−4.41, −0.37]** |
+
+The first version had a real bug — it trained the table on `best` at every node,
+but `best` is usually a *bound*: a fail-high means "at least this much". Feeding
+bounds in as though they were scores teaches numbers wrong in a known direction.
+Guarding the update (skip a fail-high below the static eval, a fail-low above it,
+and any node whose best move is a capture) recovered 1.4 points — so the fix was
+real, and the idea still loses.
+
+> **Thirteen search variants this session, every one ≤ 0**: eight parameter
+> perturbations, three missing techniques across eleven configurations, strictly
+> better information from the TT, and a learned correction. Parameters,
+> structure, information, and learning have each been tried. **The search is at
+> a robust local optimum**, and I have no further hypothesis that the evidence
+> supports.
+
 ### The price of the interpretability invariant, itemised
 
 Three separate speed routes are now closed *specifically* by the requirement
