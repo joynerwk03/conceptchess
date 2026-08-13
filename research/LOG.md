@@ -244,6 +244,77 @@ help. Rejected. Always-replace evidently earns its keep by keeping the table
 full of recently-visited positions, which an iterative-deepening search revisits
 constantly.
 
+## 2026-08-13 — the search is saturated, and the price of faithfulness is now itemised
+
+**Effective branching factor is 1.852**, measured across five time controls
+(8.9 ply at 0.05s to 13.4 at 0.8s). Strong engines run 1.60–1.75, and closing
+that gap would be worth **+61 to +187 Elo at no NPS cost** — far more than any
+speed work available. That reframed the earlier "3000 needs 5–6× NPS" as too
+narrow: depth is NPS *times* branching factor, and the 2026-08-05 conclusion
+that "pruning is at a sharp optimum" had only tested eight single-PARAMETER
+perturbations, which is a different claim from structural completeness.
+
+So: what is the search missing? Razoring — **absent entirely**. SEE pruning of
+losing captures in the main search — absent, they were searched at *full width*.
+History pruning of refuted quiets — absent.
+
+All three implemented, then swept, eleven configurations in total:
+
+| variant | depth | paired |
+|---|---|---|
+| razor margin 120 (most aggressive) | 10.3 | −1.89 |
+| razor 240 | 10.2 | −1.33 |
+| razor 500 (barely fires) | 10.0 | −0.67 |
+| SEE margin 30 | 10.1 | **−3.44 [−5.41, −1.48]** |
+| SEE 90 | 10.1 | −1.56 |
+| SEE 180 | 10.0 | −2.33 |
+| history pruning | 10.0 | −0.33 (inert) |
+| **TT-refined RFP/null-move estimate** | 10.0 | **−2.33 [−4.20, −0.47]** |
+
+**Razoring and SEE pruning do exactly what they promise — depth rises 10.0 →
+10.3 — and agreement falls anyway.** The extra depth is bought by pruning away
+lines that mattered. And the readings are *monotone*: the harder each prunes,
+the worse it reads, with the best configuration being the one that barely fires.
+
+The TT-refinement result is the one that explains the rest. Feeding the pruning
+decisions a strictly better estimate (the transposition score, where its bound
+permits) made things **worse**, because a refinement upward makes RFP fire more
+often. "Better information" became "more pruning", and this engine cannot afford
+more pruning by *any* mechanism — parameter, technique, or better-informed.
+
+> **Conclusion: the search is saturated. It prunes exactly as hard as its
+> evaluation supports, and EBF 1.852 is eval-limited, not technique-limited.**
+
+That corrects an error in my own earlier bound. The "+70–140 for a perfect
+evaluation" ceiling counted only the *direct* Elo of a better evaluation and
+ignored that a sharper evaluation licenses harder pruning, which buys depth at
+60 Elo/ply. Evaluation gains compound; the ceiling is higher than stated. It is
+also, unfortunately, no easier to reach — `blame.py` says no concept is biased at
+the decision margin.
+
+### The price of the interpretability invariant, itemised
+
+Three separate speed routes are now closed *specifically* by the requirement
+that the search optimise exactly the number the breakdown displays:
+
+1. **Packed integer evaluation** — prototyped at 1.77× on the tapering
+   arithmetic, but only in accumulate-once form, and that arithmetic is a
+   fraction of 28.3% of runtime: **+4 to +8 Elo** for rewriting the most
+   safety-critical code in the project.
+2. **Lazy evaluation** — skip the positional terms when a cheap partial score is
+   already far outside the window. Measured over 20,000 real positions, the
+   positional contribution reaches **702cp**, so a *provably* safe margin is
+   702cp, at which point it never fires in a real window. (A 500cp margin would
+   be unsafe in 0.1% of positions; most engines would take that trade. This one
+   cannot.)
+3. **Eval-speed generally** — deleting all positional terms gains 28.3% NPS
+   ≈ 0.33 ply ≈ **+20 Elo**, and that is the entire ceiling.
+
+**Roughly 25–30 Elo, and the lazy-eval route outright, is what provable
+faithfulness costs.** That is the honest price of the thing that makes this
+engine worth building, and it is now a measured number rather than an
+assumption.
+
 ## 2026-08-06 — asking which concepts drive wrong MOVES, and getting a clean no
 
 Three neutral results in a row (drawishness, KPK, king shelter) established the
