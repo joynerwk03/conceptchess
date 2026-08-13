@@ -5,13 +5,20 @@ shape of the knight's preference for the centre at a glance, and that
 readability is part of what this engine is for. Dumping tuned values as a flat
 array of 64 floats would keep the Elo and throw that away, so the tuned numbers
 go back in the same visual layout, rounded to integers.
+
+Takes the tuner's output file as its argument:
+
+    PYTHONPATH=. .venv/bin/python research/apply_pst.py research/data/pst_linear.json
 """
 import json
 import pathlib
 import re
+import sys
 
-CC = pathlib.Path("/home/joynerwk03/mission-control/projects/conceptchess")
-TUNED = json.load(open(CC / "research/data/pst_tuned.json"))["tables"]
+CC = pathlib.Path(__file__).resolve().parent.parent
+SRC = (pathlib.Path(sys.argv[1]) if len(sys.argv) > 1
+       else CC / "research/data/pst_tuned.json")
+TUNED = json.load(open(SRC))["tables"]
 
 NAME_TO_VIS = {"PAWN_MG": "_PAWN_MG_VIS", "PAWN_EG": "_PAWN_EG_VIS",
                "KNIGHT": "_KNIGHT_VIS", "BISHOP": "_BISHOP_VIS",

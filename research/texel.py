@@ -124,6 +124,14 @@ TUNABLE = {
     "threat.pawn": (0.6, 1.5), "threat.minor": (0.6, 1.5), "threat.rook": (0.6, 1.5),
     "threat.initiative": (0.5, 1.6),
     "pawn.rook_behind_passer": (0.4, 1.6), "pawn.rook_behind_enemy_passer": (0.4, 1.6),
+    # Phase 3 bundles A and D. LIVE in the engine but never in this table,
+    # so the decisive-loss retune skipped them and they still carry values
+    # fitted against the all-games objective.
+    "minor.outpost_knight": (0.7, 1.4), "minor.behind_pawn": (0.5, 1.6),
+    "minor.bishop_pawns": (0.7, 1.4), "minor.long_diagonal": (0.5, 1.6),
+    "imbalance.rook_flat": (0.6, 1.5), "imbalance.knight_pawns": (0.0, 2.0),
+    "imbalance.rook_pawns": (0.7, 1.4), "imbalance.rook_pair": (0.7, 1.4),
+    "imbalance.knight_pair": (0.0, 2.0), "space.scale": (0.3, 2.0),
 }
 
 
