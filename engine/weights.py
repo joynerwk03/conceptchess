@@ -40,6 +40,19 @@ W = {
     "king.open_file": 24.0,
     "kattack.scale": 4.0,   # cp per weighted attack unit on the enemy king zone
     "kattack.proximity": 2,  # cp per weighted closeness unit of pieces near the enemy king (phase-scaled)
+    # king danger: a check the defender cannot answer by capturing
+    # the checker. Knight checks price highest because they cannot
+    # be blocked -- the decisive-loss fit moved this one 24 -> 56.
+    "kattack.check_knight": 56.4,
+    "kattack.check_bishop": 15.2,
+    "kattack.check_rook": 68.0,
+    "kattack.check_queen": 30.4,
+    # attacks without a queen are a different animal; a discount OFF
+    # full price, so 0.0 is exactly the old behaviour
+    "kattack.queenless_discount": 0.45,
+    # king-zone squares only the king itself defends
+    "kattack.weak_zone": 2.0,
+
     # mobility (cp per square above/below typical)
     "mob.knight": 5.4304,
     "mob.bishop": 5.6112,

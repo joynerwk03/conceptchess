@@ -74,8 +74,7 @@ def _column(job):
     e1 = _eval_all()
     tgt[key] = orig + 2.0 * step
     e2 = _eval_all()
-    tgt[key] = orig
-    _eval_all()                      # restore caches to the baseline weights
+    tgt[key] = orig                  # _eval_all clears caches, so this suffices
 
     d1 = e1 - base
     d2 = e2 - base
@@ -159,7 +158,12 @@ def main():
     hi = np.empty(len(names))
     for i, (k, _s) in enumerate(names):
         b = TUNABLE.get(k)
-        if b is None:
+        if k.startswith("material."):
+            # Material sets the scale every other term is denominated in, so a
+            # free fit of it rescales the whole evaluation rather than improving
+            # it. Kept on a short leash.
+            lo[i], hi[i] = w0[i] * 0.88, w0[i] * 1.12
+        elif b is None:
             lo[i], hi[i] = w0[i] - abs(w0[i]) * 0.5 - 2, w0[i] + abs(w0[i]) * 0.5 + 2
         else:
             f0, f1 = b

@@ -246,7 +246,46 @@ double eval_core(U64 bb[2][6], int side){
                     int hits=popcnt(pat[c][p][i]&zone);
                     if(hits){ units+=UNIT[p]*hits; attackers++; }
                 }
-            if(attackers>=2) s += sign*TAP(W_KATTACK_SCALE_MG, W_KATTACK_SCALE_EG)*units*units/10.0*phase;
+            /* The queen is the piece that mates, so an attack without one is a
+             * different animal. Expressed as a discount OFF full price, so a
+             * weight of zero reproduces the old behaviour exactly. */
+            double disc = bb[c][QUEEN] ? 1.0 : 1.0 -
+                TAP(W_KATTACK_QUEENLESS_DISCOUNT_MG, W_KATTACK_QUEENLESS_DISCOUNT_EG);
+            /* Gated on a real attack existing: partly chess (a safe check
+             * matters most when pieces are already pressing) and partly cost
+             * -- ungated this scan measured -4.62% NPS, about -4.6 Elo of lost
+             * depth against +3.8 Elo of knowledge, a net loss. */
+            if(attackers>=2){
+                s += sign*TAP(W_KATTACK_SCALE_MG, W_KATTACK_SCALE_EG)*units*units/10.0*phase*disc;
+
+                /* Safe checks: a check the defender cannot answer by capturing the
+                 * checker, i.e. the landing square is covered by no enemy piece
+                 * other than the king itself. Volume of pressure says nothing about
+                 * whether an attack can actually finish; this does. Mirrors
+                 * king_attack.py term for term and in the same order. */
+                U64 by[6]={0,0,0,0,0,0};
+                for(int p=KNIGHT;p<=QUEEN;p++)
+                    for(int i=0;i<pna[c][p];i++) by[p]|=pat[c][p][i];
+                U64 defended = c==WHITE ? BPAWN_ATK(bb[BLACK][PAWN])
+                                        : WPAWN_ATK(bb[WHITE][PAWN]);
+                for(int p=KNIGHT;p<=QUEEN;p++)
+                    for(int i=0;i<pna[!c][p];i++) defended|=pat[!c][p][i];
+                U64 safesq = ~defended & ~occ[c];
+                U64 dfrom = bishop_atk(eksq,all), lfrom = rook_atk(eksq,all);
+                int nck = popcnt(by[KNIGHT] & KNIGHT_ATK[eksq] & safesq);
+                int ncb = popcnt(by[BISHOP] & dfrom & safesq);
+                int ncr = popcnt(by[ROOK] & lfrom & safesq);
+                int ncq = popcnt(by[QUEEN] & (dfrom|lfrom) & safesq);
+                if(nck) s += sign*TAP(W_KATTACK_CHECK_KNIGHT_MG, W_KATTACK_CHECK_KNIGHT_EG)*nck*phase*disc;
+                if(ncb) s += sign*TAP(W_KATTACK_CHECK_BISHOP_MG, W_KATTACK_CHECK_BISHOP_EG)*ncb*phase*disc;
+                if(ncr) s += sign*TAP(W_KATTACK_CHECK_ROOK_MG, W_KATTACK_CHECK_ROOK_EG)*ncr*phase*disc;
+                if(ncq) s += sign*TAP(W_KATTACK_CHECK_QUEEN_MG, W_KATTACK_CHECK_QUEEN_EG)*ncq*phase*disc;
+                /* king-zone squares the attacker hits that only the king defends --
+                 * the squares a mate actually lands on */
+                int weak = popcnt(zone & ~defended &
+                                  (by[KNIGHT]|by[BISHOP]|by[ROOK]|by[QUEEN]));
+                if(weak) s += sign*TAP(W_KATTACK_WEAK_ZONE_MG, W_KATTACK_WEAK_ZONE_EG)*weak*phase*disc;
+            }
             /* proximity gradient (mirrors king_attack.py): pieces closing in
              * on the king matter before they attack the zone */
             int prox=0;

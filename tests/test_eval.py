@@ -133,8 +133,13 @@ class TestBackwardPawns:
         assert self._bp("rnbqkbnr/pp3ppp/3p4/2p1p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1") > 0
 
     def test_half_open_file_is_worse(self):
-        # white e3 backward on a half-open file -> bad for White, doubled (-6*2)
-        assert self._bp("4k3/8/8/3p1p2/3P1P2/4P3/8/4K3 w - - 0 1") == -12.0
+        # white e3 backward on a half-open file -> bad for White, and the
+        # penalty is DOUBLED there. Asserted against the weight rather than a
+        # frozen -12.0: the weights are tuned by design, so hardcoding one
+        # makes this a test of the tuner's last output instead of the rule.
+        from engine.weights import W
+        assert self._bp("4k3/8/8/3p1p2/3P1P2/4P3/8/4K3 w - - 0 1") == pytest.approx(
+            -2 * W["pawn.backward"], abs=1e-6)
 
     def test_no_false_positive_at_start(self):
         assert self._bp(chess.STARTING_FEN) == 0

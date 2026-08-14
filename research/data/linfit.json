@@ -1,0 +1,36 @@
+{
+ "k": 0.6,
+ "weights": {
+  "mg": {
+   "pawn.backward": 6.018205197276016,
+   "kattack.scale": 3.0,
+   "kattack.proximity": 2.886107601292765,
+   "imbalance.rook_flat": -14.090808293501693,
+   "imbalance.knight_pawns": -1.6693855738758798,
+   "imbalance.rook_pawns": 15.05413962895405,
+   "imbalance.rook_pair": 10.010131609669216,
+   "imbalance.knight_pair": -3.9970914851358947,
+   "space.scale": 0.33207334550041606,
+   "minor.outpost_knight": 26.145322298645755,
+   "minor.behind_pawn": 6.709862992404266,
+   "minor.long_diagonal": 15.721334560812954,
+   "threat.hanging": 0.037500000000000006,
+   "threat.pawn": 0.125326559899114,
+   "threat.minor": 0.0567317346414311,
+   "threat.rook": 0.05721415007521149,
+   "threat.initiative": 1.2504972059420858,
+   "ocb.draw_scale": 0.8317048740692894,
+   "mate_drive.corner": 12.000345090638797,
+   "mate_drive.king_prox": 6.000522780959302,
+   "tempo": 13.367083330126098
+  },
+  "eg": {
+   "kattack.scale": 5.360394865853411,
+   "threat.hanging": 0.10483927727714801,
+   "threat.initiative": 3.2943121653577787,
+   "threat.minor": 0.072,
+   "threat.pawn": 0.036,
+   "threat.rook": 0.024
+  }
+ }
+}

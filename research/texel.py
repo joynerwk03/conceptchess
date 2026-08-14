@@ -132,6 +132,10 @@ TUNABLE = {
     "imbalance.rook_flat": (0.6, 1.5), "imbalance.knight_pawns": (0.0, 2.0),
     "imbalance.rook_pawns": (0.7, 1.4), "imbalance.rook_pair": (0.7, 1.4),
     "imbalance.knight_pair": (0.0, 2.0), "space.scale": (0.3, 2.0),
+    "kattack.check_knight": (0.5, 1.8), "kattack.check_bishop": (0.0, 2.0),
+    "kattack.check_rook": (0.5, 1.8), "kattack.check_queen": (0.5, 1.8),
+    "kattack.queenless_discount": (0.0, 1.7),
+    "kattack.weak_zone": (0.0, 4.0),
 }
 
 
