@@ -133,6 +133,21 @@ Each session:
    experiments: revert the code, keep the LOG entry — negative results are data.
 
 Rules of thumb:
+- **Any tuning number must be scale-invariant.** The Texel loss is
+  `sigmoid(eval/(K*400))`. With K held fixed, multiplying the whole evaluation by
+  a constant lowers the loss while changing no move — at K=0.6, x1.2 "gains"
+  +0.751% of nothing, and de-tunes the search's centipawn margins (futility,
+  probcut, delta pruning) which are calibrated to the current scale. Re-fit K for
+  every candidate. If K lands on the edge of its grid, the grid is wrong.
+- **Price every new eval term in NPS before believing its loss gain.** A loss
+  screen cannot see speed. Bundle E screened at +3.8 Elo and cost -4.62% NPS
+  (~-4.6 Elo at EBF 1.852) — a net loss the screen called a win. Use interleaved
+  A/B runs and a median; single benchmark readings swing ~5%.
+- **Measure coefficients through the real `evaluate()`, never derive them.** The
+  first linear PST model was wrong by 7.9cp because `evaluate` multiplies the
+  concept sum by the opposite-bishop modifier. Perturb, re-evaluate, compare.
+- A perturbation applied evenly across a table or a symmetric position **cancels
+  between the two colours** and will pass a broken test. Break the symmetry.
 - Time-to-depth and NPS are means, not ends; the match is the ground truth.
 - Elo error bars are big at 20 games (~±120); use 50+ games before claiming small gains.
 - When tactics accuracy saturates (>95%), mine a harder suite (deeper `--depth`,

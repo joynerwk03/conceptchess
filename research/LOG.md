@@ -1,5 +1,109 @@
 ---
 
+## 2026-08-13 — Session 28: the tuner was buying scale, and PSTs are linear
+
+Two piece-square fits, a king-danger bundle, a joint refit of every weight, and
+one methodological defect that had been quietly inflating every tuning number in
+the project. Predicted stack: **+20.4 Elo** over `b72feda`, at gate.
+
+**1. Piece-square tables are LINEAR, so stop evaluating chess to tune them.**
+Every tuner here re-ran the evaluation for each trial step, which is why
+`tune_pst.py` could afford only 48 parameters (6 ranks x 8 tables) on a 24k
+window. But a table entry enters the evaluation multiplied by a coefficient that
+does not depend on the table:
+
+    eval(T) = eval(T0) + sum_f coef_f * (T_f - T0_f)
+
+Collect the coefficients once and scoring a candidate set of tables is a dot
+product. Fitting all 512 entries became cheaper than fitting 48 ranks had been,
+which bought the whole 98k dataset and real gradient descent.
+`126e4ac`: **+1.982% held-out, ~+9.3 Elo**, the largest eval gain in the project.
+Mirror squares tied so the tables stay symmetric and readable; the two KING
+tables left free, and the fit independently found that castling is asymmetric
+(+38 on g1 against +23 on b1 in the middlegame, king to the centre at +61 on e4
+in the endgame). Knights still worst in the corners and on a3/h3.
+
+**2. The objective was rewarding SCALE, not skill.** The Texel loss is
+`sigmoid(eval/(K*400))`. Every fit in this project chose K from a grid whose
+smallest entry was 0.6, and chose 0.6 every time — a boundary solution, i.e. a
+parameter that was never actually optimised. The true optimum on this data is
+0.46-0.50. At a fixed K=0.6, **multiplying the whole evaluation by 1.2 "improves"
+the loss by +0.751%** while changing no move the search would ever make — and
+worse, it would silently de-tune the search's centipawn margins (futility
+150/300, probcut, delta pruning), which are calibrated to the current scale.
+The first run of the joint fitter found the exploit and drove `material.queen`
+to its bound. The fix is to re-optimise K for every candidate, which makes a
+pure rescale worth exactly zero. **Every future tuning number in this project
+must be scale-invariant or it is not a number about strength.**
+Re-scored the already-committed PST fit under the corrected objective to check
+it was not the same illusion: +1.982% with eval scale moving +1.0%. Genuine.
+
+**3. A harness that passed on broken code, again.** The first linear model was
+wrong by 7.9cp: `evaluate` multiplies the concept sum by the opposite-bishop
+modifier, so every coefficient needed that factor. The per-block diagnostic
+PASSED on the broken model, because a perturbation applied evenly across one
+table cancels between the two colours — the same cancellation trap as the
+phase-cache test in session 27. What caught it was perturbing the REAL tables and
+demanding the model reproduce the REAL evaluator (`research/check_pst_linear.py`).
+Derive nothing that can be measured through the thing itself.
+
+**4. Knowledge is not free, and only a stopwatch can tell you.** Bundle E (king
+danger: safe checks, queenless discount, weak squares) screened at +0.809%
+decisive loss, ~+3.8 Elo. It also cost **-4.62% NPS** over 8 interleaved pairs —
+about -0.077 ply at EBF 1.852, so ~-4.6 Elo of lost depth. **A net loss, and
+completely invisible to the loss screen that approved it.** Gating the scan on an
+attack actually existing (`attackers>=2`) — chess-sensible and cheap — halved the
+cost to -2.17%. Any new eval term must be priced in NPS before it is believed.
+
+**5. Coordinate descent leaves correlated weights where they started.**
+`linfit_tr.py` measures each weight's coefficient through the real `evaluate()`,
+fits all 90 jointly inside a trust region, then re-scores with the real evaluator
+and keeps the round only if held-out loss actually fell. Rounds 5-9 rejected with
+a collapsing trust region, which is what converged looks like.
+`6933fef`: **+1.362% held-out, ~+6.4 Elo, scale-invariant.**
+An earlier variant demanding exact GLOBAL linearity reached only 27 of 84 weights
+(+0.227%); local linearity plus a trust region reaches all 90.
+
+**Open question, recorded rather than hidden:** material carries +2.7 of that
++6.4 and wants `pawn` 100 -> 88 with `queen` 900 -> 1008, i.e. a queen worth
+11.45 pawns against a textbook ~9.5. SEE is unaffected (`csearch.c` uses a
+hardcoded `{100,320,330,500,900}`), so this is eval-only, but an inflated queen
+is the classic Texel artefact and the loss cannot see trade quality. Games decide.
+
+**Rejected: per-count mobility tables.** Mobility is four slopes -- one
+multiplier per piece type -- so the eval believes the 8th square a knight gains
+is worth what the 1st was. Replaced with per-count tables (~130 parameters,
+initialised to exactly the old line: eval unchanged to 2e-13 and the depth-8
+node count byte-identical at 586,319, so the conversion itself was provably a
+no-op). Fitted monotonically (PAVA projection, since more squares must never be
+worth less) at **+0.392% held-out, ~+1.8 Elo**.
+
+The fitted curve is genuinely, strongly non-linear and confirms the hypothesis:
+a rook with ZERO safe squares scores **-81.9 in the endgame against -6.2 at one
+square**, a queen with none -103.4. The old line priced a trapped rook as merely
+below average. But the table costs 1.27% NPS as pure mechanism (measured with
+identical trees) and 3.0% for the whole change, i.e. -1.2 to -3.0 Elo of depth
+against +1.8 of knowledge. **Net somewhere between +0.6 and -1.2, which is not a
+demonstrated gain, so it is not shipped.**
+
+Worth recording why the cheap version does not exist: gating the table to low
+counts and reverting to the line above is WORSE THAN DOING NOTHING (-2.8 Elo at
+n<=2). The fitted table sits at a different absolute level than the line, so
+splicing them puts a backwards step in the middle of the curve. The shape only
+pays as a coherent whole. Fitted curve kept in .
+
+**The binding constraint has changed.** Two of this session's three eval ideas
+were killed by NPS, not by knowledge. At EBF 1.852 a 1% NPS loss is about 1 Elo,
+so eval speed is now worth double: it is Elo directly, and it is the budget that
+any new term has to be bought with.
+
+**Rejected:** continuation history in `csearch.c` (indexed (prev piece, prev to)
+-> (piece, to), with the same bonus/gravity scheme as the butterfly table).
+Paired screen: **+0.44 points, 95% [-1.58, +2.47]** — unresolved, and mean depth
+fell 11.2 -> 11.1, consistent with the 590KB table costing cache. Parked, not
+merged. Also not shipped: a coordinate retune of the bundle A/D weights, worth
+only +0.153% in-sample over its priors and superseded by the joint fit.
+
 ## 2026-08-04 — Session 27: what Phase 2 found before it found any Elo
 
 Phase 2 of `research/SCHEDULE.md` was meant to be a tuning run. Filling `W_EG`
