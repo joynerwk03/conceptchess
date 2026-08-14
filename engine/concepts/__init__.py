@@ -24,6 +24,7 @@ from engine.concepts.tempo import Tempo
 from engine.concepts.threats import Threats
 from engine.concepts.mate_drive import MateDrive
 from engine.concepts.opposite_bishops import OppositeBishops
+from engine.concepts.endgame_scale import EndgameScale
 from engine.concepts.backward_pawns import BackwardPawns
 from engine.concepts.connected_pawns import ConnectedPawns
 
@@ -49,4 +50,5 @@ ALL_CONCEPTS = [
 # the marginal delta (factor-1)*running so the explanation stays faithful.
 ALL_MODIFIERS = [
     OppositeBishops(),
+    EndgameScale(),
 ]

@@ -138,6 +138,7 @@ TUNABLE = {
     "kattack.weak_zone": (0.0, 4.0),
     "pawn.path_clear": (0.0, 4.0), "pawn.path_defended": (0.0, 4.0),
     "pawn.path_attacked": (0.0, 4.0),
+    "scale.no_pawns": (0.0, 1.3), "scale.wrong_bishop": (0.0, 1.1),
 }
 
 

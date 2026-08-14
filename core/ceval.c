@@ -539,6 +539,50 @@ double eval_core(U64 bb[2][6], int side){
         if(wl!=bl) s *= W_OCB_DRAW_SCALE;
     }
 
+    /* Endgame drawishness (multiplicative; mirrors engine/concepts/
+     * endgame_scale.py, and applied AFTER the opposite-bishop modifier because
+     * ALL_MODIFIERS runs in that order). Some endings are drawn however the
+     * concept sum adds up, and stay drawn for longer than any search horizon,
+     * so the verdict has to be corrected here rather than found. */
+    {
+        double npw = W_MATERIAL_KNIGHT*popcnt(bb[WHITE][KNIGHT])
+                   + W_MATERIAL_BISHOP*popcnt(bb[WHITE][BISHOP])
+                   + W_MATERIAL_ROOK  *popcnt(bb[WHITE][ROOK])
+                   + W_MATERIAL_QUEEN *popcnt(bb[WHITE][QUEEN]);
+        double npb = W_MATERIAL_KNIGHT*popcnt(bb[BLACK][KNIGHT])
+                   + W_MATERIAL_BISHOP*popcnt(bb[BLACK][BISHOP])
+                   + W_MATERIAL_ROOK  *popcnt(bb[BLACK][ROOK])
+                   + W_MATERIAL_QUEEN *popcnt(bb[BLACK][QUEEN]);
+        if(npw != npb){
+            int strong = npw > npb ? WHITE : BLACK;
+            double diff = npw > npb ? npw-npb : npb-npw;
+            /* A small edge with NO pawns anywhere cannot be converted: nothing
+             * to promote and not enough to force mate. Both sides must be
+             * pawnless -- requiring it only of the stronger side scored a
+             * bishop against three pawns as drawish, which cost 0.198% on
+             * decisive games until it was tightened. */
+            if(!bb[WHITE][PAWN] && !bb[BLACK][PAWN] && diff < W_MATERIAL_ROOK)
+                s *= 1.0 - W_SCALE_NO_PAWNS;
+            /* Wrong rook pawn: bishop plus rook pawns on one wing only, bishop
+             * not covering the promotion square, defending king sitting on it. */
+            U64 sp = bb[strong][PAWN];
+            if(sp && popcnt(bb[strong][BISHOP])==1 && !bb[strong][KNIGHT]
+               && !bb[strong][ROOK] && !bb[strong][QUEEN]){
+                int only_a = (sp & ~FILEBB[0])==0, only_h = (sp & ~FILEBB[7])==0;
+                if(only_a || only_h){
+                    int f = only_a ? 0 : 7;
+                    int promo = (strong==WHITE ? 56 : 0) + f;
+                    int bl2 = (bb[strong][BISHOP]&LIGHT_SQ)!=0;
+                    int pl2 = ((1ULL<<promo)&LIGHT_SQ)!=0;
+                    int dk = lsb(bb[!strong][KING]);
+                    int df = dk%8-promo%8, dr = dk/8-promo/8;
+                    if(df<0)df=-df; if(dr<0)dr=-dr;
+                    if(bl2!=pl2 && (df>dr?df:dr)<=1) s *= 1.0 - W_SCALE_WRONG_BISHOP;
+                }
+            }
+        }
+    }
+
     return s;
 }
 

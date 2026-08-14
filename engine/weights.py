@@ -92,6 +92,12 @@ W = {
     # opposite-colored-bishop endings are drawish, so the whole eval is scaled
     # toward zero. Shown in the breakdown as the marginal delta it applies.
     "ocb.draw_scale": 0.8009,  # multiply eval by this in pure opposite-bishop endings
+    # endgame drawishness, as DISCOUNTS off full price so that 0.0 is
+    # exactly the old behaviour (the screen measures a bundle by
+    # zeroing its keys; a bare scale factor would zero to nothing)
+    "scale.no_pawns": 0.75,      # ahead by <a rook, and no pawns to promote
+    "scale.wrong_bishop": 0.90,  # rook pawns + a bishop of the wrong colour
+
     # mating drive (bare-king endgames)
     "mate_drive.corner": 12.6271,
     "mate_drive.king_prox": 8.241,
