@@ -136,6 +136,8 @@ TUNABLE = {
     "kattack.check_rook": (0.5, 1.8), "kattack.check_queen": (0.5, 1.8),
     "kattack.queenless_discount": (0.0, 1.7),
     "kattack.weak_zone": (0.0, 4.0),
+    "pawn.path_clear": (0.0, 4.0), "pawn.path_defended": (0.0, 4.0),
+    "pawn.path_attacked": (0.0, 4.0),
 }
 
 

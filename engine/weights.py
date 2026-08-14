@@ -35,6 +35,11 @@ W = {
     "pawn.connected_passer": 11.537,  # per passer with a friendly passer on an adjacent file
     "pawn.rook_behind_passer": 0.1167,  # a friendly rook behind a passer supports its advance (Tarrasch)
     "pawn.rook_behind_enemy_passer": 0.2362,  # an enemy rook behind our passer attacks/stops it
+    # can the passer actually run? (per relative rank)
+    "pawn.path_clear": 3.625,      # no enemy piece controls the road
+    "pawn.path_defended": 8.0,   # our pieces cover the whole road
+    "pawn.path_attacked": 2.1,   # the square in front is covered
+
     # king safety
     "king.shield_gap": 11.7642,
     "king.open_file": 31.633,

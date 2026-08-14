@@ -19,6 +19,43 @@ def _rook_behind(board, passer_sign, sq, rook_color):
     return bool(rooks & behind)
 
 
+
+def _path_ahead(sq, white):
+    """Squares strictly in front of `sq` on its own file, up to promotion."""
+    f = sq & 7
+    if white:
+        return chess.BB_FILES[f] & ~((1 << (sq + 1)) - 1)
+    return chess.BB_FILES[f] & ((1 << sq) - 1)
+
+
+def _path_terms(ctx, sign, sq, rel_rank, scale):
+    """(label, value) for whether this passer's road to promotion is open.
+
+    A passer on the sixth whose path is covered by enemy pieces is not the
+    asset its rank suggests; one with a clear road in front of it is worth
+    more than its rank suggests. Scaled by rank, because it matters most
+    close to promotion.
+    """
+    white = sign > 0
+    path = _path_ahead(sq, white)
+    if not path:
+        return []
+    ours = ctx.attacked_by[white]
+    theirs = ctx.attacked_by[not white]
+    front = sq + 8 if white else sq - 8
+    out = []
+    if not (path & theirs):
+        out.append(("path to promotion is clear of enemy control",
+                    sign * wt("pawn.path_clear", ctx.phase) * rel_rank * scale))
+    if path & ~ours == 0:
+        out.append(("path to promotion fully covered by our pieces",
+                    sign * wt("pawn.path_defended", ctx.phase) * rel_rank * scale))
+    if 0 <= front <= 63 and (theirs >> front) & 1:
+        out.append(("square in front is attacked",
+                    -sign * wt("pawn.path_attacked", ctx.phase) * rel_rank * scale))
+    return out
+
+
 class PawnStructure:
     name = "pawn_structure"
     display_name = "Pawn structure"
@@ -59,7 +96,9 @@ class PawnStructure:
         wk = ctx.board.king(chess.WHITE)
         bk = ctx.board.king(chess.BLACK)
         s = base
-        for sign, sq, raw, connected in passers:
+        for sign, sq, raw, connected, rel_rank in passers:
+            for _lbl, v in _path_terms(ctx, sign, sq, rel_rank, scale):
+                s += v
             front = sq + 8 if sign > 0 else sq - 8
             mult = blocked_mult if (0 <= front <= 63 and (occupied >> front) & 1) else 1.0
             s += raw * mult * scale
@@ -106,7 +145,7 @@ class PawnStructure:
                         connected = (f - 1 in pfiles) or (f + 1 in pfiles)
                         passers.append((sign, chess.square(f, r),
                                         sign * PASSED_BONUS[rel_rank] * wt("pawn.passed_scale", ctx.phase),
-                                        connected))
+                                        connected, rel_rank))
         return base, passers
 
     def details(self, ctx):
@@ -143,6 +182,8 @@ class PawnStructure:
                         items.append((f"{cname} passed pawn on {chess.square_name(sq)}{tag}",
                                       sign * PASSED_BONUS[rel_rank] * mult
                                       * wt("pawn.passed_scale", ctx.phase) * passed_scale))
+                        for lbl, v in _path_terms(ctx, sign, sq, rel_rank, passed_scale):
+                            items.append((f"{cname} {chess.square_name(sq)} passer: {lbl}", v))
                         if (f - 1 in pfiles) or (f + 1 in pfiles):
                             items.append((f"{cname} connected passer on {chess.square_name(sq)}",
                                           sign * wt("pawn.connected_passer", ctx.phase) * mult * passed_scale))

@@ -233,6 +233,18 @@ double eval_core(U64 bb[2][6], int side){
     }
     s += phase*pmg + (1.0-phase)*peg;
 
+    /* Full attack union per side -- pieces, pawns and king -- mirroring
+     * engine/context.py's attacked_by. Measured at -0.64% NPS, which is what
+     * made the passer path terms below affordable. */
+    U64 au[2];
+    for(int c=0;c<2;c++){
+        U64 a = c==WHITE ? WPAWN_ATK(bb[WHITE][PAWN]) : BPAWN_ATK(bb[BLACK][PAWN]);
+        for(int pp=KNIGHT;pp<=QUEEN;pp++)
+            for(int i=0;i<pna[c][pp];i++) a |= pat[c][pp][i];
+        if(bb[c][KING]) a |= KING_ATK[lsb(bb[c][KING])];
+        au[c] = a;
+    }
+
     /* passer terms that need more than pawns -- over the passer set only */
     for(int c=0;c<2;c++){
         int sign=c==WHITE?1:-1;
@@ -240,6 +252,19 @@ double eval_core(U64 bb[2][6], int side){
         U64 x=passers;
         while(x){ int sq=lsb(x); x&=x-1;
             int f=sq%8, r=sq/8, rel=c==WHITE?r:7-r, front=c==WHITE?sq+8:sq-8;
+            /* Can the passer actually run? A pawn on the sixth whose road is
+             * covered by enemy pieces is not the asset its rank suggests.
+             * Mirrors _path_terms() in pawn_structure.py, same order. */
+            U64 path = c==WHITE ? (FILEBB[f] & ~((1ULL<<(sq+1))-1))
+                                : (FILEBB[f] & ((1ULL<<sq)-1));
+            if(path){
+                if(!(path & au[!c]))
+                    s += sign*TAP(W_PAWN_PATH_CLEAR_MG, W_PAWN_PATH_CLEAR_EG)*rel*passed_scale;
+                if(!(path & ~au[c]))
+                    s += sign*TAP(W_PAWN_PATH_DEFENDED_MG, W_PAWN_PATH_DEFENDED_EG)*rel*passed_scale;
+                if(front>=0 && front<64 && ((au[!c]>>front)&1ULL))
+                    s -= sign*TAP(W_PAWN_PATH_ATTACKED_MG, W_PAWN_PATH_ATTACKED_EG)*rel*passed_scale;
+            }
             double mult=(front>=0&&front<64&&(all&(1ULL<<front)))?TAP(W_PAWN_BLOCKED_PASSER_MG, W_PAWN_BLOCKED_PASSER_EG):1.0;
             s += sign*PASSED_BONUS[rel]*TAP(W_PAWN_PASSED_SCALE_MG, W_PAWN_PASSED_SCALE_EG)*mult*passed_scale;
             if(passers&ADJ_FILES[f])
