@@ -113,6 +113,11 @@ def main():
     ap.add_argument("--trust", type=float, default=0.10)
     ap.add_argument("--steps", type=int, default=3000)
     ap.add_argument("--workers", type=int, default=15)
+    ap.add_argument("--min-men", type=int, default=0,
+                    help="drop positions with fewer men than this. Positions the "
+                         "tablebase already solves at the root are ~17% of the "
+                         "data and the eval's accuracy in them cannot affect "
+                         "play, so fitting them spends capacity on nothing.")
     ap.add_argument("--out", default=str(ROOT / "research/data/linfit_tr.json"))
     a = ap.parse_args()
 
@@ -121,6 +126,12 @@ def main():
 
     rows = [json.loads(l) for l in open(a.data)]
     rows = [r for r in rows if r["res"] != 0.5]
+    if a.min_men:
+        n0 = len(rows)
+        rows = [r for r in rows
+                if bin(chess.Board(r["fen"]).occupied).count("1") >= a.min_men]
+        print(f"dropped {n0-len(rows)} of {n0} positions with <{a.min_men} men "
+              f"(the tablebase decides those at the root)")
     random.Random(4242).shuffle(rows)
     rows = rows[:a.positions]
     fens = [r["fen"] for r in rows]

@@ -47,6 +47,49 @@ exactly that mask and can now afford it. Priced before designing, which is the
 rule that killed the mobility tables and should have been applied to bundle E
 first.
 
+**Four knowledge bundles, one worth having, and the rule that separates them.**
+
+  * **Bundle F -- can the passer actually run?** Path clear of enemy control,
+    path covered by our own pieces, square in front attacked. **+0.328%
+    decisive loss (~+1.5 Elo) against -0.87% NPS, net ~+0.65. MERGED.**
+  * **Bundle G -- a safe pawn push that would attack a piece.** One of
+    Stockfish's cheapest terms. Tuned to **exactly 0.000**. Verified FIRING
+    first, on a position where e4-e5 forks two knights, so this is not a
+    switched-off rule mistaken for a useless one.
+  * **Bundle I -- connected rooks, and a rook on the seventh with the enemy king
+    cut off on the eighth.** Relational facts that no piece-square table can
+    hold, so they looked like clear gaps. **+0.013%, ~+0.1 Elo.** Both weights
+    collapsed (12 -> 5.4, 14 -> 1.4).
+  * **Bundle J -- pawn storms and king escape squares.** Two inputs to
+    Stockfish's king danger, its largest term, with no version here at all.
+    **+0.000%.** storm 3.0 -> 0.3, no_escape 8.0 -> 0.0.
+
+The pattern is worth more than any of the terms. **The bundle that paid is about
+a LONG-HORIZON fact; the three that paid nothing are about TACTICS.** Whether a
+passed pawn's road is covered is a property of the next ten moves and the search
+cannot see to the end of it. Whether a pawn push forks two knights, whether the
+king has an escape square, whether a storm is coming -- an eleven-ply search
+finds all of that by itself, so saying it again statically adds no information.
+That also explains bundle E (safe checks) coming in at only +0.809% despite
+being the largest single idea in Stockfish's king safety.
+
+**Corollary for the remaining road: stop porting Stockfish's tactical terms.**
+They are worth far less here than they are there, because they duplicate what
+this search already does. What is worth trying is knowledge whose horizon
+exceeds the search's: endgame drawishness, fortresses, structural pawn features,
+long-term piece placement.
+
+**Also rejected: dropping tablebase-solved positions from the tuning set.**
+15-17% of the data has seven men or fewer, which Syzygy decides at the root, so
+the evaluation's accuracy there cannot affect play and fitting it spends
+capacity on nothing. Refitting all 93 weights on the >=8-men subset and scoring
+on a held-out >=8-men sample gained **0.023%**. The distortion was real but not
+worth anything. `--min-men` kept in linfit_tr.py.
+
+The tuning data itself is not the constraint, incidentally: the decisive sample
+is 22% endgame, 27% late, 15% middlegame, 26% opening, so it can resolve
+knowledge at any phase. The middlegame terms above failed on their merits.
+
 **Knowledge, priced properly this time.** Bundle F (can the passed pawn actually
 run? -- path clear of enemy control, path covered by our pieces, front square
 attacked) screens at **+0.328% decisive loss, ~+1.5 Elo**, converged in 61
