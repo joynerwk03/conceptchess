@@ -71,5 +71,50 @@
       }
     ],
     "machine": "Linux x86_64 / 20 cpus"
+  },
+  {
+    "date": "2026-08-14",
+    "commit": "f1be475",
+    "label": "s29 single-thread: PST linear fit + joint refit + pawn hash + passer path + endgame scale",
+    "elo": 2777.3,
+    "ci": [
+      2755.8,
+      2798.9
+    ],
+    "ci_bootstrap": [
+      2757.5,
+      2797.5
+    ],
+    "draw_elo": 128.0,
+    "games": 900,
+    "movetime": 0.3,
+    "threads": 1,
+    "concurrency": 6,
+    "book": "uho_1000.epd",
+    "opponent": "Stockfish 18",
+    "anchors": [
+      {
+        "elo": 2600,
+        "w": 183,
+        "d": 67,
+        "l": 50,
+        "score_pct": 72.16666666666667
+      },
+      {
+        "elo": 2700,
+        "w": 130,
+        "d": 98,
+        "l": 72,
+        "score_pct": 59.666666666666664
+      },
+      {
+        "elo": 2800,
+        "w": 72,
+        "d": 126,
+        "l": 102,
+        "score_pct": 45.0
+      }
+    ],
+    "machine": "Linux x86_64 / 20 cpus"
   }
 ]

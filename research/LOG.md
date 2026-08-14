@@ -1,5 +1,57 @@
 ---
 
+## 2026-08-14 — Session 30: a real rating at last, and the SMP question answered
+
+**External Elo: 2777, 95% CI [2756, 2799].** Three anchors (2600/2700/2800),
+900 games at 0.3s, single-threaded, maximum-likelihood fit with the BayesElo
+draw model. The profile interval (+-22) and the paired bootstrap (+-20) agree,
+and the residuals are small (+1.0%, +0.0%, -2.1%), so the model fits the data.
+
+    2026-08-01   2743   [2717, 2769]   600 games
+    2026-08-14   2777   [2756, 2799]   900 games
+
+**+34 Elo, measured** -- the first honest reading since 1 August. Everything in
+between was estimated. At full thread width the engine is around **2873**,
+adding the separately measured +96 for ten threads, which leaves about **127 to
+3000**.
+
+**The SMP question, finally asked properly.** Ten threads are worth +96 Elo,
+which looked poor against the ~70 Elo per doubling Lazy SMP usually gives. The
+first measurement looked alarming -- NPS is FLAT across thread counts, 1.02x
+from one thread to eight -- but it is an artefact: `research.benchmark` reports
+the main thread's node count only. Depth tells the true story, and it rises
+**10.17 -> 11.67 ply at ten threads**. That +1.5 ply is +90 Elo at 60 Elo/ply,
+which is the +96 that was measured independently. The two agree.
+
++1.5 ply is about 40% of what linear scaling would give (3.74 ply at EBF 1.852).
+That is low but not pathological for 0.3s searches, where thread startup is a
+large fraction of the search. Three follow-ups all failed:
+
+  * **Depth-preferred TT replacement: -0.50 ply at T=1, -0.67 at T=10.** The
+    store is unconditional always-replace, so a one-ply node can evict a
+    twelve-ply result -- which should hurt ten threads especially, since Lazy
+    SMP's entire mechanism is helpers sharing work through the table. It does
+    not, and the reason is structural: this table is SINGLE-PROBE. Refusing to
+    overwrite a deeper entry belonging to a DIFFERENT position locks the slot
+    for the whole search and starves the table. Depth-preferred replacement
+    needs buckets; with one entry per slot, always-replace is correct.
+  * **A four times larger table: -0.67 ply at T=1, -0.33 at T=10.** So the
+    table is not under capacity pressure either -- 4M entries is already past
+    the point where locality matters more than hit rate, and bucketing would
+    not have helped.
+  * **MVV-LVA instead of SEE for capture ordering: -0.34 ply at T=1, 0.00 at
+    T=10.** gprof puts `see` at 7.4% of runtime over 12.65M calls, essentially
+    all of it sorting captures, so this looked like free speed. The ordering
+    quality it buys is worth more than the time it costs.
+
+**Standing state.** Search, move ordering, transposition sizing and replacement,
+eval speed structure, eval knowledge breadth and weight tuning have now all been
+measured and all sit at or near a local optimum. The last six knowledge bundles
+returned +0.65, 0, +0.1, 0, 0 and 0 Elo. Progress is real but the per-experiment
+yield is now well under a point, against 127 still to find.
+
+---
+
 ## 2026-08-14 — Session 29: the search is done, and the measurement that says so
 
 Went looking for Stockfish 11's search gains and did not find them here. Four
