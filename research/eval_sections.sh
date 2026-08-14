@@ -53,6 +53,7 @@ PY
 probe "    /* piece placement (PST) */"        "from PST onward"
 probe "    /* pawn structure */"               "from pawn structure onward"
 probe "    /* king safety */"  "from king safety onward"
+probe "    /* king attack */"                  "from king attack onward"
 probe "    /* mobility (safe squares) */"      "from mobility onward"
 probe "    /* piece activity */"               "from activity onward"
 probe "    /* imbalance and space"             "from imbalance onward"

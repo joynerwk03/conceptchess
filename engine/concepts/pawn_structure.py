@@ -6,7 +6,7 @@ from engine.weights import W, wt
 
 # Passed pawn base bonus by rank (from the pawn's own side; rank index 0-7),
 # scaled by wt("pawn.passed_scale", ctx.phase).
-PASSED_BONUS = [0, 10, 15, 20, 35, 60, 100, 0]
+PASSED_BONUS = [0, 8, 12, 19, 38, 67, 120, 0]
 
 
 def _rook_behind(board, passer_sign, sq, rook_color):
