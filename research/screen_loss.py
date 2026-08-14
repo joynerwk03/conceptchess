@@ -65,9 +65,12 @@ if not keys:
 priors = {k: wmod.W[k] for k in keys}
 
 
-def loss(k):
+def _evals():
     clear_caches()
-    evs = [evaluate(b) for b in boards]
+    return [evaluate(b) for b in boards]
+
+
+def _loss_of(evs, k):
     s = 0.0
     for e, r in zip(evs, results):
         p = 1.0 / (1.0 + 10.0 ** (-e / (k * 400.0)))
@@ -75,25 +78,50 @@ def loss(k):
     return s / len(evs)
 
 
-# K is fitted with the bundle OFF and then held, so every number below is on one
-# scale and "loss went down" cannot be an artefact of refitting the scale.
+def loss_at(k):
+    return _loss_of(_evals(), k)
+
+
+# K is REFITTED for every candidate, which is the only way these numbers mean
+# anything. The previous version fitted K once with the bundle off and held it,
+# on the reasoning that one fixed scale keeps the comparison honest. That is
+# backwards: with K held, multiplying the whole evaluation by a constant lowers
+# the loss while changing no move the search would ever make -- at K=0.6 a
+# factor of 1.2 is worth +0.751% of nothing. A bundle of pure bonuses inflates
+# the eval by construction, so the old harness paid it for that alone.
+# Refitting K makes a pure rescale worth exactly zero.
+#
+# The grid also had to be extended DOWNWARD: it started at 0.6 and 0.6 was
+# chosen every time, i.e. the answer was pinned to the edge of the search. The
+# real optimum on this data is nearer 0.46.
+KGRID = (0.30, 0.34, 0.38, 0.42, 0.46, 0.50, 0.54, 0.60, 0.70, 0.80, 1.0, 1.2)
+
+
+def loss():
+    """Loss at the best K for THIS evaluation -- scale-invariant by construction.
+
+    Evaluates the positions ONCE and reuses that vector across the grid; the
+    naive version re-ran the whole evaluation per K and made the screen twelve
+    times slower for no extra information.
+    """
+    evs = _evals()
+    return min(_loss_of(evs, k) for k in KGRID)
+
+
 for k in keys:
     wmod.W[k] = 0.0
-best_k, off = None, 1e9
-for k in (0.6, 0.8, 1.0, 1.2, 1.5, 2.0):
-    l = loss(k)
-    if l < off:
-        best_k, off = k, l
-print(f"{len(rows)} samples, K={best_k}")
+off = loss()
+best_k = min(KGRID, key=loss_at)
+print(f"{len(rows)} samples, K refitted per candidate (K={best_k} with bundle off)")
 print(f"bundle OFF        {off:.6f}")
 
 for k, v in priors.items():
     wmod.W[k] = v
-print(f"at priors         {loss(best_k):.6f}")
+print(f"at priors         {loss():.6f}")
 
 # Coordinate descent on the bundle's weights only, everything else frozen.
 cur = dict(priors)
-best = loss(best_k)
+best = loss()
 moved_last_pass = {}
 for p in range(PASSES):
     improved = False
@@ -118,7 +146,7 @@ for p in range(PASSES):
             if cand == cur[k]:
                 continue
             wmod.W[k] = cand
-            l = loss(best_k)
+            l = loss()
             if l < best - 1e-9:
                 best, cur[k], improved = l, cand, True
                 moved_last_pass[k] = p

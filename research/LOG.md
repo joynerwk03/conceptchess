@@ -1,5 +1,123 @@
 ---
 
+## 2026-08-14 — Session 29: the search is done, and the measurement that says so
+
+Went looking for Stockfish 11's search gains and did not find them here. Four
+experiments, one diagnostic, and a plan revision.
+
+**Continuation history: three tests, worth nothing.** Indexed (prev piece, prev
+to) -> (piece, to), the statistic SF gets so much from.
+  * ordering only, paired screen: **+0.44 points, 95% [-1.58, +2.47]**;
+  * ordering + threshold-gated LMR adjustment, self-play SPRT: **+5 [-15, +25]**;
+  * ordering + PROPORTIONAL LMR adjustment, self-play SPRT: **-5 [-24, +15]**.
+
+The middle result was nearly a false negative worth recording. Its reduction
+rule fired only when |history| exceeded 3000, and instrumenting it showed the
+gate firing on **591 of 359,355 reductions -- 0.16% -- with the increase branch
+never firing once** (observed |history| peaks near 5000). A 600-game SPRT had
+been spent measuring a rule that was switched off. Always instrument that a new
+rule FIRES before concluding anything about whether it helps.
+
+**log(depth) x log(moveCount) reductions: -33 Elo [-63, -4]**, SPRT stopped
+early at 147 pairs. The fixed three-tier rule this replaced cannot express
+"reduce more when deeper", and every strong engine does, so this was expected to
+be the largest single search win available. It is decisively worse at the
+constants tried. The shape is not automatically better than the tiers; the
+constants carry it, and ours are apparently well placed.
+
+**Why: ordering has almost no headroom left.** Instrumented the real thing --
+**1,689,976 beta cutoffs, 90.24% of them on the first move searched**. Strong
+engines run ~92-95%. That is the ceiling any ordering heuristic is competing
+for, and it explains three neutral continuation-history results better than any
+implementation detail could. **Move ordering is not where this engine's Elo is,
+and no further ordering work is planned.**
+
+With the 13 pruning variants from earlier sessions, that is ~17 search
+experiments at or below zero. **Phase A is closed: the search is at a strong
+local optimum.** The plan budgeted +30-60 Elo there on the strength of what SF11
+gains from search; that budget is withdrawn and moved to knowledge and speed.
+
+**The measurement that reopened knowledge.** Bundle E's king danger cost 4.62%
+NPS ungated, and it was assumed the piece-attack union was the expensive part.
+It is not: a full attack union per side, computed every evaluation, measures
+**-0.64% NPS**. The cost was the magic slider lookups from the king square and
+the popcounts. That single number decides several SF11 terms at once --
+passed-pawn path safety, ungated king danger, the threat refinements all need
+exactly that mask and can now afford it. Priced before designing, which is the
+rule that killed the mobility tables and should have been applied to bundle E
+first.
+
+**Knowledge, priced properly this time.** Bundle F (can the passed pawn actually
+run? -- path clear of enemy control, path covered by our pieces, front square
+attacked) screens at **+0.328% decisive loss, ~+1.5 Elo**, converged in 61
+passes. Against the -0.64% attack union that is about **+0.9 Elo net**. Python
+done in `research/worktrees/f`; C port still owed.
+
+Bundle G (a SAFE pawn push that would attack a piece -- pressure that exists
+before the pawn arrives, and one of Stockfish's cheapest terms) tuned to
+**exactly 0.000**. The term was verified FIRING first, on a constructed position
+where e4-e5 forks two knights, so this is not the conthist mistake again: the
+data simply says a static safe-push bonus predicts nothing that an eleven-ply
+search does not already find.
+
+**The bundle screener was rewarding scale.** `screen_loss.py` fitted K once with
+the bundle off and then held it, on the stated reasoning that one fixed scale
+keeps the comparison honest. That is backwards, and the comment said so in the
+file for months: with K held, inflating the evaluation lowers the loss for free,
+and a bundle of pure bonuses inflates it by construction. Its grid also started
+at 0.6 and picked 0.6 every time -- a boundary solution. Now refits K per
+candidate over a grid reaching down to 0.30 (the real optimum here is ~0.42).
+Bundle F fell from +2.0 to +1.5 Elo under the corrected harness. **Every bundle
+number in this LOG measured before this fix is overstated by roughly a quarter.**
+
+**The first actual profile of the search.** The evaluation was known to be ~29%
+of runtime; the other 71% had never been looked at. gprof on a standalone driver
+(4 positions, 3s each, 15.6M nodes, single-threaded):
+
+    eval_core  31.9%   6.35M calls
+    eval_stm   13.8%  11.50M calls   <- SELF time: the eval-hash probe alone
+    negamax    12.5%
+    order      12.2%   3.74M calls
+    see         7.4%  12.65M calls
+    is_legal    6.4%  97.0M calls
+    make        5.3%  29.3M calls
+    attacked    2.9%  61.1M calls
+
+Three things that closes:
+
+  * **Move generation is not the bottleneck.** perft runs at **86-124 M
+    nodes/s**, which is competitive; the gap to Stockfish is not there.
+  * **The eval hash is already the right size.** eval_stm's 13.8% is self time
+    at ~90ns a call, which looks exactly like a cache miss on a 16MB table, so
+    shrinking it looked obvious. Measured: EH_BITS 14/16/18 are **-5.71 /
+    -3.84 / -1.62%**, and 22/23 are +0.21 / -1.20%. Twenty is the optimum. The
+    probe cost is real and it is worth paying.
+  * **Deferring the taper -- Stockfish's packed Score -- would LOSE here.** A
+    probe replacing TAP with a single multiply measured **-2.58%**, because
+    `(MG)==(EG)` compares two #define constants and is therefore a COMPILE-TIME
+    test: about half the terms have no distinct endgame value and fold to a
+    constant with no runtime arithmetic at all. Packing would destroy that.
+
+**Lazy move selection: -4.19%, rejected.** `order` fully sorts every list, and
+90.24% of cutoffs come on the first move, so sorting thirty-odd moves to use one
+looked like obvious waste. Implemented with a rotate (not a swap) so the stable
+insertion sort's exact sequence is preserved -- proved by fixed-depth node counts
+matching to the node across six positions. It is still slower, because the 90.24%
+is a statistic about CUT-nodes, and the sorting cost is dominated by ALL-nodes,
+where every move is searched: there lazy selection does n scans plus n rotations
+against insertion sort's single pass over a nearly-sorted list.
+
+**Where this leaves the road to 3000.** Search, move ordering, eval-hash sizing,
+the taper structure, move generation and sort strategy are now all measured and
+all at or near their local optimum. Speed work has yielded exactly one win (the
+pawn hash, +3.8) out of five attempts. What remains is eval knowledge breadth,
+where Stockfish 11 genuinely has an order of magnitude more terms than this
+engine -- and each one here is worth +1 to +2 Elo net after its NPS is paid.
+**At that rate +135 Elo is 70-100 successful terms, and that is the honest
+shape of the remaining gap.**
+
+---
+
 ## 2026-08-13 — Session 28: the tuner was buying scale, and PSTs are linear
 
 Two piece-square fits, a king-danger bundle, a joint refit of every weight, and
