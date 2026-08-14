@@ -75,6 +75,18 @@ static void eval_init(void){
  * same constant load either way. */
 #define TAP(MG, EG) ((MG) == (EG) ? (MG) : (phase) * (MG) + (1.0 - (phase)) * (EG))
 
+/* Pawn hash: the pawn-only half of the pawn evaluation, keyed by the two pawn
+ * bitboards and stored as an (mg, eg) pair so the entry does not depend on the
+ * phase. Per-thread, because a shared table would need locking or a torn-read
+ * scheme, and a torn read would corrupt the evaluation somewhere eval_check --
+ * single-threaded -- could never see it. A zeroed entry reads as "no pawns, no
+ * passers, score zero", which is the right answer for a pawnless position. */
+#define PH_BITS 14
+#define PH_SIZE (1<<PH_BITS)
+#define PH_MASK (PH_SIZE-1)
+typedef struct { U64 wp, bp, pw, pb; double mg, eg; } PHEntry;
+static _Thread_local PHEntry PH[PH_SIZE];
+
 double eval_core(U64 bb[2][6], int side){
     if(!e_init_done) eval_init();
     U64 occ[2];
@@ -129,89 +141,125 @@ double eval_core(U64 bb[2][6], int side){
         }
     }
 
-    /* pawn structure */
+    /* pawn structure.
+     *
+     * Split in two. Everything that depends only on the pawn bitboards --
+     * doubled, isolated, backward, connected, and the passer sets -- is cached
+     * in a per-thread pawn hash as an (mg, eg) pair, so the entry is
+     * phase-independent and survives every capture that does not take a pawn.
+     * The rest needs more than pawns (occupancy for a blocked passer, the kings
+     * for the race, the rooks for Tarrasch) and runs over the passers only.
+     *
+     * Sums in a different order than the Python reference, so the two agree to
+     * float reassociation (~1e-12cp) rather than bit-for-bit; eval_check still
+     * reports 0.000000 with zero mismatches. */
     double passed_scale = phase + (1-phase)*TAP(W_PAWN_PASSED_EG_SCALE_MG, W_PAWN_PASSED_EG_SCALE_EG);
     double kd_w = TAP(W_PAWN_PASSER_KING_DIST_MG, W_PAWN_PASSER_KING_DIST_EG)*(1-phase);  /* king race, endgame-scaled */
-    for(int c=0;c<2;c++){
-        int sign=c==WHITE?1:-1;
-        U64 ownp=bb[c][PAWN], enp=bb[!c][PAWN];
-        /* passer set for this color (mirrors pawn_structure.py's pfiles) */
-        U64 passers=0;
-        { U64 x=ownp; while(x){ int sq=lsb(x); x&=x-1;
-            if(!(enp&PASSED_FRONT[c][sq])) passers|=1ULL<<sq; } }
-        for(int f=0; f<8; f++){
-            U64 onfile=ownp&FILEBB[f]; int cnt=popcnt(onfile);
-            if(!cnt) continue;
-            if(cnt>1) s -= sign*TAP(W_PAWN_DOUBLED_MG, W_PAWN_DOUBLED_EG)*(cnt-1);
-            if(!(ownp&ADJ_FILES[f])) s -= sign*TAP(W_PAWN_ISOLATED_MG, W_PAWN_ISOLATED_EG)*cnt;
-            U64 x=onfile;
-            while(x){ int sq=lsb(x); x&=x-1;
-                if(!(enp&PASSED_FRONT[c][sq])){
-                    int r=sq/8, rel=c==WHITE?r:7-r, front=c==WHITE?sq+8:sq-8;
-                    double mult=(front>=0&&front<64&&(all&(1ULL<<front)))?TAP(W_PAWN_BLOCKED_PASSER_MG, W_PAWN_BLOCKED_PASSER_EG):1.0;
-                    s += sign*PASSED_BONUS[rel]*TAP(W_PAWN_PASSED_SCALE_MG, W_PAWN_PASSED_SCALE_EG)*mult*passed_scale;
-                    if(passers&ADJ_FILES[f])
-                        s += sign*TAP(W_PAWN_CONNECTED_PASSER_MG, W_PAWN_CONNECTED_PASSER_EG)*mult*passed_scale;
-                    if(kd_w!=0.0 && front>=0 && front<64){
-                        /* mirror of pawn_structure.py: escort your passer /
-                         * catch theirs (Chebyshev distance to the front sq) */
-                        int ok=lsb(bb[c][KING]), ek=lsb(bb[!c][KING]);
-                        int dfo=ok%8-front%8, dro=ok/8-front/8;
-                        int dfe=ek%8-front%8, dre=ek/8-front/8;
-                        if(dfo<0)dfo=-dfo; if(dro<0)dro=-dro;
-                        if(dfe<0)dfe=-dfe; if(dre<0)dre=-dre;
-                        int dok=dfo>dro?dfo:dro, dek=dfe>dre?dfe:dre;
-                        s += sign*kd_w*(dek-dok);
-                    }
-                    /* rook behind the passer (Tarrasch); mirrors pawn_structure._rook_behind:
-                     * own rook supports (bonus), enemy rook attacks it from behind (penalty) */
-                    { U64 behind = c==WHITE ? ((1ULL<<(r*8))-1) : ~((1ULL<<((r+1)*8))-1);
-                      if((bb[c][ROOK]&FILEBB[f]) & behind)  s += sign*TAP(W_PAWN_ROOK_BEHIND_PASSER_MG, W_PAWN_ROOK_BEHIND_PASSER_EG)*passed_scale;
-                      if((bb[!c][ROOK]&FILEBB[f]) & behind) s -= sign*TAP(W_PAWN_ROOK_BEHIND_ENEMY_PASSER_MG, W_PAWN_ROOK_BEHIND_ENEMY_PASSER_EG)*passed_scale; }
+
+    U64 wpawns=bb[WHITE][PAWN], bpawns=bb[BLACK][PAWN];
+    U64 passers_of[2];
+    double pmg, peg;
+    {
+        U64 k = wpawns*0x9E3779B97F4A7C15ULL ^ bpawns*0xC2B2AE3D27D4EB4FULL;
+        k ^= k>>29; k *= 0xBF58476D1CE4E5B9ULL; k ^= k>>32;
+        PHEntry *pe = &PH[k & PH_MASK];
+        if(pe->wp==wpawns && pe->bp==bpawns){
+            passers_of[WHITE]=pe->pw; passers_of[BLACK]=pe->pb;
+            pmg=pe->mg; peg=pe->eg;
+        } else {
+            double mg=0.0, eg=0.0;
+            for(int c=0;c<2;c++){
+                int sign=c==WHITE?1:-1;
+                U64 ownp=bb[c][PAWN], enp=bb[!c][PAWN];
+                U64 passers=0;
+                { U64 x=ownp; while(x){ int sq=lsb(x); x&=x-1;
+                    if(!(enp&PASSED_FRONT[c][sq])) passers|=1ULL<<sq; } }
+                passers_of[c]=passers;
+                for(int f=0; f<8; f++){
+                    U64 onfile=ownp&FILEBB[f]; int cnt=popcnt(onfile);
+                    if(!cnt) continue;
+                    if(cnt>1){ mg -= sign*W_PAWN_DOUBLED_MG*(cnt-1);
+                               eg -= sign*W_PAWN_DOUBLED_EG*(cnt-1); }
+                    if(!(ownp&ADJ_FILES[f])){ mg -= sign*W_PAWN_ISOLATED_MG*cnt;
+                                              eg -= sign*W_PAWN_ISOLATED_EG*cnt; }
                 }
             }
+            /* backward pawns (mirrors engine/concepts/backward_pawns.py): a pawn
+             * whose adjacent-file friends have all advanced past it and whose stop
+             * square an enemy pawn covers -- worse on a half-open file. */
+            for(int c=0;c<2;c++){
+                int sign=c==WHITE?1:-1;
+                U64 own=bb[c][PAWN], enemy=bb[!c][PAWN];
+                U64 enemy_atk = c==WHITE ? BPAWN_ATK(enemy) : WPAWN_ATK(enemy);
+                U64 x=own;
+                while(x){ int sq=lsb(x); x&=x-1; int f=sq%8, r=sq/8;
+                    U64 adj = (f>0?FILEBB[f-1]:0) | (f<7?FILEBB[f+1]:0);
+                    U64 own_adj = own & adj;
+                    if(!own_adj) continue;                     /* isolated, not backward */
+                    U64 support; int stop;
+                    if(c==WHITE){ support = adj & ((1ULL<<((r+1)*8))-1); stop=sq+8; }
+                    else        { support = adj & ~((1ULL<<(r*8))-1);    stop=sq-8; }
+                    if(own_adj & support) continue;            /* a neighbour is level/behind */
+                    if(stop<0||stop>63) continue;
+                    if(!(enemy_atk & (1ULL<<stop))) continue;  /* can advance safely */
+                    int half_open = !(enemy & FILEBB[f]);
+                    mg -= sign * W_PAWN_BACKWARD_MG * (half_open?2:1);
+                    eg -= sign * W_PAWN_BACKWARD_EG * (half_open?2:1);
+                }
+            }
+            /* connected pawns (mirrors engine/concepts/connected_pawns.py):
+             * phalanx or supported, bonus x(rank-3) so only advanced duos score. */
+            for(int c=0;c<2;c++){
+                int sign=c==WHITE?1:-1; U64 own=bb[c][PAWN];
+                U64 x=own;
+                while(x){ int sq=lsb(x); x&=x-1; int f=sq%8, r=sq/8;
+                    int rel = c==WHITE ? r : 7-r, adv = rel-2;
+                    if(adv<=0) continue;
+                    int back = c==WHITE ? r-1 : r+1, conn=0;
+                    for(int af=f-1; af<=f+1; af+=2){
+                        if(af<0||af>7) continue;
+                        if(own & (1ULL<<(r*8+af))) conn=1;                          /* phalanx */
+                        if(back>=0 && back<8 && (own & (1ULL<<(back*8+af)))) conn=1; /* supported */
+                    }
+                    if(conn){ mg += sign * W_PAWN_CONNECTED_MG * adv;
+                              eg += sign * W_PAWN_CONNECTED_EG * adv; }
+                }
+            }
+            pmg=mg; peg=eg;
+            pe->wp=wpawns; pe->bp=bpawns;
+            pe->pw=passers_of[WHITE]; pe->pb=passers_of[BLACK];
+            pe->mg=mg; pe->eg=eg;
         }
     }
+    s += phase*pmg + (1.0-phase)*peg;
 
-    /* backward pawns (mirrors engine/concepts/backward_pawns.py): a pawn whose
-     * adjacent-file friends have all advanced past it and whose stop square an
-     * enemy pawn covers -- a chronic weakness, worse on a half-open file. Placed
-     * after pawn structure, before king safety, to match the Python sum order. */
+    /* passer terms that need more than pawns -- over the passer set only */
     for(int c=0;c<2;c++){
         int sign=c==WHITE?1:-1;
-        U64 own=bb[c][PAWN], enemy=bb[!c][PAWN];
-        U64 enemy_atk = c==WHITE ? BPAWN_ATK(enemy) : WPAWN_ATK(enemy);
-        U64 x=own;
-        while(x){ int sq=lsb(x); x&=x-1; int f=sq%8, r=sq/8;
-            U64 adj = (f>0?FILEBB[f-1]:0) | (f<7?FILEBB[f+1]:0);
-            U64 own_adj = own & adj;
-            if(!own_adj) continue;                     /* isolated, not backward */
-            U64 support; int stop;
-            if(c==WHITE){ support = adj & ((1ULL<<((r+1)*8))-1); stop=sq+8; }
-            else        { support = adj & ~((1ULL<<(r*8))-1);    stop=sq-8; }
-            if(own_adj & support) continue;            /* a neighbour is level/behind */
-            if(stop<0||stop>63) continue;
-            if(!(enemy_atk & (1ULL<<stop))) continue;  /* can advance safely */
-            int half_open = !(enemy & FILEBB[f]);
-            s -= sign * TAP(W_PAWN_BACKWARD_MG, W_PAWN_BACKWARD_EG) * (half_open?2:1);
-        }
-    }
-
-    /* connected pawns (mirrors engine/concepts/connected_pawns.py): phalanx or
-     * supported, bonus x(rank-3) so only advanced duos score. */
-    for(int c=0;c<2;c++){
-        int sign=c==WHITE?1:-1; U64 own=bb[c][PAWN];
-        U64 x=own;
-        while(x){ int sq=lsb(x); x&=x-1; int f=sq%8, r=sq/8;
-            int rel = c==WHITE ? r : 7-r, adv = rel-2;
-            if(adv<=0) continue;
-            int back = c==WHITE ? r-1 : r+1, conn=0;
-            for(int af=f-1; af<=f+1; af+=2){
-                if(af<0||af>7) continue;
-                if(own & (1ULL<<(r*8+af))) conn=1;                          /* phalanx */
-                if(back>=0 && back<8 && (own & (1ULL<<(back*8+af)))) conn=1; /* supported */
+        U64 passers=passers_of[c];
+        U64 x=passers;
+        while(x){ int sq=lsb(x); x&=x-1;
+            int f=sq%8, r=sq/8, rel=c==WHITE?r:7-r, front=c==WHITE?sq+8:sq-8;
+            double mult=(front>=0&&front<64&&(all&(1ULL<<front)))?TAP(W_PAWN_BLOCKED_PASSER_MG, W_PAWN_BLOCKED_PASSER_EG):1.0;
+            s += sign*PASSED_BONUS[rel]*TAP(W_PAWN_PASSED_SCALE_MG, W_PAWN_PASSED_SCALE_EG)*mult*passed_scale;
+            if(passers&ADJ_FILES[f])
+                s += sign*TAP(W_PAWN_CONNECTED_PASSER_MG, W_PAWN_CONNECTED_PASSER_EG)*mult*passed_scale;
+            if(kd_w!=0.0 && front>=0 && front<64){
+                /* mirror of pawn_structure.py: escort your passer /
+                 * catch theirs (Chebyshev distance to the front sq) */
+                int ok=lsb(bb[c][KING]), ek=lsb(bb[!c][KING]);
+                int dfo=ok%8-front%8, dro=ok/8-front/8;
+                int dfe=ek%8-front%8, dre=ek/8-front/8;
+                if(dfo<0)dfo=-dfo; if(dro<0)dro=-dro;
+                if(dfe<0)dfe=-dfe; if(dre<0)dre=-dre;
+                int dok=dfo>dro?dfo:dro, dek=dfe>dre?dfe:dre;
+                s += sign*kd_w*(dek-dok);
             }
-            if(conn) s += sign * TAP(W_PAWN_CONNECTED_MG, W_PAWN_CONNECTED_EG) * adv;
+            /* rook behind the passer (Tarrasch); mirrors pawn_structure._rook_behind:
+             * own rook supports (bonus), enemy rook attacks it from behind (penalty) */
+            { U64 behind = c==WHITE ? ((1ULL<<(r*8))-1) : ~((1ULL<<((r+1)*8))-1);
+              if((bb[c][ROOK]&FILEBB[f]) & behind)  s += sign*TAP(W_PAWN_ROOK_BEHIND_PASSER_MG, W_PAWN_ROOK_BEHIND_PASSER_EG)*passed_scale;
+              if((bb[!c][ROOK]&FILEBB[f]) & behind) s -= sign*TAP(W_PAWN_ROOK_BEHIND_ENEMY_PASSER_MG, W_PAWN_ROOK_BEHIND_ENEMY_PASSER_EG)*passed_scale; }
         }
     }
 
