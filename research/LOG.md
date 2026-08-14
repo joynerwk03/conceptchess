@@ -47,6 +47,43 @@ exactly that mask and can now afford it. Priced before designing, which is the
 rule that killed the mobility tables and should have been applied to bundle E
 first.
 
+**Bundles K and L: the long-horizon theory only half survives.**
+
+Session 29's rule -- knowledge pays only when its horizon exceeds the search's --
+predicted that structural pawn facts would pay where tactics did not. Two more
+tests say the rule is necessary but nowhere near sufficient.
+
+  * **Bundle K -- wing majority and outside passer.** A majority is a passed
+    pawn that has not happened yet; an outside passer drags the enemy king off
+    the other wing. Both are decided over more moves than any search here can
+    see. **+0.000%. Both weights tuned to exactly 0.000.**
+  * **Bundle L -- opposite bishops with the rooks still on, and a pawn up in a
+    rook ending.** Judged on drawn positions, the instrument bundle H showed was
+    the right one: **+3.9% on drawn games for -0.273% on decisive** at priors,
+    and no setting of the two weights beat that ratio.
+
+L is rejected on a distinction worth keeping: **bundle H's cases are THEORETICAL
+draws, L's are STATISTICAL tendencies.** King and knight against a bare king
+cannot be won by anybody; a rook ending a pawn up is often drawn and frequently
+won. Damping the second by a quarter throws away real wins, and the decisive
+metric -- the one calibrated to Elo -- prices that at about -1.3 Elo. A scale
+factor is the right tool only for endings that are drawn as a matter of fact.
+
+K is the more interesting failure. `screen_loss` tunes IN SAMPLE, with no
+held-out set, so a term that reaches exactly 0.000 has failed with every freedom
+to overfit available to it. That is not a resolution problem and more data would
+not rescue it: a wing majority is already implied by the pawn counts and the
+tuned piece-square tables, and an outside passer is already scored as a passer.
+
+**The eval is saturated.** Five of the last six bundles -- safe pawn pushes,
+connected rooks, rook on the seventh with the king cut off, pawn storms, king
+escape squares, wing majorities, outside passers -- screened at or below +0.1
+Elo, each verified FIRING before being believed. Ninety-three weights and 512
+fitted piece-square entries have absorbed essentially everything the terms a
+human would think to add can express. The one that did pay, passer path safety,
+was orthogonal to all of them: nothing else in the evaluation looks at what
+stands between a pawn and the queening square.
+
 **Four knowledge bundles, one worth having, and the rule that separates them.**
 
   * **Bundle F -- can the passer actually run?** Path clear of enemy control,
