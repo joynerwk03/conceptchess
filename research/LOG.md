@@ -46,6 +46,33 @@ when a sacrifice was right and the evaluation would not pay for it.
 Suite kept at `research/suites/blunders_s30.epd`; games at
 `research/data/vs2800_s30.pgn`.
 
+**Depth work, and the reason a whole family of optimisations cannot pay here.**
+
+With three quarters of real blunders search-limited, nodes per second is the
+thing worth buying, and legality testing looked like the target: 6.4% of runtime
+over 97 MILLION calls, each rebuilding the occupancy and scanning the king
+square with two magic lookups. Two attempts, both rejected:
+
+  * **alignment shortcut** -- a piece not on a queen-line from its own king
+    cannot be pinned, so its move is legal. Fired on **28.3%** of calls,
+    **-1.54% NPS**. The estimate had been ~57%; in real positions pieces cluster
+    around their own king (pawns in front of it, rooks on the back rank), so
+    alignment is the common case rather than the rare one.
+  * **real pin masks**, computed once per position and hoisted out of both legal
+    move generators: **-3.61% NPS**, worse still, despite a 50.5% hit rate.
+
+The instrumentation on the second explains both, and generalises far beyond
+them: the pin mask was computed 29.9M times for 41.2M legality calls -- **1.4
+calls per mask**. There is nothing to amortise. The capture generator runs at
+every quiescence node and usually yields one or two moves, and the main loop
+cuts on the first move 90.24% of the time, so the effective moves-per-node in
+this search is tiny.
+
+**Any optimisation shaped as "precompute once per node, reuse across the moves"
+is therefore structurally dead here** -- which also explains the earlier lazy
+move-selection failure (-4.19%), which rested on the same assumption. Speed work
+has to make the PER-MOVE path cheaper; it cannot hoist work out of it.
+
 ---
 
 ## 2026-08-14 — Session 30: a real rating at last, and the SMP question answered
