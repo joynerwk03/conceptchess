@@ -118,6 +118,21 @@ static U64 slide(int sq, U64 occ, const int dirs[4][2]){
  * eval mobility, SEE and perft are all byte-identical — this is pure speed.
  * Magics are found at init by seeded xorshift search (deterministic, ~100ms
  * once per process); constructive collisions (same attack set) are allowed. */
+/* Slider index: PEXT where it is fast, magic multiply otherwise.
+ *
+ * PEXT is ~3 cycles on Intel Haswell and later and on AMD Zen 3 and later, but
+ * MICROCODED at ~18 cycles on Zen 1 and Zen 2, where this would be a large
+ * regression. Both paths are compiled; build with -DCC_NO_PEXT on Zen 1/2.
+ * magic_init fills the tables through this same macro, so the fill order and
+ * the lookup can never disagree. */
+#if defined(__BMI2__) && !defined(CC_NO_PEXT)
+#include <immintrin.h>
+#define SLIDER_IDX(occ, mask, magic, shift) ((unsigned)_pext_u64((occ), (mask)))
+#else
+#define SLIDER_IDX(occ, mask, magic, shift) \
+    ((unsigned)((((occ) & (mask)) * (magic)) >> (shift)))
+#endif
+
 static U64 M_MASK[2][64];          /* relevant occupancy (edges excluded) */
 static U64 M_MAGIC[2][64];
 static int M_SHIFT[2][64];
@@ -161,7 +176,7 @@ static void magic_init(void){
                 memset(tab,0,(size_t)size*sizeof(U64));
                 int ok=1;
                 for(int i=0;i<n&&ok;i++){
-                    unsigned idx=(unsigned)((occs[i]*magic)>>M_SHIFT[bi][sq]);
+                    unsigned idx=SLIDER_IDX(occs[i],mask,magic,M_SHIFT[bi][sq]);
                     if(tab[idx]==0) tab[idx]=refs[i]?refs[i]:1;   /* 1 = "empty attack" sentinel */
                     else if(tab[idx]!=(refs[i]?refs[i]:1)) ok=0;  /* destructive collision */
                 }
@@ -174,10 +189,10 @@ static void magic_init(void){
     }
 }
 static inline U64 bishop_atk(int sq,U64 occ){
-    return M_ATT[0][sq][(unsigned)(((occ&M_MASK[0][sq])*M_MAGIC[0][sq])>>M_SHIFT[0][sq])];
+    return M_ATT[0][sq][SLIDER_IDX(occ,M_MASK[0][sq],M_MAGIC[0][sq],M_SHIFT[0][sq])];
 }
 static inline U64 rook_atk(int sq,U64 occ){
-    return M_ATT[1][sq][(unsigned)(((occ&M_MASK[1][sq])*M_MAGIC[1][sq])>>M_SHIFT[1][sq])];
+    return M_ATT[1][sq][SLIDER_IDX(occ,M_MASK[1][sq],M_MAGIC[1][sq],M_SHIFT[1][sq])];
 }
 
 static void refresh(Board *b){
