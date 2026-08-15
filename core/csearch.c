@@ -475,6 +475,12 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
          * (fewer when the eval isn't improving). Never skip a checking move. */
         if(!pvnode && quiet && bestm && !checked && depth<=LMP_DEPTH
            && i >= ((3 + depth*depth) >> (improving?0:1)) && !in_check(&c,c.side)){ continue; }
+        /* Only now, once this child is certainly going to be searched. Placing
+         * the prefetch before the futility and late-move-pruning tests fetched
+         * two cache lines for children that were then skipped, which measured
+         * -0.72% NPS: wasted bandwidth and evicted lines that were in use. */
+        __builtin_prefetch(&TT[c.hash & TT_MASK]);
+        __builtin_prefetch(&EH[c.hash & EH_MASK]);
         int sc;
         if(i==0){ sc=-negamax(&c,depth-1+ext,-beta,-alpha,ply+1,m); }
         else {
