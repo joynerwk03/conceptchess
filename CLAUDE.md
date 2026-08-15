@@ -133,6 +133,26 @@ Each session:
    experiments: revert the code, keep the LOG entry — negative results are data.
 
 Rules of thumb:
+- **Self-play is not a valid gate, for eval OR search changes.** s24 concluded
+  that eval changes don't transfer but search changes do, and that was wrong.
+  A time-management fix measured **+17 Elo [+5, +29] over 1600 self-play games**
+  and **-14** across two external gates (run in both orders, to rule out
+  harness drift). Self-play pits a change against an opponent sharing its exact
+  blind spots. Gate against Stockfish, or don't claim Elo.
+- **The engine is memory-bound.** Arithmetic micro-optimisations measure ~0
+  (distance table +0.10%, ring popcounts +0.08%); memory layout is where the
+  speed is (pawn hash +4.0%, prefetch +5.3%, 16-byte TT entry +1.6%, PEXT
+  sliders +7.2%). Before optimising anything, ask whether it touches memory.
+- **Nothing amortises per node.** This search averages 1.4 legality calls per
+  position and cuts on the first move 90.24% of the time, so "precompute once
+  per node, reuse across moves" is structurally dead here — it killed both
+  legality schemes and lazy move selection. Make the per-move path cheaper.
+- **A tree-identical speed change is self-validating.** If fixed-depth node
+  counts match to the node, the change cannot have altered play, so NPS is
+  sufficient evidence and no game gate is needed (nor could one resolve +7 Elo).
+- **Probe before refactoring.** Making a structure *worse* costs minutes and
+  tells you the ceiling: padding the Board and doubling the `pat` stride both
+  measured ~0, which killed two planned rewrites before they were written.
 - **Any tuning number must be scale-invariant.** The Texel loss is
   `sigmoid(eval/(K*400))`. With K held fixed, multiplying the whole evaluation by
   a constant lowers the loss while changing no move — at K=0.6, x1.2 "gains"
