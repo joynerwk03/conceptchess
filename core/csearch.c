@@ -604,15 +604,7 @@ static void run_id(ThreadCtx *tc){
             }
             break;   /* score inside the window: accept this iteration */
         }
-        if(SS.stopped){
-            /* Interrupted mid-iteration. The incumbent is searched first, so a
-             * later move that outscored it did so at THIS depth on a full-width
-             * search of both -- a refutation, not a guess. Keep it. A score at
-             * or below the aspiration floor is a fail-low BOUND, so it is not
-             * comparable and is refused. */
-            if(bm_found && bm!=best && bs>alpha0){ best=bm; score=bs; cd=depth; }
-            break;
-        }
+        if(SS.stopped) break;
         if(bm_found){ best=bm; score=bs; cd=depth; second=sm;
             tc->pvlen=iter_pvlen;                    /* publish this completed iter's PV */
             for(int k=0;k<iter_pvlen;k++) tc->pv[k]=iter_pv[k];

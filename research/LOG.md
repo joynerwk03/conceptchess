@@ -2,6 +2,47 @@
 
 ## 2026-08-15 — Session 31: asking the games instead of guessing
 
+**Self-play overstated a SEARCH change by about 30 Elo. Reverted.**
+
+Accepting a proven improvement from an interrupted iteration measured **+17 Elo,
+95% [+5, +29], over 1600 self-play games** -- a significant result, on a change
+whose logic is hard to argue with: the incumbent move is searched first at every
+root, so a later move that outscores it has refuted it at the same depth, and
+playing the incumbent anyway plays a move just proven inferior.
+
+Two external paired gates disagree, and agree with each other:
+
+    600 slots, old first:   new - old = -20.6 Elo   95% [-53.3, +12.1]
+    600 slots, new first:   new - old =  -6.6 Elo   95% [-37.6, +24.4]
+    combined                new - old ~ -13.6
+
+The second run exists because abgate plays A to completion and then B, so drift
+over two and a half hours penalises whichever side runs second -- and the first
+gate had put the new code second. Swapping the order was meant to separate a
+real effect from a harness artefact, and it did: **both orderings put the new
+code behind**, so this is not run-order drift, and the direction is stable even
+though neither interval alone excludes zero.
+
+**Reverted**, under the standing rule that only an outside opponent is
+trustworthy.
+
+The methodological point is larger than the change. Session 24 concluded that
+eval changes do not transfer from self-play while SEARCH changes do, and that
+has been load-bearing ever since -- it is why search work has been gated cheaply
+with self-play SPRT all session, including the three continuation-history tests.
+This is a counterexample: a pure search change, significant at +17 over 1600
+self-play games, that two external gates put near -14.
+
+**Self-play cannot be trusted for search changes either.** It measures a change
+against an opponent that shares its exact blind spots, and for TIME MANAGEMENT
+-- which is what this change really is -- both sides being interrupted the same
+way at the same moments is precisely the condition that cannot hold against
+anybody else.
+
+Kept: the 8-byte eval-hash entry, a pure memory-layout change with no
+behavioural component.
+
+
 Six knowledge bundles in a row screened at zero. `research/blunders.py` was
 built for precisely this situation and its docstring already said why it keeps
 happening -- "guessing concepts has gone 0-for-4" -- which this session made
