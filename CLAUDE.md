@@ -21,7 +21,11 @@ eval speedup or new term that can't be attributed to a concept item is not
 acceptable. Opaque evaluations (NN evals, unexplained blended terms) are out of
 scope by design.
 
-## Compiled core (the engine that actually plays) — ~2442 Elo
+## Compiled core (the engine that actually plays) — 2811 Elo single-thread
+
+*(measured 2026-08-15, 3-anchor ML fit, 900 games at 0.3s, 95% CI [2789, 2833];
+about 2907 at full thread width, adding the separately measured +96 for ten
+threads. `research/data/elo_history.json` tracks this over time.)*
 
 `engine/Engine` searches with a **compiled C core** by default (`engine/core.py`
 binds `core/libcengine.dylib` on macOS / `core/libcengine.so` on Linux+WSL2 via
