@@ -52,7 +52,16 @@ static const int SEEV[6]={100,320,330,500,900,0};
 /* Zobrist tables + zobrist_init() live in cengine.c (make() needs them to
  * maintain Board.hash incrementally); this file just consumes b->hash. */
 
-typedef struct { U64 key; int score; Move move; short depth; unsigned char flag; } TTEntry;
+/* 16 bytes: the move needs only 18 of its 32 bits, so depth and the bound
+ * flag ride in the spare ones and the entry loses its padding. The key
+ * stays a full 64 bits, so this costs no extra collisions. */
+#define TTM_MOVE(x)  ((Move)((x) & 0x3FFFFu))
+#define TTM_DEPTH(x) ((int)(((x) >> 18) & 0x7Fu))
+#define TTM_FLAG(x)  ((int)(((x) >> 25) & 3u))
+#define TTM_PACK(m,d,f) ((unsigned int)((m) & 0x3FFFFu) \
+                        | ((unsigned int)((d) & 0x7F) << 18) \
+                        | ((unsigned int)((f) & 3) << 25))
+typedef struct { U64 key; int score; unsigned int mdf; } TTEntry;
 static TTEntry *TT=0;
 
 /* Eval hash: caches side-to-move static eval by Board.hash. The hash covers
@@ -266,9 +275,10 @@ static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
         TTEntry *e=&TT[b->hash&TT_MASK];
         if(e->key==b->hash){
             int ts=score_from_tt(e->score, ply);   /* mate distances are ply-relative */
-            if(e->flag==TT_EXACTF) return ts;
-            if(e->flag==TT_LOWERF && ts>=beta) return ts;
-            if(e->flag==TT_UPPERF && ts<=alpha) return ts;
+            int ef=TTM_FLAG(e->mdf);
+            if(ef==TT_EXACTF) return ts;
+            if(ef==TT_LOWERF && ts>=beta) return ts;
+            if(ef==TT_UPPERF && ts<=alpha) return ts;
         }
     }
     int stand = eval_stm(b);
@@ -342,12 +352,13 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
     Move ttm=0; int tt_hit=0, tt_depth=0, tt_flag=0, tt_score=0;
     if(!done){
         TTEntry *e=&TT[h&TT_MASK];
-        if(e->key==h){ ttm=e->move; tt_hit=1; tt_depth=e->depth; tt_flag=e->flag;
+        if(e->key==h){ unsigned int mdf=e->mdf;
+            ttm=TTM_MOVE(mdf); tt_hit=1; tt_depth=TTM_DEPTH(mdf); tt_flag=TTM_FLAG(mdf);
             tt_score=score_from_tt(e->score, ply);   /* mate distances are ply-relative */
-            if(!excl && e->depth>=depth && ply>0){   /* no TT cutoff during a singular verification */
-                if(e->flag==TT_EXACTF){ ret=tt_score; done=1; }
-                else if(e->flag==TT_LOWERF && tt_score>=beta){ ret=tt_score; done=1; }
-                else if(e->flag==TT_UPPERF && tt_score<=alpha){ ret=tt_score; done=1; }
+            if(!excl && tt_depth>=depth && ply>0){   /* no TT cutoff during a singular verification */
+                if(tt_flag==TT_EXACTF){ ret=tt_score; done=1; }
+                else if(tt_flag==TT_LOWERF && tt_score>=beta){ ret=tt_score; done=1; }
+                else if(tt_flag==TT_UPPERF && tt_score<=alpha){ ret=tt_score; done=1; }
             }
         }
     }
@@ -525,8 +536,8 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
     if(!excl){   /* don't pollute this position's TT entry from a verification search */
         int flag = best<=orig_alpha?TT_UPPERF : best>=beta?TT_LOWERF : TT_EXACTF;
         TTEntry *e=&TT[h&TT_MASK];
-        e->key=h; e->depth=depth; e->flag=flag;
-        e->score=score_to_tt(best, ply); e->move=bestm;
+        e->key=h; e->mdf=TTM_PACK(bestm, depth, flag);
+        e->score=score_to_tt(best, ply);
     }
     SS.path_len--;
     return best;
@@ -616,7 +627,7 @@ static void run_id(ThreadCtx *tc){
             for(int k=0;k<iter_pvlen;k++) tc->pv[k]=iter_pv[k];
             if(tc->is_main){   /* only main writes the root entry c_pv reads */
                 U64 rh=b.hash; TTEntry *re=&TT[rh&TT_MASK];
-                re->key=rh; re->depth=depth; re->flag=TT_EXACTF; re->score=score; re->move=best;
+                re->key=rh; re->mdf=TTM_PACK(best, depth, TT_EXACTF); re->score=score;
             }
             for(int i=0;i<rn;i++) if(root[i]==best){ Move t=root[i]; for(int j=i;j>0;j--)root[j]=root[j-1]; root[0]=t; break; } }
         if(score>S_MATE_TH||score<-S_MATE_TH) break;
@@ -811,17 +822,17 @@ void c_pv(const char *startfen, const char *moves, char *pv_out, int maxlen){
         if(d==999) break;
         if(ns<64) seen[ns++]=h;
         TTEntry *e=&TT[h&TT_MASK];
-        if(e->key!=h||e->move==0) break;
+        if(e->key!=h||TTM_MOVE(e->mdf)==0) break;
         /* verify legal */
         Move legal[256]; int nl=gen_legal(&b,legal), ok=0;
-        for(int i=0;i<nl;i++) if(legal[i]==e->move){ ok=1; break; }
+        for(int i=0;i<nl;i++) if(legal[i]==TTM_MOVE(e->mdf)){ ok=1; break; }
         if(!ok) break;
-        char u[8]; uci_of(e->move,u);
+        char u[8]; uci_of(TTM_MOVE(e->mdf),u);
         int ul=(int)strlen(u);
         if(pos+ul+1>=maxlen) break;
         if(pos) pv_out[pos++]=' ';
         memcpy(pv_out+pos,u,ul); pos+=ul;
-        make(&b,e->move);
+        make(&b,TTM_MOVE(e->mdf));
     }
     pv_out[pos]=0;
 }
