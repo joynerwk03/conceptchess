@@ -1,5 +1,53 @@
 ---
 
+## 2026-08-15 — Session 31: asking the games instead of guessing
+
+Six knowledge bundles in a row screened at zero. `research/blunders.py` was
+built for precisely this situation and its docstring already said why it keeps
+happening -- "guessing concepts has gone 0-for-4" -- which this session made
+0-for-6 before finally using the tool. It needs games, and the 900-game
+calibration had been run without `--pgn-out`, so 400 more were played against
+the 2800 anchor (48.9%, the anchor the fit says we underperform).
+
+**319 blunders mined; 150 re-examined at ten times the thinking time.**
+
+    search-limited     113  (75.3%)   -- more depth fixes it
+    eval-limited        37  (24.7%)   -- we genuinely prefer the worse move
+
+    by phase (search / eval)
+      opening        10 / 1
+      middlegame     69 / 17
+      endgame        34 / 19
+
+**Three quarters of what this engine actually gets wrong is DEPTH, not
+knowledge.** That is the opposite of where the last two sessions went. Search
+was declared closed after seventeen experiments -- but every one of them was a
+TECHNIQUE variant (pruning parameters, ordering heuristics, a reduction
+formula). None of them made the engine deeper, and depth is what the mistakes
+are made of. Meanwhile six eval bundles were screened, merged or rejected on a
+metric that, it turns out, addresses a quarter of the problem.
+
+Two subtleties in the numbers, both worth keeping:
+
+  * **Endgames are relatively more eval-limited**: 19 of 53 endgame blunders
+    versus 17 of 86 in middlegames. Eval work that is worth doing is
+    disproportionately endgame work -- which is where bundle H already landed,
+    and where the screen is blind (drawn games are filtered out).
+  * **Move choice at 0.3s is unstable.** A fresh 0.3s search avoided the
+    blunder in 102 of the 150. Some of that is a warm transposition table
+    flattering the re-search, but it says the engine is partly playing a
+    randomised strategy, and variance at fixed time is a cost nobody has priced.
+
+The concepts favouring the worse move, in the eval-limited quarter, are
+`material` (+1682cp over 4 positions), `threats` (+1153cp over 8) and
+`placement` (+245cp over 9) -- material and threats being the two that show up
+when a sacrifice was right and the evaluation would not pay for it.
+
+Suite kept at `research/suites/blunders_s30.epd`; games at
+`research/data/vs2800_s30.pgn`.
+
+---
+
 ## 2026-08-14 — Session 30: a real rating at last, and the SMP question answered
 
 **External Elo: 2777, 95% CI [2756, 2799].** Three anchors (2600/2700/2800),
