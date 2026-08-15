@@ -2,6 +2,31 @@
 
 ## 2026-08-15 — Session 31: asking the games instead of guessing
 
+**Re-calibrated after the speed block: 2811, 95% CI [2789, 2833].**
+
+Same protocol as the previous fit -- three anchors, 900 games at 0.3s,
+single-threaded, BayesElo draw model -- so the two are directly comparable:
+
+    2026-08-01   2743   [2717, 2769]   600 games
+    2026-08-14   2777   [2756, 2799]   900 games
+    2026-08-15   2811   [2789, 2833]   900 games
+
+**+34 Elo measured**, on a block whose only surviving changes were pure speed:
+the eval-hash entry halved, the hash-slot prefetch, the 16-byte transposition
+entry and PEXT slider indexing, together +15% NPS. The depth model predicts
+about +14 from that (+0.24 ply at EBF 1.852 and 60 Elo a ply), so the measured
++34 is generous against it -- but each fit carries +-22, so their difference
+carries about +-31 and the two are not in conflict. The honest reading is "+14
+to +34, and certainly positive".
+
+Profile and bootstrap intervals agree (+-22 and +-20) and the residuals are
++1.3%, +1.0%, -3.4%, so the model still fits. The engine remains weakest
+relative to the fit against the strongest anchor, as it has been all along.
+
+At full thread width that is about **2907**, adding the separately measured +96
+for ten threads, leaving roughly **93 to 3000**.
+
+
 **The engine is memory-bound, and that one fact organised the whole block.**
 
 The blunder classification put 75.3% of real mistakes at search-limited, so

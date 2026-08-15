@@ -116,5 +116,50 @@
       }
     ],
     "machine": "Linux x86_64 / 20 cpus"
+  },
+  {
+    "date": "2026-08-15",
+    "commit": "2d66ad6",
+    "label": "s31 single-thread: prefetch + 16-byte TT + PEXT sliders (NPS 1.31M -> 1.51M)",
+    "elo": 2811.1,
+    "ci": [
+      2789.2,
+      2833.2
+    ],
+    "ci_bootstrap": [
+      2790.6,
+      2830.8
+    ],
+    "draw_elo": 130.8,
+    "games": 900,
+    "movetime": 0.3,
+    "threads": 1,
+    "concurrency": 6,
+    "book": "uho_1000.epd",
+    "opponent": "Stockfish 18",
+    "anchors": [
+      {
+        "elo": 2600,
+        "w": 196,
+        "d": 63,
+        "l": 41,
+        "score_pct": 75.83333333333333
+      },
+      {
+        "elo": 2700,
+        "w": 149,
+        "d": 90,
+        "l": 61,
+        "score_pct": 64.66666666666667
+      },
+      {
+        "elo": 2800,
+        "w": 78,
+        "d": 132,
+        "l": 90,
+        "score_pct": 48.0
+      }
+    ],
+    "machine": "Linux x86_64 / 20 cpus"
   }
 ]
