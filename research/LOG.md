@@ -2,6 +2,62 @@
 
 ## 2026-08-15 — Session 31: asking the games instead of guessing
 
+**The engine is memory-bound, and that one fact organised the whole block.**
+
+The blunder classification put 75.3% of real mistakes at search-limited, so
+nodes per second is what is worth buying. Nine experiments later the pattern is
+unambiguous:
+
+    ARITHMETIC changes measured nothing
+      precomputed Chebyshev distance table            +0.10%
+      proximity gradient as exact ring popcounts      +0.08%
+      Board struct 64 bytes larger (a probe)          +0.31%  (i.e. no cost)
+      `pat` array stride doubled (a probe)            -0.17%  (i.e. no cost)
+
+    MEMORY changes gave everything
+      pawn hash (earlier this session)                +4.0%
+      eval-hash entry 16 -> 8 bytes                   +0.7%
+      prefetch the hash slots, AFTER pruning          +5.3%
+      transposition entry 24 -> 16 bytes              +1.6%
+      PEXT slider indexing instead of magic multiply  +7.2%
+
+    NPS 1,311,000 -> 1,511,701 over the block, about +15%, or ~+0.24 ply at the
+    measured EBF of 1.852.
+
+Three of these are worth keeping as lessons rather than as numbers.
+
+**Placement was the entire prefetch experiment.** Prefetching immediately after
+make(), where the child's hash first exists, measured **-0.72%**. Futility and
+late-move pruning discard a large share of children after make() but before
+anything reads a table, so that version fetched two cache lines per move for
+children that were then thrown away. Moving the same two instructions below
+those tests turned -0.72% into +5.3%.
+
+**PEXT is worth it for the dependency chain, not the arithmetic.** Removing a
+multiply is worth nothing here on its own -- see the arithmetic column. It is
+worth 7.2% because the multiply sits in front of a slow load, and the processor
+cannot begin fetching until the address exists. Both paths are compiled: PEXT is
+~3 cycles on Intel Haswell+ and AMD Zen 3+, but MICROCODED at ~18 cycles on Zen
+1 and 2, where this would be a bad regression. Build with -DCC_NO_PEXT there.
+
+**Cheap probes beat refactors.** Two invasive rewrites were avoided by first
+asking whether the thing was expensive at all: doubling the `pat` array stride
+and padding the Board both cost nothing, so packing `pat` densely and shrinking
+Board -- each a day's careful work -- would have bought nothing.
+
+Every change in the memory column leaves the search tree IDENTICAL, verified by
+fixed-depth node counts matching to the node across six positions. That makes
+them self-validating: a game gate cannot resolve +7 Elo anyway, and a change
+that provably does not alter the tree can only be a speed change.
+
+**Also priced, having been shipped without pricing: the endgame-scale modifier
+costs 0.54% NPS**, which the earlier entry should have measured and did not.
+Bundle H is therefore about -0.7 Elo all in, kept for the interpretability
+reason recorded there -- the engine no longer claims +3.3 in a dead-drawn
+ending. Gating it behind a cheap shape test recovered only 0.13%, so it was left
+alone.
+
+
 **Self-play overstated a SEARCH change by about 30 Elo. Reverted.**
 
 Accepting a proven improvement from an interrupted iteration measured **+17 Elo,
