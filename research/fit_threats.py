@@ -9,9 +9,19 @@ Same machinery as the king-danger curve: coefficients MEASURED through the real
 evaluate(), a trust region, a scale-invariant loss with K refitted per candidate,
 and every round judged by re-scoring held-out positions with the real evaluator.
 
-No monotonicity is imposed here. For king danger "more pressure cannot be worth
-less" is real chess; for threats there is no comparable ordering across victims
-that is safe to assume -- assuming one is precisely the mistake being corrected.
+Two priors ARE imposed, after an unconstrained fit produced chess nonsense: it
+priced attacking a bishop with a pawn at -15.7 in the endgame, and made a
+hanging queen (22.9) worth less than a hanging rook (59.7). The threat term
+fires in tactical positions the search resolves, so the per-cell signal is weak
+-- especially for rare cells like a pawn attacking a queen -- and the loss will
+happily pay for noise.
+
+So each row is projected onto NON-NEGATIVE, NON-DECREASING-IN-VICTIM values: a
+threat cannot be bad for the side making it, and a threat against a more
+valuable piece cannot be worth less than the same threat against a cheaper one,
+because the victim is the thing that has to move. What is NOT assumed is the old
+proportionality -- the rows are free to be any increasing shape, which is the
+whole point.
 
     PYTHONPATH=. .venv/bin/python research/fit_threats.py --workers 15
 """
@@ -29,6 +39,21 @@ _B = None
 _BASE = None
 _SPEC = {}
 KGRID = [0.30, 0.34, 0.38, 0.42, 0.44, 0.46, 0.48, 0.50, 0.54, 0.60]
+
+
+def pava(y):
+    """Least-squares projection onto non-decreasing sequences."""
+    v, w = [], []
+    for val in map(float, y):
+        v.append(val); w.append(1.0)
+        while len(v) > 1 and v[-2] > v[-1]:
+            nv = (v[-2]*w[-2] + v[-1]*w[-1]) / (w[-2] + w[-1])
+            nw = w[-2] + w[-1]
+            v[-2:] = [nv]; w[-2:] = [nw]
+    out = []
+    for val, cnt in zip(v, w):
+        out.extend([val] * int(cnt))
+    return np.asarray(out)
 
 
 def best_loss(e, r):
@@ -144,6 +169,9 @@ def main():
             np.clip(d, -trust, trust, out=d)
 
         trial = cur + d
+        # non-negative and non-decreasing in victim value, per (kind, phase) row
+        for r0 in range(0, len(trial), 5):   # r0, not base: base is the eval array
+            trial[r0:r0+5] = pava(np.maximum(trial[r0:r0+5], 0.0))
         _boot(fens, trial)
         real_fit, _ = best_loss(_BASE[:cut], rf)
         real_hold, _ = best_loss(_BASE[cut:], rh)

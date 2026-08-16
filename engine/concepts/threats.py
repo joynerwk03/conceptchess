@@ -41,16 +41,16 @@ _VICTIMS = (chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN)
 # would suggest, big pieces usually being defended.
 _ORDER = (chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN)
 _TAB_MG = [
-    [15.53, 55.70, 57.25, 71.65, 133.77],   # pawn
-    [2.72, 8.70, 8.98, 19.60, 30.48],   # minor
-    [7.53, 24.10, 24.85, 37.65, 73.77],   # rook
-    [5.37, 3.14, 15.27, 8.05, 19.29],   # hanging
+    [15.53, 49.62, 54.67, 90.80, 90.80],   # pawn
+    [2.72, 8.70, 8.98, 39.39, 41.32],   # minor
+    [7.53, 24.10, 24.85, 37.65, 78.63],   # rook
+    [8.04, 33.56, 37.53, 37.53, 37.53],   # hanging
 ]
 _TAB_EG = [
-    [3.46, 17.07, 17.42, 11.30, 25.14],   # pawn
-    [9.59, 30.69, 31.65, 53.95, 92.31],   # minor
-    [1.44, 4.61, 4.75, 7.20, 18.96],   # rook
-    [15.49, 36.37, 34.85, 41.45, 79.41],   # hanging
+    [3.46, 9.04, 9.04, 32.02, 96.96],   # pawn
+    [9.59, 24.77, 24.77, 24.77, 119.40],   # minor
+    [1.44, 4.61, 4.75, 7.20, 90.78],   # rook
+    [11.35, 28.01, 31.49, 55.84, 123.98],   # hanging
 ]
 THREAT_MG = {k: dict(zip(_ORDER, _TAB_MG[i])) for i, k in enumerate(_KINDS)}
 THREAT_EG = {k: dict(zip(_ORDER, _TAB_EG[i])) for i, k in enumerate(_KINDS)}
