@@ -1,5 +1,76 @@
 ---
 
+## 2026-08-16 — Session 32: the training data was the bottleneck
+
+Six knowledge bundles had returned nothing and the shape-fitting seam was
+running dry, so the question became what else every fit had in common. The
+answer was the data. **`texel5.jsonl` -- 98k positions, ~70k decisive -- was
+generated on 1 August by an engine that measured 2743**, and every piece-square
+table, weight and curve in this evaluation had been fitted on the positions THAT
+engine steered into. The engine now measures 2811 with a materially different
+evaluation.
+
+16,000 fresh self-play games produced **283,751 positions, 190,471 decisive** --
+2.7x the old decisive sample alone, 3.9x combined. Re-fitting on the union, with
+nothing new added to the evaluation at all:
+
+    piece-square tables   +1.013% held-out   ~+4.8 Elo   (scale-invariant)
+    the 90 weights        +0.660%            ~+3.1 Elo   (after two reverts)
+    threat table          +0.645%            ~+3.0 Elo
+    king-danger curve     +0.048%            ~+0.2 Elo   (not applied)
+
+**About +11 Elo from better data and not one new term.** That is more than the
+last eight knowledge experiments produced between them, and it says the fits
+that pay are the HIGH-CAPACITY ones -- 512 table entries, 90 weights -- because
+capacity is exactly what a small sample cannot support. The king-danger curve
+gained almost nothing, and it is the one that was fitted recently and has only
+86 live parameters.
+
+**Independent evidence that the new data is better, invisible to the loss.**
+Material values, in pawn units:
+
+                   old     refit    textbook
+      knight      3.51      3.02       ~3.2
+      bishop      3.72      3.26       ~3.3
+      rook        6.09      5.35       ~5.0
+      queen      12.18     10.32       ~9.5
+
+A queen worth 12.2 pawns was the classic Texel artefact, flagged in session 29
+and not fixable by tightening bounds. The fresh data pulled all four back toward
+orthodoxy on its own. It also explains the 8% drop in evaluation scale: the old
+evaluation was inflated, so the search's centipawn margins were mis-calibrated
+BEFORE this change rather than after it.
+
+**Three separate drifts into chess nonsense, and what caught each.**
+
+  * `ocb.draw_scale` fitted to **1.157**. It multiplies the evaluation in pure
+    opposite-bishop endings, which are drawish, so it must be below one -- above
+    one it says opposite bishops make a position more decisive. Caught by
+    `tests/test_eval.py::TestModifiers`.
+  * `mate_drive.king_prox` 8.2 -> 14.4, which **inverted the mating gradient**:
+    with king and rook against a lone king, a cornered defender scored 128
+    against 144 for a centred one. Caught by `tests/test_endgame.py`.
+  * the unconstrained threat fit priced **attacking a bishop with a pawn at
+    -15.7**, and made a hanging queen worth less than a hanging rook. Caught by
+    reading the numbers.
+
+All three share a cause: **the objective cannot see them.** Mate-drive fires
+only in positions already won, where the label is 1.0 whatever the engine does;
+opposite-bishop endings are drawn, so the decisive-only filter discards them;
+threats fire in tactical positions the search resolves. Where the loss has no
+signal, the weights drift, and only chess knowledge can say they are wrong. The
+first two are now bounded in TUNABLE and the third is fixed by projecting each
+threat row onto non-negative, non-decreasing values -- which costs 0.09 points
+of the gain and removes every nonsensical entry.
+
+**And what the freedom bought, once constrained:** a MINOR attacking a ROOK is
+worth 39.4 against 9.0 for a minor attacking a bishop -- 4.4x, where material
+proportionality says 1.5x -- because that threat wins the exchange. The old
+`weight * VALUE[victim]` form could not express it at any setting of its four
+parameters.
+
+---
+
 ## 2026-08-15 — Session 31: asking the games instead of guessing
 
 **Fitting the SHAPES the evaluation had been assuming.**
