@@ -13,7 +13,7 @@ this sum byte-for-byte.
 
 import chess
 
-from engine.weights import W, wt
+from engine.weights import W, W_EG, wt
 
 _VALUE = {chess.PAWN: 100, chess.KNIGHT: 320, chess.BISHOP: 330,
           chess.ROOK: 500, chess.QUEEN: 900}
@@ -23,6 +23,43 @@ def _pawn_attacks(pawns, color):
     if color == chess.WHITE:
         return ((pawns << 7) & ~chess.BB_FILE_H) | ((pawns << 9) & ~chess.BB_FILE_A)
     return ((pawns >> 7) & ~chess.BB_FILE_A) | ((pawns >> 9) & ~chess.BB_FILE_H)
+
+
+
+# Threat value by (kind, victim), rather than weight * victim value. The old
+# form forced a threat on a queen to be worth exactly nine times a threat on a
+# pawn; these rows can say otherwise. Seeded to the old products so introducing
+# them changed nothing, then fitted on decisive-game loss.
+_KINDS = ("pawn", "minor", "rook", "hanging")
+_VICTIMS = (chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN)
+
+
+# Fitted on decisive-game loss, replacing `weight * VALUE[victim]`. The old form
+# forced a threat on a queen to be worth nine times one on a pawn; these numbers
+# say otherwise, most sharply for hanging pieces -- a hanging bishop outweighs a
+# hanging knight, and hanging rooks and queens are worth less than material
+# would suggest, big pieces usually being defended.
+_ORDER = (chess.PAWN, chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN)
+_TAB_MG = [
+    [15.53, 55.70, 57.25, 71.65, 133.77],   # pawn
+    [2.72, 8.70, 8.98, 19.60, 30.48],   # minor
+    [7.53, 24.10, 24.85, 37.65, 73.77],   # rook
+    [5.37, 3.14, 15.27, 8.05, 19.29],   # hanging
+]
+_TAB_EG = [
+    [3.46, 17.07, 17.42, 11.30, 25.14],   # pawn
+    [9.59, 30.69, 31.65, 53.95, 92.31],   # minor
+    [1.44, 4.61, 4.75, 7.20, 18.96],   # rook
+    [15.49, 36.37, 34.85, 41.45, 79.41],   # hanging
+]
+THREAT_MG = {k: dict(zip(_ORDER, _TAB_MG[i])) for i, k in enumerate(_KINDS)}
+THREAT_EG = {k: dict(zip(_ORDER, _TAB_EG[i])) for i, k in enumerate(_KINDS)}
+
+
+def _threat(kind, victim, phase):
+    mg = THREAT_MG[kind][victim]
+    eg = THREAT_EG[kind][victim]
+    return mg if mg == eg else phase * mg + (1.0 - phase) * eg
 
 
 class Threats:
@@ -49,7 +86,6 @@ class Threats:
             # can execute its threats immediately, so scale them up.
             enemy = not color
             w = 1.0 + init if color == board.turn else 1.0
-            wp, wm, wr, wh = w_pawn * w, w_minor * w, w_rook * w, w_hang * w
             pawns = board.pawns & ctx.occupied_co[color]
             pawn_atk = _pawn_attacks(pawns, color)
             minor_atk = 0
@@ -69,17 +105,17 @@ class Threats:
                     if (pawn_atk & m) and pt >= chess.KNIGHT:
                         items.append(
                             (f"{cname} {pname} on {sqn} attacked by a pawn" if labels else None,
-                             sign * wp * val))
+                             sign * w * _threat("pawn", pt, ctx.phase)))
                     if (minor_atk & m) and pt >= chess.ROOK:
                         items.append(
                             (f"{cname} {pname} on {sqn} attacked by a minor" if labels else None,
-                             sign * wm * val))
+                             sign * w * _threat("minor", pt, ctx.phase)))
                     if (rook_atk & m) and pt == chess.QUEEN:
                         items.append(
                             (f"{cname} queen on {sqn} attacked by a rook" if labels else None,
-                             sign * wr * val))
+                             sign * w * _threat("rook", pt, ctx.phase)))
                     if (atk & m) and not (dfd & m):
                         items.append(
                             (f"{cname} {pname} on {sqn} is hanging" if labels else None,
-                             sign * wh * val))
+                             sign * w * _threat("hanging", pt, ctx.phase)))
         return items

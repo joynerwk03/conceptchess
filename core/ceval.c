@@ -495,14 +495,16 @@ double eval_core(U64 bb[2][6], int side){
             int sign=c==WHITE?1:-1;
             /* the side to move can execute its threats now, so scale them up */
             double w = (c==side) ? (1.0+TAP(W_THREAT_INITIATIVE_MG, W_THREAT_INITIATIVE_EG)) : 1.0;
-            double wp=TAP(W_THREAT_PAWN_MG, W_THREAT_PAWN_EG)*w, wm=TAP(W_THREAT_MINOR_MG, W_THREAT_MINOR_EG)*w, wr=TAP(W_THREAT_ROOK_MG, W_THREAT_ROOK_EG)*w, wh=TAP(W_THREAT_HANGING_MG, W_THREAT_HANGING_EG)*w;
+            /* value by (kind, victim) from the fitted table, not weight x victim
+             * value; mirrors THREAT_MG/THREAT_EG in threats.py. A lookup
+             * replaces the multiply, so the extra freedom is free. */
             for(int p=0;p<5;p++){            /* PAWN..QUEEN (0-indexed here) */
                 U64 x=bb[!c][p];
                 while(x){ int sq=lsb(x); x&=x-1; U64 m=1ULL<<sq;
-                    if((pawnatk[c]&m)  && p>=KNIGHT) s += sign*wp*PV[p];
-                    if((minoratk[c]&m) && p>=ROOK)   s += sign*wm*PV[p];
-                    if((rookatk[c]&m)  && p==QUEEN)  s += sign*wr*PV[p];
-                    if((atkby[c]&m) && !(atkby[!c]&m)) s += sign*wh*PV[p];
+                    if((pawnatk[c]&m)  && p>=KNIGHT) s += sign*w*TAP(THR_MG[0*5+p], THR_EG[0*5+p]);
+                    if((minoratk[c]&m) && p>=ROOK)   s += sign*w*TAP(THR_MG[1*5+p], THR_EG[1*5+p]);
+                    if((rookatk[c]&m)  && p==QUEEN)  s += sign*w*TAP(THR_MG[2*5+p], THR_EG[2*5+p]);
+                    if((atkby[c]&m) && !(atkby[!c]&m)) s += sign*w*TAP(THR_MG[3*5+p], THR_EG[3*5+p]);
                 }
             }
         }

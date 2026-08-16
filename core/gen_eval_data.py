@@ -53,6 +53,13 @@ def main():
     parts.append("")
     parts.append("#define KD_MAX 128")
     parts.append("")
+    from engine.concepts.threats import THREAT_MG, THREAT_EG, _KINDS, _ORDER
+    parts.append(c_array("THR_MG",
+        [THREAT_MG[k][pt] for k in _KINDS for pt in _ORDER], per_line=5))
+    parts.append("")
+    parts.append(c_array("THR_EG",
+        [THREAT_EG[k][pt] for k in _KINDS for pt in _ORDER], per_line=5))
+    parts.append("")
     parts.append(c_array("PASSED_BONUS", PASSED_BONUS))
     parts.append("")
 
