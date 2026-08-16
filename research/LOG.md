@@ -2,6 +2,51 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Search-score distillation: rejected, twice, by its own honesty check.**
+
+The standing objective regresses on the result of the game a position came from
+-- one bit summarising forty subsequent moves. That is why ~100k positions are
+needed to resolve anything, and why three weights drifted into nonsense where
+the label carries no information at all. A search score is a far lower-variance
+target for the same position, so 185,733 positions were labelled with the
+engine's own 0.2s search score and the piece-square tables fitted towards them
+in win-probability space.
+
+The fitter reports two numbers, and the second is the one that decides:
+
+    36k positions    search distance +1.358%    OUTCOME loss  +0.013%
+    185k positions   search distance +1.989%    OUTCOME loss  -0.113%
+
+**Matching the search better does not make the evaluation better, and at volume
+it makes it worse.** A blend sweep (1.0 / 0.7 / 0.4 / 0.2 / 0.0 on the search
+target) found no mixture that helped either: outcome loss fell monotonically as
+the outcome label was given more weight, because at 36k positions the outcome
+label is simply too noisy to fit on at all.
+
+**Why, and this is the useful part.** The search's advantage over the static
+evaluation is TACTICAL -- it sees things past the horizon that no arrangement of
+concept weights can represent. That information is outside the model's span, so
+fitting towards it does not transfer knowledge; it drags the parameters that DO
+carry positional signal into compensating for something they cannot express.
+
+That is the same wall as everywhere else this session. Six tactical knowledge
+bundles returned zero (safe pawn pushes, king storms, escape squares, connected
+rooks, wing majorities, outside passers) while the two long-horizon ones paid
+(passer path safety, endgame drawishness). Tactics do not compress into a static
+concept sum, whether they are hand-written as terms or distilled from a search.
+
+**What this rules out and what it leaves.** It rules out the whole family of
+"better label" ideas that do not add representational capacity: the ceiling is
+set by what the features can express, not by the objective or the sample size.
+What it leaves is an outside label -- another engine's evaluation -- which would
+be a genuinely different signal rather than this engine's own opinion, at the
+cost of the knowledge no longer being self-discovered. That is a decision about
+what the project is for, not a research step, and is left for William.
+
+Tooling kept: `research/label_search.py` and `research/fit_to_search.py`, the
+latter carrying the two-number check that caught this.
+
+
 **The calibration did NOT confirm the +11 Elo. Recorded as it stands.**
 
     2026-08-15   2811   [2789, 2833]   900 games
