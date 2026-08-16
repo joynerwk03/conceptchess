@@ -161,5 +161,50 @@
       }
     ],
     "machine": "Linux x86_64 / 20 cpus"
+  },
+  {
+    "date": "2026-08-16",
+    "commit": "e4d6674",
+    "label": "s32 single-thread: fresh 284k-position dataset -- PST +4.8, weights +3.1, threats +3.0, king-danger curve +1.1",
+    "elo": 2803.0,
+    "ci": [
+      2781.2,
+      2825.1
+    ],
+    "ci_bootstrap": [
+      2781.8,
+      2824.0
+    ],
+    "draw_elo": 113.7,
+    "games": 900,
+    "movetime": 0.3,
+    "threads": 1,
+    "concurrency": 6,
+    "book": "uho_1000.epd",
+    "opponent": "Stockfish 18",
+    "anchors": [
+      {
+        "elo": 2600,
+        "w": 188,
+        "d": 65,
+        "l": 47,
+        "score_pct": 73.5
+      },
+      {
+        "elo": 2700,
+        "w": 162,
+        "d": 68,
+        "l": 70,
+        "score_pct": 65.33333333333333
+      },
+      {
+        "elo": 2800,
+        "w": 84,
+        "d": 120,
+        "l": 96,
+        "score_pct": 48.0
+      }
+    ],
+    "machine": "Linux x86_64 / 20 cpus"
   }
 ]
