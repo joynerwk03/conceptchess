@@ -139,6 +139,12 @@ TUNABLE = {
     "pawn.path_clear": (0.0, 4.0), "pawn.path_defended": (0.0, 4.0),
     "pawn.path_attacked": (0.0, 4.0),
     "scale.no_pawns": (0.0, 1.3), "scale.wrong_bishop": (0.0, 1.1),
+    # Correctness fixed by chess, not by outcome prediction. A draw scale
+    # above 1.0 would AMPLIFY a drawish ending, and the mate-drive terms fire
+    # only in already-won positions where the label is 1.0 whatever happens,
+    # so the loss cannot constrain them and a free fit inverts the gradient.
+    "ocb.draw_scale": (0.4, 1.15),
+    "mate_drive.corner": (0.6, 1.4), "mate_drive.king_prox": (0.6, 1.4),
 }
 
 

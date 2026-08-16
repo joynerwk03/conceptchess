@@ -11,83 +11,83 @@ heuristics don't have to track eval weights.
 
 W = {
     # material
-    "material.pawn": 87.3318,
-    "material.knight": 306.7195,
-    "material.bishop": 324.7593,
-    "material.rook": 531.861,
-    "material.queen": 1063.1064,
+    "material.pawn": 90.657,
+    "material.knight": 274.2143,
+    "material.bishop": 295.4327,
+    "material.rook": 485.1224,
+    "material.queen": 935.5336,
     # piece-square tables: multiplier per piece type on the (tapered) table value
-    "pst.pawn": 0.7794,
-    "pst.knight": 0.4086,
-    "pst.bishop": 0.9967,
-    "pst.rook": 1.3908,
-    "pst.queen": 0.6002,
-    "pst.king": 1.9041,
+    "pst.pawn": 0.5846,
+    "pst.knight": 0.4286,
+    "pst.bishop": 0.9108,
+    "pst.rook": 1.0431,
+    "pst.queen": 0.5557,
+    "pst.king": 1.4522,
     # pawn structure
-    "pawn.doubled": 11.537,
-    "pawn.isolated": 13.3009,
-    "pawn.backward": 6.8318,  # a pawn left behind its neighbours whose stop square an enemy pawn covers (x2 on a half-open file)
-    "pawn.connected": 7.213,  # per connected pawn (phalanx or supported), x(rank-3) so only advanced duos score
-    "pawn.passed_scale": 0.3126,     # multiplier on the per-rank passed bonus
-    "pawn.passed_eg_scale": 1.8583,
-    "pawn.blocked_passer": 0.2959,  # multiplier when the square in front is occupied  # passed pawns matter more in the endgame
-    "pawn.passer_king_dist": 5.366,  # cp per square of net king distance to the passer's front square (endgame-scaled)
-    "pawn.connected_passer": 11.537,  # per passer with a friendly passer on an adjacent file
-    "pawn.rook_behind_passer": 0.1167,  # a friendly rook behind a passer supports its advance (Tarrasch)
-    "pawn.rook_behind_enemy_passer": 0.2362,  # an enemy rook behind our passer attacks/stops it
+    "pawn.doubled": 10.5312,
+    "pawn.isolated": 11.2858,
+    "pawn.backward": 4.3606,  # a pawn left behind its neighbours whose stop square an enemy pawn covers (x2 on a half-open file)
+    "pawn.connected": 8.0052,  # per connected pawn (phalanx or supported), x(rank-3) so only advanced duos score
+    "pawn.passed_scale": 0.2344,     # multiplier on the per-rank passed bonus
+    "pawn.passed_eg_scale": 2.23,
+    "pawn.blocked_passer": 0.3551,  # multiplier when the square in front is occupied  # passed pawns matter more in the endgame
+    "pawn.passer_king_dist": 4.0245,  # cp per square of net king distance to the passer's front square (endgame-scaled)
+    "pawn.connected_passer": 8.6528,  # per passer with a friendly passer on an adjacent file
+    "pawn.rook_behind_passer": 0.1867,  # a friendly rook behind a passer supports its advance (Tarrasch)
+    "pawn.rook_behind_enemy_passer": 0.1958,  # an enemy rook behind our passer attacks/stops it
     # can the passer actually run? (per relative rank)
-    "pawn.path_clear": 3.625,      # no enemy piece controls the road
-    "pawn.path_defended": 8.0,   # our pieces cover the whole road
-    "pawn.path_attacked": 2.1,   # the square in front is covered
+    "pawn.path_clear": 4.1031,      # no enemy piece controls the road
+    "pawn.path_defended": 9.594,   # our pieces cover the whole road
+    "pawn.path_attacked": 3.3508,   # the square in front is covered
 
     # king safety
-    "king.shield_gap": 11.7642,
-    "king.open_file": 31.633,
+    "king.shield_gap": 12.9306,
+    "king.open_file": 31.5114,
     "kattack.scale": 2.25,   # cp per weighted attack unit on the enemy king zone
-    "kattack.proximity": 3.8612,  # cp per weighted closeness unit of pieces near the enemy king (phase-scaled)
+    "kattack.proximity": 2.9891,  # cp per weighted closeness unit of pieces near the enemy king (phase-scaled)
     # king danger: a check the defender cannot answer by capturing
     # the checker. Knight checks price highest because they cannot
     # be blocked -- the decisive-loss fit moved this one 24 -> 56.
-    "kattack.check_knight": 74.1036,
-    "kattack.check_bishop": 32.31,
-    "kattack.check_rook": 83.8862,
-    "kattack.check_queen": 16.7026,
+    "kattack.check_knight": 69.8711,
+    "kattack.check_bishop": 57.4967,
+    "kattack.check_rook": 41.9431,
+    "kattack.check_queen": 8.3513,
     # attacks without a queen are a different animal; a discount OFF
     # full price, so 0.0 is exactly the old behaviour
-    "kattack.queenless_discount": 0.8001,
+    "kattack.queenless_discount": 0.8068,
     # king-zone squares only the king itself defends
     "kattack.weak_zone": 0,
 
     # mobility (cp per square above/below typical)
-    "mob.knight": 5.195,
-    "mob.bishop": 4.4327,
-    "mob.rook": 3.0994,
-    "mob.queen": 0.5199,
+    "mob.knight": 3.8963,
+    "mob.bishop": 4.8801,
+    "mob.rook": 2.8025,
+    "mob.queen": 0.6499,
     # piece activity
-    "act.bishop_pair": 32.834,
-    "act.rook_open": 21.6999,
-    "act.rook_semi": 23.8867,
+    "act.bishop_pair": 24.6255,
+    "act.rook_open": 20.6765,
+    "act.rook_semi": 19.1848,
     # Phase 3 bundle D: material imbalance and space.
-    "imbalance.rook_flat": -14.0411,
+    "imbalance.rook_flat": -18.4352,
     "imbalance.knight_pawns": 0,
-    "imbalance.rook_pawns": 10.7334,
-    "imbalance.rook_pair": 17.1497,
-    "imbalance.knight_pair": -6.1097,
-    "space.scale": 0.0271,
-    "act.rook_seventh": 12.14,
+    "imbalance.rook_pawns": 13.6289,
+    "imbalance.rook_pair": 24.0096,
+    "imbalance.knight_pair": -0.4925,
+    "space.scale": 0.0081,
+    "act.rook_seventh": 9.105,
     # minor-piece placement (Phase 3 bundle A). Priors are Stockfish 11's own
     # middlegame values scaled by 0.78, because its pawn is 128 and ours is 100.
     # They are starting points for the tuner, not claims.
-    "minor.outpost_knight": 25.3961,   # defended, on the 4th-6th, unchaseable
-    "minor.behind_pawn": 8.5041,      # sheltered directly behind a pawn
-    "minor.bishop_pawns": 1.7274,      # PENALTY per own pawn on the bishop's colour
-    "minor.long_diagonal": 13.249,    # bishop raking both centre squares
+    "minor.outpost_knight": 17.7773,   # defended, on the 4th-6th, unchaseable
+    "minor.behind_pawn": 5.4142,      # sheltered directly behind a pawn
+    "minor.bishop_pawns": 2.0157,      # PENALTY per own pawn on the bishop's colour
+    "minor.long_diagonal": 13.4798,    # bishop raking both centre squares
     # threats (fractions of the threatened piece's value)
     "threat.hanging": 0.0281,  # attacked and undefended (en prise)
     "threat.pawn": 0.1553,   # a minor/rook/queen attacked by a pawn (must move or drop material)
     "threat.minor": 0.0272,  # a rook/queen attacked by a knight/bishop
     "threat.rook": 0.0753,   # a queen attacked by a rook
-    "threat.initiative": 0.896,  # the side to move's threats count for more (it can execute them now)
+    "threat.initiative": 1.4336,  # the side to move's threats count for more (it can execute them now)
     # drawishness (MULTIPLICATIVE modifier, not a summed concept): pure
     # opposite-colored-bishop endings are drawish, so the whole eval is scaled
     # toward zero. Shown in the breakdown as the marginal delta it applies.
@@ -95,14 +95,14 @@ W = {
     # endgame drawishness, as DISCOUNTS off full price so that 0.0 is
     # exactly the old behaviour (the screen measures a bundle by
     # zeroing its keys; a bare scale factor would zero to nothing)
-    "scale.no_pawns": 0.75,      # ahead by <a rook, and no pawns to promote
-    "scale.wrong_bishop": 0.90,  # rook pawns + a bishop of the wrong colour
+    "scale.no_pawns": 0.0605,      # ahead by <a rook, and no pawns to promote
+    "scale.wrong_bishop": 0.0725,  # rook pawns + a bishop of the wrong colour
 
     # mating drive (bare-king endgames)
     "mate_drive.corner": 12.6271,
     "mate_drive.king_prox": 8.241,
     # tempo
-    "tempo": 14.9871,
+    "tempo": 15.7792,
 }
 
 
@@ -130,34 +130,34 @@ W = {
 # which SEE uses for static exchange arithmetic, and a phase-dependent piece
 # value would change what "winning a trade" means inside the search.
 W_EG: dict[str, float] = {
-    "act.bishop_pair": 70.658,
-    "act.rook_open": 17.3315,
-    "act.rook_semi": 19.607,
-    "act.rook_seventh": 22.472,
+    "act.bishop_pair": 59.7911,
+    "act.rook_open": 21.6644,
+    "act.rook_semi": 14.7052,
+    "act.rook_seventh": 20.9954,
     "kattack.scale": 3.3688,
-    "king.open_file": 28.1298,
-    "king.shield_gap": 48.3065,
-    "mob.bishop": 5.8037,
-    "mob.knight": 7.524,
-    "mob.queen": 5.845,
-    "mob.rook": 4.2084,
-    "pawn.blocked_passer": 0.5314,
-    "pawn.connected_passer": 4.6875,
-    "pawn.doubled": 4.6875,
-    "pawn.isolated": 7.3062,
-    "pawn.passed_eg_scale": 1.7639,
-    "pawn.passed_scale": 1.4823,
-    "pawn.passer_king_dist": 12.3877,
-    "pawn.rook_behind_enemy_passer": 9.6772,
-    "pawn.rook_behind_passer": 8.4704,
-    "pst.bishop": 1.312,
-    "pst.king": 1.1849,
-    "pst.knight": 0.1875,
-    "pst.pawn": 0.4979,
-    "pst.queen": 0.1875,
-    "pst.rook": 0.4883,
+    "king.open_file": 21.0973,
+    "king.shield_gap": 36.2299,
+    "mob.bishop": 4.6587,
+    "mob.knight": 7.1025,
+    "mob.queen": 5.5548,
+    "mob.rook": 3.3367,
+    "pawn.blocked_passer": 0.5562,
+    "pawn.connected_passer": 3.5156,
+    "pawn.doubled": 5.8594,
+    "pawn.isolated": 9.1327,
+    "pawn.passed_eg_scale": 1.4111,
+    "pawn.passed_scale": 1.3897,
+    "pawn.passer_king_dist": 10.3111,
+    "pawn.rook_behind_enemy_passer": 15.4835,
+    "pawn.rook_behind_passer": 13.5526,
+    "pst.bishop": 0.984,
+    "pst.king": 1.0673,
+    "pst.knight": 0.1406,
+    "pst.pawn": 0.4833,
+    "pst.queen": 0.2344,
+    "pst.rook": 0.6104,
     "threat.hanging": 0.0949,
-    "threat.initiative": 3.0218,
+    "threat.initiative": 4.8349,
     "threat.minor": 0.0959,
     "threat.pawn": 0.0346,
     "threat.rook": 0.0144,
