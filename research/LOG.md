@@ -2,6 +2,29 @@
 
 ## 2026-08-15 — Session 31: asking the games instead of guessing
 
+**Endgame tables for the four piece types: +0.2 Elo, rejected.**
+
+Pawns and kings have had a middlegame and an endgame piece-square table since
+v0; knight, bishop, rook and queen have had ONE table each, so nothing could say
+that a knight on the rim is a different mistake in an opening than in a pawn
+ending. That looked like 256 parameters of missing capacity in the one place
+where per-square fitting has already paid +9.3 Elo.
+
+Added as an endgame DELTA (value = TABLE[sq] + (1-phase)*EGD[sq], all deltas
+zero) so the mechanism shipped as an exact no-op -- node counts identical -- and
+was priced before being believed: **-0.51% NPS** for the extra multiply-add per
+piece. Fitting the 128 mirror-tied parameters then returned **+0.045%
+held-out, about +0.2 Elo**, with the largest delta only 8cp. Net negative.
+Rejected.
+
+The reason is worth keeping: , ,  and
+ are ALREADY phase-tapered scalars, so the dominant phase effect --
+how much placement matters at all as material leaves -- was captured long ago.
+Per-square deltas can only add the non-uniform remainder, and there is very
+little of it. **Before adding capacity, check what the existing parameters
+already span.**
+
+
 **Re-calibrated after the speed block: 2811, 95% CI [2789, 2833].**
 
 Same protocol as the previous fit -- three anchors, 900 games at 0.3s,
