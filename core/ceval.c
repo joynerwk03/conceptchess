@@ -329,7 +329,10 @@ double eval_core(U64 bb[2][6], int side){
              * -- ungated this scan measured -4.62% NPS, about -4.6 Elo of lost
              * depth against +3.8 Elo of knowledge, a net loss. */
             if(attackers>=2){
-                s += sign*TAP(W_KATTACK_SCALE_MG, W_KATTACK_SCALE_EG)*units*units/10.0*phase*disc;
+                /* danger by units, from a fitted curve rather than a forced
+                 * quadratic; mirrors _danger() in king_attack.py */
+                { int u = units < KD_MAX ? units : KD_MAX-1;
+                  s += sign*TAP(KD_MG[u], KD_EG[u])*phase*disc; }
 
                 /* Safe checks: a check the defender cannot answer by capturing the
                  * checker, i.e. the landing square is covered by no enemy piece

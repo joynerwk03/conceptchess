@@ -46,6 +46,13 @@ def main():
         parts.append(c_array(name, tbl))
         parts.append("")
 
+    from engine.concepts.king_attack import KD_MG, KD_EG
+    parts.append(c_array("KD_MG", KD_MG))
+    parts.append("")
+    parts.append(c_array("KD_EG", KD_EG))
+    parts.append("")
+    parts.append("#define KD_MAX 128")
+    parts.append("")
     parts.append(c_array("PASSED_BONUS", PASSED_BONUS))
     parts.append("")
 
