@@ -2,6 +2,56 @@
 
 ## 2026-08-15 — Session 31: asking the games instead of guessing
 
+**Fitting the SHAPES the evaluation had been assuming.**
+
+Six knowledge bundles had gone 0-for-6 by adding new terms. A different question
+turns out to pay: not "what is missing" but **"what is being assumed"**. Several
+terms carried one free parameter and a functional form taken on faith, and a
+table can replace the form without adding any work at all.
+
+  * **King danger** was `scale * units^2 / 10`. One parameter, and a quadratic
+    nobody measured. Fitted monotonically (more pressure cannot be worth less,
+    which is also what stops the rare tail being fitted from a handful of
+    positions): **+0.237% held-out, ~+1.1 Elo**, and the curve is a different
+    animal from the quadratic --
+
+        units        4     8    12    16    20    24    28    32
+        fitted     -36   -12    29    29    29    57   114   292
+        quadratic    4    14    32    58    90   130   176   230
+
+    flat and slightly NEGATIVE while an attack is only notional, then steep past
+    ~28 units. Two pieces vaguely pointing at a king is not an attack, and the
+    quadratic had been paying for it at every node.
+
+  * **Threats** were `weight * VALUE[victim]`, forcing a threat on a queen to be
+    worth nine times one on a pawn. Fitted by (kind, victim): **+0.088%, ~+0.4
+    Elo**, and again the shape is the finding -- a hanging bishop (9.3 -> 15.3)
+    outweighs a hanging knight (9.0 -> 3.1), while hanging rooks (14.1 -> 8.1)
+    and queens (25.3 -> 19.3) are worth much LESS than proportionality claimed.
+    Big pieces are usually defended, so a bare attack on one is more often
+    illusory. The blunder classification had already named `threats` as the
+    concept most often favouring the worse move in eval-limited positions.
+
+**The rule that makes this affordable: REPLACE work, do not ADD it.** Both
+tables substitute a lookup for a multiply that was already being done, and both
+measured ~free (-0.15% and nil). The per-count mobility tables added a lookup on
+top of existing work and cost 3% NPS, which is why +1.8 Elo of genuine knowledge
+was rejected there and +1.1 accepted here. Same technique, opposite verdict,
+decided entirely by whether the capacity displaced something.
+
+**Also rejected this block:** endgame tables for knight/bishop/rook/queen
+(+0.2 Elo against -0.51% NPS -- `pst.*` are already phase-tapered scalars, so
+per-square deltas only add the non-uniform remainder, and there is little of
+it); and a 4-way bucketed transposition table (0.00 ply at one thread, -0.17 at
+ten), which closes the last open TT idea.
+
+**And a correction to an earlier framing.** Ten threads buying +96 Elo was
+called "40% of linear scaling" and treated as a deficiency. That yardstick is
+wrong: Lazy SMP never scales linearly in threads, and typical engines get
++50-70 Elo from eight. +96 from ten is good, not deficient, so SMP is not the
+lever it looked like.
+
+
 **Endgame tables for the four piece types: +0.2 Elo, rejected.**
 
 Pawns and kings have had a middlegame and an endgame piece-square table since
