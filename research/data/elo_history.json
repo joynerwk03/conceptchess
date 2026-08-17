@@ -251,5 +251,50 @@
       }
     ],
     "machine": "Linux x86_64 / 20 cpus"
+  },
+  {
+    "date": "2026-08-17",
+    "commit": "6c2bc78",
+    "label": "SEE fix + DTZ fix + 5-man tablebases",
+    "elo": 2804.8,
+    "ci": [
+      2782.9,
+      2826.8
+    ],
+    "ci_bootstrap": [
+      2786.2,
+      2827.2
+    ],
+    "draw_elo": 130.2,
+    "games": 900,
+    "movetime": 0.3,
+    "threads": 1,
+    "concurrency": 16,
+    "book": "uho_1000.epd",
+    "opponent": "Stockfish 18",
+    "anchors": [
+      {
+        "elo": 2600,
+        "w": 187,
+        "d": 75,
+        "l": 38,
+        "score_pct": 74.83333333333333
+      },
+      {
+        "elo": 2700,
+        "w": 147,
+        "d": 92,
+        "l": 61,
+        "score_pct": 64.33333333333333
+      },
+      {
+        "elo": 2800,
+        "w": 84,
+        "d": 119,
+        "l": 97,
+        "score_pct": 47.833333333333336
+      }
+    ],
+    "machine": "Linux x86_64 / 20 cpus"
   }
 ]

@@ -21,9 +21,13 @@ eval speedup or new term that can't be attributed to a concept item is not
 acceptable. Opaque evaluations (NN evals, unexplained blended terms) are out of
 scope by design.
 
-## Compiled core (the engine that actually plays) — 2811 Elo single-thread
+## Compiled core (the engine that actually plays) — 2805 Elo single-thread
 
-*(measured 2026-08-15, 3-anchor ML fit, 900 games at 0.3s, 95% CI [2789, 2833];
+*(measured 2026-08-17, 3-anchor ML fit, 900 games at **0.3s**, 95% CI [2783, 2827].
+The time control is part of the number, not a detail: against the same anchors
+this engine scores +95 Elo at 0.3s and +176 at 1.2s, because UCI_Elo-limited
+Stockfish barely gains from extra time and this engine gains +40.5 per doubling.
+Quote a rating without its TC and it means nothing;
 about 2907 at full thread width, adding the separately measured +96 for ten
 threads. `research/data/elo_history.json` tracks this over time.)*
 
