@@ -2,6 +2,80 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**An outside teacher beats game outcomes as a label -- clearly, repeatedly, and
+still not enough to survive a game gate.**
+
+The evaluation had been declared closed twice over: level with Stockfish 11's
+classical eval on outcome loss AND ahead of it on move ranking, with the whole
+16.94% deficit against an NNUE. The conclusion drawn was that the gap was
+unreachable. That conflated the MODEL with the TEACHER. Fitting a concept sum
+towards a stronger evaluator's labels changes nothing about interpretability --
+the eval stays a sum of named concepts, still equals the C mirror, still is the
+number search maximises -- and only the labels change, from one bit per game to
+a real value per position.
+
+Distillation from this engine's OWN search failed in s32 because the search's
+advantage is tactical and tactics lie outside a concept sum's span. A different
+STATIC evaluator is a different signal rather than a deeper look at the same
+one, and that case had never been tested.
+
+220,000 training positions and 90,000 from an independent generation run were
+labelled with Stockfish's static eval (`research/label_teacher.py`). Fitting the
+same block, through the same optimiser, judged by the same number -- decisive
+game outcome loss on independent games:
+
+    parameterisation                     outcome labels    teacher labels
+    6x64 mg/eg, untied (screen only)         +0.367%          +0.815%
+    the engine's real tables                 -0.029%          +0.342%
+    real tables + phase-tapered N/B/R/Q         --            +0.469%
+
+**The control is the result.** Fitted to game outcomes the real tables gain
+-0.029% -- nothing, because they are already outcome-tuned and the one-bit label
+has no information left to give. The teacher finds +0.342% in the same
+parameters. That is a real, independently-validated statement that an outside
+static evaluator carries information this project's labels do not.
+
+Two further findings fell out of it. **Capacity is still not the limit**:
+re-screening king-relative tables with teacher labels turned -0.925% into
++0.791%, so label noise was what had broken them -- and they still do not beat
+simply re-fitting the existing piece-square tables (+0.815%). Fixing the labels
+did not make 1920 new parameters worth having. **The features are the limit, not
+the parameter count.** And the screen's own parameterisation flatters itself:
+6x64 untied tables scored +0.815% where the engine's real structure, with mirror
+squares tied, manages +0.342%. A screen that measures a model the engine cannot
+express is measuring the wrong thing.
+
+**Shipped, then reverted.** Phase-tapering the knight, bishop, rook and queen
+tables (pawns and kings already were) plus the teacher fit reached +0.469% on
+independent games, `eval_check` 0.000000, `check_pst_linear` exact to
+0.000000000, 93 tests green. The paired gate then read **-13.9 Elo [-36.5,
++8.8]** -- a guard that does not clear, unlike the SEE fix's +0.3 [-22.1,+22.7].
+
+Two checks explain the gate rather than the change. The scale hypothesis was
+tested first, because fitting in win-probability space could rescale the
+evaluation and de-tune every centipawn margin in the search: regression slope
+0.9903, so the scale held. But the same regression gives **correlation 0.9995**
+between the new evaluation and the old one. The evaluation barely moved, so its
+true effect is a couple of Elo, which is an order of magnitude below what 1200
+paired slots can resolve. The -13.9 is noise, and so would a +13.9 have been.
+
+The taper's cost was measured to decide it: NPS is unchanged within noise
+(1,430,697 flat vs 1,460,547 tapered, medians of three interleaved rounds -- the
+taper cannot actually be faster). So the CAPACITY is free and provably a no-op
+while both halves are equal, and only the fitted NUMBERS were unconfirmed. Those
+were reverted; the taper infrastructure stays, seeded identically, with the
+tuner (`apply_pst.py`, `tune_pst_linear.collect`) taught about all twelve tables
+so the next attempt starts from working plumbing rather than rebuilding it.
+
+**What this direction needs to become real: more positions.** +0.469% is ~+2.2
+Elo, and nothing this project owns can measure that. The teacher's advantage is
+per-position information, so it scales with position count in a way outcome
+labels cannot -- 220k was chosen to fit in an hour, not because it was enough.
+The honest next step is a far larger labelled set and a change big enough to
+clear +/-23, not another gate on a change that correlates 0.9995 with what it
+replaces.
+
+
 **Static exchange evaluation was recapturing with kings that could not legally
 move, and quiescence was pruning the winning captures that resulted.**
 

@@ -50,13 +50,17 @@ import numpy as np
 from research.texel import ROOT
 
 # feature block order; each block is 64 squares, White's point of view
-BLOCKS = ["PAWN_MG", "PAWN_EG", "KNIGHT", "BISHOP", "ROOK", "QUEEN",
+BLOCKS = ["PAWN_MG", "PAWN_EG",
+          "KNIGHT_MG", "KNIGHT_EG", "BISHOP_MG", "BISHOP_EG",
+          "ROOK_MG", "ROOK_EG", "QUEEN_MG", "QUEEN_EG",
           "KING_MG", "KING_EG"]
 BLOCK_OF = {n: i for i, n in enumerate(BLOCKS)}
 NF = len(BLOCKS) * 64
 
 # tables whose left-right mirror squares are tied to a single parameter
-SYMMETRIC = {"PAWN_MG", "PAWN_EG", "KNIGHT", "BISHOP", "ROOK", "QUEEN"}
+SYMMETRIC = {"PAWN_MG", "PAWN_EG", "KNIGHT_MG", "KNIGHT_EG",
+             "BISHOP_MG", "BISHOP_EG", "ROOK_MG", "ROOK_EG",
+             "QUEEN_MG", "QUEEN_EG"}
 
 
 def param_map():
@@ -102,16 +106,22 @@ def collect(boards, tables):
             mod *= m.factor(ctx)
         w_pawn = wt("pst.pawn", ph) * mod
         w_king = wt("pst.king", ph) * mod
-        flat = {chess.KNIGHT: ("KNIGHT", wt("pst.knight", ph) * mod),
-                chess.BISHOP: ("BISHOP", wt("pst.bishop", ph) * mod),
-                chess.ROOK: ("ROOK", wt("pst.rook", ph) * mod),
-                chess.QUEEN: ("QUEEN", wt("pst.queen", ph) * mod)}
+        tapered = {chess.KNIGHT: ("KNIGHT", wt("pst.knight", ph) * mod),
+                   chess.BISHOP: ("BISHOP", wt("pst.bishop", ph) * mod),
+                   chess.ROOK: ("ROOK", wt("pst.rook", ph) * mod),
+                   chess.QUEEN: ("QUEEN", wt("pst.queen", ph) * mod)}
         for color, sign in ((chess.WHITE, 1), (chess.BLACK, -1)):
             flip = 0 if color == chess.WHITE else 56
-            for pt, (name, w) in flat.items():
-                blk = BLOCK_OF[name] * 64
+            # These four are phase-tapered now, so each square contributes to a
+            # middlegame AND an endgame parameter, weighted like the pawn and
+            # king blocks below.
+            for pt, (name, w) in tapered.items():
+                bmg2 = BLOCK_OF[name + "_MG"] * 64
+                beg2 = BLOCK_OF[name + "_EG"] * 64
                 for sq in ctx.pieces[color][pt]:
-                    rows.append(i); cols.append(blk + (sq ^ flip)); vals.append(sign * w)
+                    j = sq ^ flip
+                    rows.append(i); cols.append(bmg2 + j); vals.append(sign * w * ph)
+                    rows.append(i); cols.append(beg2 + j); vals.append(sign * w * (1 - ph))
             bmg, beg = BLOCK_OF["PAWN_MG"] * 64, BLOCK_OF["PAWN_EG"] * 64
             for sq in ctx.pieces[color][chess.PAWN]:
                 j = sq ^ flip

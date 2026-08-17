@@ -118,6 +118,14 @@ def main():
                          "tablebase already solves at the root are ~17% of the "
                          "data and the eval's accuracy in them cannot affect "
                          "play, so fitting them spends capacity on nothing.")
+    ap.add_argument("--target", default="outcome",
+                    choices=("outcome", "teacher"),
+                    help="'teacher' fits towards an outside evaluator's "
+                         "static score (the 'sv' field)")
+    ap.add_argument("--test-data", default="",
+                    help="independent file for the held-out check; a "
+                         "position split of self-play data is not "
+                         "independent and inflates the result")
     ap.add_argument("--out", default=str(ROOT / "research/data/linfit_tr.json"))
     a = ap.parse_args()
 
@@ -125,7 +133,11 @@ def main():
     from research.texel import TUNABLE
 
     rows = [json.loads(l) for l in open(a.data)]
-    rows = [r for r in rows if r["res"] != 0.5]
+    # Decisive games only when the OUTCOME is the target -- a draw carries no
+    # gradient there. The teacher labels every position, so draws are usable
+    # for fitting even though the held-out check still grades on decisive ones.
+    if a.target == "outcome":
+        rows = [r for r in rows if r["res"] != 0.5]
     if a.min_men:
         n0 = len(rows)
         rows = [r for r in rows
@@ -134,11 +146,35 @@ def main():
               f"(the tablebase decides those at the root)")
     random.Random(4242).shuffle(rows)
     rows = rows[:a.positions]
-    fens = [r["fen"] for r in rows]
-    res = np.asarray([r["res"] for r in rows], dtype=float)
-    cut = int(len(rows) * (1 - a.holdout))
-    rf, rh = res[:cut], res[cut:]
-    print(f"{cut} decisive fitting positions, {len(rows)-cut} held out")
+    if a.test_data:
+        hold = [json.loads(l) for l in open(a.test_data)]
+        hold = [r for r in hold if r["res"] != 0.5]      # graded on outcomes
+        random.Random(4242).shuffle(hold)
+        hold = hold[:a.positions]
+        cut = len(rows)
+        fens = [r["fen"] for r in rows] + [r["fen"] for r in hold]
+        # The fitting half is pulled towards whichever target was asked for;
+        # the held-out half is ALWAYS graded on the game result, because that is
+        # the quantity calibrated to Elo. Grading on the teacher would only show
+        # that the optimiser works.
+        if a.target == "teacher":
+            k_ref = 0.46
+            fit_lab = 1.0 / (1.0 + np.exp(
+                -(np.log(10.0) / (k_ref * 400.0))
+                * np.asarray([r["sv"] for r in rows], dtype=float)))
+        else:
+            fit_lab = np.asarray([r["res"] for r in rows], dtype=float)
+        rf = fit_lab
+        rh = np.asarray([r["res"] for r in hold], dtype=float)
+        print(f"{cut} fitting positions ({a.target} labels), "
+              f"{len(hold)} held out from {a.test_data} (independent games)")
+    else:
+        fens = [r["fen"] for r in rows]
+        res = np.asarray([r["res"] for r in rows], dtype=float)
+        cut = int(len(rows) * (1 - a.holdout))
+        rf, rh = res[:cut], res[cut:]
+        print(f"{cut} decisive fitting positions, {len(rows)-cut} held out "
+              f"(position split -- NOT independent)")
 
     names = [(k, "mg") for k in W] + [(k, "eg") for k in W_EG]
     w0 = np.asarray([(W if s == "mg" else W_EG)[k] for k, s in names], float)

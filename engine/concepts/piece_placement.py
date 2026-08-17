@@ -28,7 +28,7 @@ _PAWN_EG_VIS = [
        0,   0,   0,   0,   0,   0,   0,   0,
 ]
 
-_KNIGHT_VIS = [
+_KNIGHT_MG_VIS = [
      -46, -49, -24, -16, -16, -24, -49, -46,
      -49,  -8,  -2,  -1,  -1,  -2,  -8, -49,
       -4,  -6,  22,  43,  43,  22,  -6,  -4,
@@ -39,7 +39,18 @@ _KNIGHT_VIS = [
      -64, -97, -46, -41, -41, -46, -97, -64,
 ]
 
-_BISHOP_VIS = [
+_KNIGHT_EG_VIS = [
+     -46, -49, -24, -16, -16, -24, -49, -46,
+     -49,  -8,  -2,  -1,  -1,  -2,  -8, -49,
+      -4,  -6,  22,  43,  43,  22,  -6,  -4,
+       2,  12,  37,  37,  37,  37,  12,   2,
+     -10,   8,  13,   6,   6,  13,   8, -10,
+     -78, -15, -10,  19,  19, -10, -15, -78,
+     -41, -48,  -6, -28, -28,  -6, -48, -41,
+     -64, -97, -46, -41, -41, -46, -97, -64,
+]
+
+_BISHOP_MG_VIS = [
      -32,  -6, -10,  -4,  -4, -10,  -6, -32,
        5,  -2,   3,   5,   5,   3,  -2,   5,
        5,  12,  -1,  16,  16,  -1,  12,   5,
@@ -50,7 +61,18 @@ _BISHOP_VIS = [
      -36,  -5, -18, -22, -22, -18,  -5, -36,
 ]
 
-_ROOK_VIS = [
+_BISHOP_EG_VIS = [
+     -32,  -6, -10,  -4,  -4, -10,  -6, -32,
+       5,  -2,   3,   5,   5,   3,  -2,   5,
+       5,  12,  -1,  16,  16,  -1,  12,   5,
+      10,  10,   7,  18,  18,   7,  10,  10,
+       6,   9,   6,  17,  17,   6,   9,   6,
+       7,  13,   8,   8,   8,   8,  13,   7,
+       0,   9,   7,   8,   8,   7,   9,   0,
+     -36,  -5, -18, -22, -22, -18,  -5, -36,
+]
+
+_ROOK_MG_VIS = [
       20,  16,   7,  -2,  -2,   7,  16,  20,
       11,  20,   9,  13,  13,   9,  20,  11,
       31,  19,  26,  32,  32,  26,  19,  31,
@@ -61,7 +83,29 @@ _ROOK_VIS = [
      -13,  -7,  -1,   2,   2,  -1,  -7, -13,
 ]
 
-_QUEEN_VIS = [
+_ROOK_EG_VIS = [
+      20,  16,   7,  -2,  -2,   7,  16,  20,
+      11,  20,   9,  13,  13,   9,  20,  11,
+      31,  19,  26,  32,  32,  26,  19,  31,
+      -5,  26,  17,  19,  19,  17,  26,  -5,
+     -13, -14, -12,  -7,  -7, -12, -14, -13,
+     -24, -21, -17, -10, -10, -17, -21, -24,
+     -33, -29, -21, -19, -19, -21, -29, -33,
+     -13,  -7,  -1,   2,   2,  -1,  -7, -13,
+]
+
+_QUEEN_MG_VIS = [
+      -6,   5,  -2,   7,   7,  -2,   5,  -6,
+       3,   5,  10,  22,  22,  10,   5,   3,
+       9,   7,  26,  39,  39,  26,   7,   9,
+       2,  14,   3,   9,   9,   3,  14,   2,
+      -2,   8,  -7,   3,   3,  -7,   8,  -2,
+     -11, -12,   8,   4,   4,   8, -12, -11,
+     -31, -35,   6, -23, -23,   6, -35, -31,
+     -16,  -4, -33,  -7,  -7, -33,  -4, -16,
+]
+
+_QUEEN_EG_VIS = [
       -6,   5,  -2,   7,   7,  -2,   5,  -6,
        3,   5,  10,  22,  22,  10,   5,   3,
        9,   7,  26,  39,  39,  26,   7,   9,
@@ -102,14 +146,25 @@ def _from_visual(vis):
 
 PAWN_MG = _from_visual(_PAWN_MG_VIS)
 PAWN_EG = _from_visual(_PAWN_EG_VIS)
-KNIGHT = _from_visual(_KNIGHT_VIS)
-BISHOP = _from_visual(_BISHOP_VIS)
-ROOK = _from_visual(_ROOK_VIS)
-QUEEN = _from_visual(_QUEEN_VIS)
+# Knight, bishop, rook and queen are phase-tapered like pawns and kings. Both
+# halves start from the single flat table these replaced, so the evaluation is
+# bit-identical until a tuner moves them apart: the taper is capacity, not a new
+# opinion about chess.
+KNIGHT_MG = _from_visual(_KNIGHT_MG_VIS)
+KNIGHT_EG = _from_visual(_KNIGHT_EG_VIS)
+BISHOP_MG = _from_visual(_BISHOP_MG_VIS)
+BISHOP_EG = _from_visual(_BISHOP_EG_VIS)
+ROOK_MG = _from_visual(_ROOK_MG_VIS)
+ROOK_EG = _from_visual(_ROOK_EG_VIS)
+QUEEN_MG = _from_visual(_QUEEN_MG_VIS)
+QUEEN_EG = _from_visual(_QUEEN_EG_VIS)
 KING_MG = _from_visual(_KING_MG_VIS)
 KING_EG = _from_visual(_KING_EG_VIS)
 
-_FLAT = {chess.KNIGHT: KNIGHT, chess.BISHOP: BISHOP, chess.ROOK: ROOK, chess.QUEEN: QUEEN}
+_TAPERED = {chess.KNIGHT: (KNIGHT_MG, KNIGHT_EG),
+            chess.BISHOP: (BISHOP_MG, BISHOP_EG),
+            chess.ROOK: (ROOK_MG, ROOK_EG),
+            chess.QUEEN: (QUEEN_MG, QUEEN_EG)}
 _SCALE_KEY = {chess.PAWN: "pst.pawn", chess.KNIGHT: "pst.knight",
               chess.BISHOP: "pst.bishop", chess.ROOK: "pst.rook",
               chess.QUEEN: "pst.queen", chess.KING: "pst.king"}
@@ -127,10 +182,11 @@ class PiecePlacement:
         pieces = ctx.pieces
         for color, sign in ((chess.WHITE, 1), (chess.BLACK, -1)):
             flip = 0 if color == chess.WHITE else 56
-            for pt, table in _FLAT.items():
+            for pt, (mg, eg) in _TAPERED.items():
                 w = wt(_SCALE_KEY[pt], ctx.phase)
                 for sq in pieces[color][pt]:
-                    s += sign * w * table[sq ^ flip]
+                    i = sq ^ flip
+                    s += sign * w * (phase * mg[i] + (1 - phase) * eg[i])
             w = wt("pst.pawn", ctx.phase)
             for sq in pieces[color][chess.PAWN]:
                 i = sq ^ flip
@@ -154,7 +210,8 @@ class PiecePlacement:
                     elif pt == chess.KING:
                         v = phase * KING_MG[i] + (1 - phase) * KING_EG[i]
                     else:
-                        v = _FLAT[pt][i]
+                        mg, eg = _TAPERED[pt]
+                        v = phase * mg[i] + (1 - phase) * eg[i]
                     v *= wt(_SCALE_KEY[pt], ctx.phase)
                     if v:
                         label = f"{cname} {chess.piece_name(pt)} on {chess.square_name(sq)}"

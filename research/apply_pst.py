@@ -21,8 +21,10 @@ SRC = (pathlib.Path(sys.argv[1]) if len(sys.argv) > 1
 TUNED = json.load(open(SRC))["tables"]
 
 NAME_TO_VIS = {"PAWN_MG": "_PAWN_MG_VIS", "PAWN_EG": "_PAWN_EG_VIS",
-               "KNIGHT": "_KNIGHT_VIS", "BISHOP": "_BISHOP_VIS",
-               "ROOK": "_ROOK_VIS", "QUEEN": "_QUEEN_VIS",
+               "KNIGHT_MG": "_KNIGHT_MG_VIS", "KNIGHT_EG": "_KNIGHT_EG_VIS",
+               "BISHOP_MG": "_BISHOP_MG_VIS", "BISHOP_EG": "_BISHOP_EG_VIS",
+               "ROOK_MG": "_ROOK_MG_VIS", "ROOK_EG": "_ROOK_EG_VIS",
+               "QUEEN_MG": "_QUEEN_MG_VIS", "QUEEN_EG": "_QUEEN_EG_VIS",
                "KING_MG": "_KING_MG_VIS", "KING_EG": "_KING_EG_VIS"}
 
 p = CC / "engine/concepts/piece_placement.py"
