@@ -2,6 +2,37 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Cut-node IIR: -1.5 Elo [-23.4, +20.3], REJECTED -- and this null means
+something.** With cut-node reduction merged, the obvious follow-up was
+Stockfish's second use of the node type: reduce an extra ply at a cut node that
+has no TT move. The argument is good on paper. Internal iterative reduction
+exists because a node with no TT move cannot order itself; at a cut node the
+parent additionally expects a fail-high, so the exact value matters less. Two
+independent reasons the subtree is worth less than its nominal depth, over a
+large population -- 71.6% of this engine's cut nodes have no TT move.
+
+    if(!excl && !ttm && cutnode && depth>=7) depth--;
+
+The cheap proxies were ambiguous and honest about it: nodes at fixed depth went
+UP 3.6% while depth at 3s went up by 2 plies across four positions, which is
+what happens when a change alters what "depth" MEANS -- internal iterative
+reduction moves the goalposts, so neither proxy is a measurement. The gate
+settled it at -1.5 Elo over 1200 paired slots.
+
+**The interval is the point.** +/-22 Elo would have caught a +21-class effect --
+which is exactly the size of the cut-node reduction it sits next to. So unlike
+this session's two earlier nulls, this one is evidence: cut-node IIR is not
+worth having here, and it is not a power problem.
+
+**Cut-node bonus +2 -> +3: not gated, because the proxies said there was nothing
+to gate.** The +2 came straight from Stockfish and had never been swept. At +3
+the tree is unchanged (2,311,362 -> 2,334,867 nodes, +1%) and depth moves by one
+ply across four positions. A deeper reduction is being paid back in re-searches
+at almost exactly the rate it saves, so +2 is already at the flat part of the
+curve. Spending two hours of gate time to measure zero would have been the
+mistake; the node count cost four minutes and said the same thing.
+
+
 **Time scaling: +40.5 Elo per doubling, which is normal -- and it means two
 "rejected" changes were never measurable in the first place.** Two gates came
 back null this session while both changes demonstrably delivered what they
