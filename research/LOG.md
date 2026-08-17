@@ -2,6 +2,58 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Mate scores are exactly right; the PV shown for them is one ply short. Open
+defect, reproduction recorded.**
+
+`research/mate_check.py` checks the one claim a search makes that can be
+falsified without a second engine: if it says "mate in 5", playing its own
+principal variation must reach checkmate in five plies. Over 90 randomly
+generated won endings (KQvK, KRvK, KRRvK, KQRvK, KBBvK) at 2s with the tablebase
+switched OFF, so the SEARCH is what is being graded:
+
+    mate scores claimed         82
+    mate length disagreed        0     <- the ply-relative bookkeeping is sound
+    PV reached the mate         17
+    PV stopped short            65
+
+**Every claimed distance is correct and the line is short by exactly one move,
+every time:**
+
+    score 99997 -> mate in 3 plies | PV: e2f2 h2h3
+    score 99995 -> mate in 5 plies | PV: e3e8 g8h7 e8d7 h7g8
+
+That acquits `score_from_tt`, which was the suspect worth checking: mate scores
+are stored ply-relative and re-based on the way out, and an error there would
+show up as a wrong DISTANCE. The distances are perfect.
+
+Where it is not: the final position of a truncated PV, searched on its own,
+reports the mate and its line correctly --
+
+    8/8/8/Q7/8/7k/5K2/8 w - - 2 2   ->   score 99999, PV a5h5, mate confirmed
+
+-- so the recording works and the PROPAGATION of that ply's entry up to the root
+is what drops it. Somewhere along the line `SS.pvlen[ply+1]` reads 0 at the
+moment the parent copies it.
+
+**One hypothesis tested and rejected, rather than assumed.** The obvious
+candidate was the transposition-table cutoff, which has no PV-node guard:
+returning a stored score writes no move into the triangular table, and the node
+one ply before mate is certainly in the table after a few iterations. Adding
+`!pvnode` to the cutoff -- which is standard practice in strong engines anyway --
+changed the count from 66 to 65. Not the cause. Reverted rather than kept, since
+it costs NPS at PV nodes and buys nothing measured; keeping a change because it
+is theoretically tidy is how unpriced cost accumulates.
+
+Left open deliberately. It is an explanation defect, not a strength defect --
+the engine plays the mating move, it simply cannot show the last step of a line
+it has correctly counted -- but this project's premise is that the explanation is
+the evaluation, so a mate announcement whose line stops before the mate is worth
+fixing properly rather than quickly. The next candidate is the `depth<=0 ->
+qsearch` path at line 369, which returns a score with no PV entry and would
+truncate exactly here; qsearch would need to record its own line for the mating
+move to survive.
+
+
 **Fitting the ninety concept WEIGHTS to the teacher: +0.429% that was mostly
 scale, +0.053% once the scale was pinned. The evaluation is finished.**
 
