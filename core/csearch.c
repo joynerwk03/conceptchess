@@ -327,7 +327,7 @@ static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
     return alpha;
 }
 
-static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev, int cutnode){
+static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev){
     SS.nodes++;
     if(!(SS.nodes&2047) && (g_stop || now_sec()>SS.stop_time)){ SS.stopped=1; return 0; }
     int pvnode = beta > alpha+1;          /* wide window == PV node (for PV recording) */
@@ -396,7 +396,7 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev,
                    * legitimate repetition history (missed rep draws broke KBN
                    * mate conversion — found by tests/test_endgame.py) */
         int r = depth>=12?5:(depth>=6?4:3);   /* deeper null reduction as depth grows */
-        int sc=-negamax(&c,depth-r,-beta,-beta+1,ply+1,0,!cutnode);
+        int sc=-negamax(&c,depth-r,-beta,-beta+1,ply+1,0);
         if(SS.stopped){ SS.path_len--; return 0; }
         if(sc>=beta){ SS.path_len--; return beta; }
     }
@@ -418,7 +418,7 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev,
                 Board c=*b; make(&c,m);
                 int sc=-qsearch(&c,-pcbeta,-pcbeta+1,ply+1,0);      /* cheap check first */
                 if(!SS.stopped && sc>=pcbeta && depth-4>0)
-                    sc=-negamax(&c,depth-4,-pcbeta,-pcbeta+1,ply+1,m,!cutnode);
+                    sc=-negamax(&c,depth-4,-pcbeta,-pcbeta+1,ply+1,m);
                 if(SS.stopped){ SS.path_len--; return 0; }
                 if(sc>=pcbeta){ SS.path_len--; return sc; }         /* fails high beyond margin */
             }
@@ -463,7 +463,7 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev,
         int sbeta = tt_score - 2*depth;
         SS.excluded[ply] = ttm;
         SS.path_len--;                    /* verification re-searches this same position */
-        int v = negamax(b, (depth-1)/2, sbeta-1, sbeta, ply, prev, cutnode);
+        int v = negamax(b, (depth-1)/2, sbeta-1, sbeta, ply, prev);
         SS.path_len++;
         SS.excluded[ply] = 0;
         if(!SS.stopped && v < sbeta) sing_ext = 1;
@@ -493,20 +493,14 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev,
         __builtin_prefetch(&TT[c.hash & TT_MASK]);
         __builtin_prefetch(&EH[c.hash & EH_MASK]);
         int sc;
-        if(i==0){ sc=-negamax(&c,depth-1+ext,-beta,-alpha,ply+1,m,
-                              pvnode?0:!cutnode); }
+        if(i==0){ sc=-negamax(&c,depth-1+ext,-beta,-alpha,ply+1,m); }
         else {
             int red=1;
             if(depth>=3 && quiet && !checked){ if(i>=12)red=3; else if(i>=3)red=2;
                 if(red>1 && !improving) red++; }
             else if(depth>=3 && !quiet && !checked && i>=10) red=2;
-            /* A node the parent expects to fail high is the cheapest place to
-             * spend reduction: if the expectation holds the node cuts anyway,
-             * and if it does not the re-search below pays for it at full depth. */
-            if(cutnode && red>1){ red+=2; if(red>depth-1) red=depth-1; if(red<1) red=1; }
-            sc=-negamax(&c,depth-red,-alpha-1,-alpha,ply+1,m,1);
-            if(sc>alpha && (red>1 || beta>alpha+1))
-                sc=-negamax(&c,depth-1+ext,-beta,-alpha,ply+1,m,0);
+            sc=-negamax(&c,depth-red,-alpha-1,-alpha,ply+1,m);
+            if(sc>alpha && (red>1 || beta>alpha+1)) sc=-negamax(&c,depth-1+ext,-beta,-alpha,ply+1,m);
         }
         if(SS.stopped){ SS.path_len--; return 0; }
         if(sc>best){ best=sc; bestm=m; }
@@ -600,9 +594,9 @@ static void run_id(ThreadCtx *tc){
             for(int i=0;i<rn;i++){
                 Board c=b; make(&c,root[i]);
                 int sc;
-                if(i==0) sc=-negamax(&c,depth-1,-bt,-a,1,root[i],0);
-                else { sc=-negamax(&c,depth-1,-a-1,-a,1,root[i],1);
-                       if(sc>a) sc=-negamax(&c,depth-1,-bt,-a,1,root[i],0); }
+                if(i==0) sc=-negamax(&c,depth-1,-bt,-a,1,root[i]);
+                else { sc=-negamax(&c,depth-1,-a-1,-a,1,root[i]);
+                       if(sc>a) sc=-negamax(&c,depth-1,-bt,-a,1,root[i]); }
                 if(SS.stopped) break;
                 if(sc>bs){ ss=bs; sm=bm; bs=sc; bm=root[i]; bm_found=1;
                     /* root PV = this move + its child's PV (from ply 1) */
@@ -694,9 +688,9 @@ static Move root_second(const Board *rootb, Move best, int maxdepth,
             if(root[i]==best) continue;
             Board c=b; make(&c,root[i]);
             int sc;
-            if(first){ sc=-negamax(&c,depth-1,-S_MATE,-a,1,root[i],0); first=0; }
-            else { sc=-negamax(&c,depth-1,-a-1,-a,1,root[i],1);
-                   if(sc>a && !SS.stopped) sc=-negamax(&c,depth-1,-S_MATE,-a,1,root[i],0); }
+            if(first){ sc=-negamax(&c,depth-1,-S_MATE,-a,1,root[i]); first=0; }
+            else { sc=-negamax(&c,depth-1,-a-1,-a,1,root[i]);
+                   if(sc>a && !SS.stopped) sc=-negamax(&c,depth-1,-S_MATE,-a,1,root[i]); }
             if(SS.stopped) break;
             if(sc>ds){ ds=sc; dsm=root[i]; }
             if(sc>a) a=sc;
