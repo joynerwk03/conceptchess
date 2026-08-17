@@ -2,6 +2,34 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Pawn islands and candidate passers: +0.2 Elo. The last structural idea, and
+it closes the knowledge seam.**
+
+These were chosen to fit the one pattern that had worked: long-horizon and
+structural, not tactical. Pawn islands are the most long-horizon fact in chess
+-- the count barely moves for twenty plies -- and nothing in the evaluation
+could express the SHAPE of the skeleton, only single pawns (doubled, isolated,
+backward) and adjacent pairs (connected). A candidate passer is literally the
+state one push before the thing the evaluation already scores most highly. Both
+depend on the pawn bitboards alone, so they ride free inside the pawn hash.
+
+Verified firing on a constructed position (White b/f/g/h = 2 islands, Black
+c/f/h = 3, and g5 a genuine candidate with two sentries and two helpers), then
+screened on 41k fresh decisive positions: **+0.034%, both weights collapsing,
+8.0 -> 2.8 and 4.0 -> 1.0.**
+
+That is **nine consecutive new-term bundles at or below +0.2 Elo**. The four
+things that DID pay were passer path safety, endgame drawishness, and re-fitting
+two assumed SHAPES (king danger, threat values) -- none of them a new feature,
+three of them a better use of features already present.
+
+**The knowledge seam is closed.** The evaluation's 90 weights, 512 fitted table
+entries and fitted curves already span what hand-designed chess features can
+express over this data. Adding another term does not add information; it adds a
+linear combination of terms already present, and the fit correctly prices it at
+zero.
+
+
 **Search-score distillation: rejected, twice, by its own honesty check.**
 
 The standing objective regresses on the result of the game a position came from
