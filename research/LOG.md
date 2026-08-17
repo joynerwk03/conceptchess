@@ -2,6 +2,76 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Static exchange evaluation was recapturing with kings that could not legally
+move, and quiescence was pruning the winning captures that resulted.**
+
+Both implementations value the king at 0 -- `ORDER_VALUES = {..., 6: 0}` in
+Python, `SEEV[6]={...,900,0}` in C. Those tables are also read as VICTIM values
+in move ordering, where 0 is right, but the swap loop uses the same numbers to
+pick the cheapest ATTACKER, so the king was always selected first and capturing
+with it looked free. It is not free, and frequently it is not legal: a king may
+only capture onto a square that is undefended once it lands there.
+
+This matters because quiescence does not merely order by SEE, it prunes on it:
+
+    if(is_capture(b,m) && see(b,m) < 0) continue;
+
+A wrongly negative score means the capture is never searched, at every
+quiescence node, for the whole game. That is tactical blindness with no symptom
+any evaluation metric can show -- the eval stays faithful, the tests stay green,
+the tree looks healthy.
+
+`research/see_check.py` grades SEE against the definition rather than against
+another implementation of the same algorithm: play the exchange out
+exhaustively, letting each side capture on the square or decline. Over 4,000
+captures from real games:
+
+                                   before   first fix   correct fix
+    exact value mismatches            90        116          18
+    SIGN mismatches                   44         99          12
+    winning captures scored negative  38         10          10
+
+The worked example the checker produced:
+
+    3r4/p1p1k3/7p/2p1p3/2B4b/3PP3/PP1B1qr1/R1K5 b - - 9 32   Qf2xd2
+
+SEE returned -570, letting Kc1 take the queen for nothing. White has no legal
+recapture at all: the black rook on g2 covers d2 along the second rank once f2
+and e2 empty. True value +330, a clean bishop -- scored as losing a queen, and
+pruned.
+
+**The first fix was wrong and the checker caught it.** Breaking out of the swap
+whenever the king could not legally capture abandoned exchanges that had other
+recapturers -- the king is valued 0, so it is always "cheapest", and a rook or
+queen standing right behind it never got its turn. The damaging error class fell
+(38 -> 10) while total sign errors more than doubled (44 -> 99), all in the
+benign direction. Exchanges stopping too early look better than they are, and
+that asymmetry is what identified the mistake.
+
+The correct shape is two rules, not one: the king sorts LAST rather than first,
+so it is chosen only when nothing else attacks the square; and when it is
+chosen, the capture is available only if the opposing side has no attacker left.
+Its large sort value never reaches the gain arithmetic, because a legal king
+capture implies no attackers remain and the loop ends first.
+
+Residual: 10 wrongly-pruned in 4,000, all pin cases -- e.g. `Nc6xd4` in
+`2k3r1/1pp5/p1n5/q7/3PpB2/1PQ5/3KPP2/3R4 b`, where White's Qc3 is pinned by Qa5
+and cannot actually recapture. Swap-based SEE ignores pins by construction; that
+is the standard, accepted approximation and is not worth the cost of fixing.
+
+Priced: **-1.9% NPS** over interleaved runs (1,531,691 -> 1,502,232 median),
+about -1.1 Elo at the measured +40.5 per doubling, against removing a class of
+tactical blindness affecting roughly one capture in a hundred. `eval_check`
+0.000000, perft ALL PASS, 93 tests green, tactics 24/24.
+
+**Not gated as acceptance evidence, and this is the pattern worth keeping from
+this session.** An effect of this size is far below the ~+23 Elo a 1200-slot
+gate resolves, so games cannot judge it either way -- but a brute-force exchange
+is ground truth, and 44 sign errors becoming 12 is a stronger statement than any
+interval a game gate could produce. Where ground truth exists, use it; games are
+for changes big enough for games to see.
+
+
 **Syzygy set completed to 3-4-5 man, which exposed a DTZ ranking bug that was
 drawing won endings. Conversion 12/15 -> 15/15.**
 

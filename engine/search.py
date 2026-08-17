@@ -15,6 +15,10 @@ import chess
 from engine.evaluation import evaluate
 # Move-ordering piece values (fixed; deliberately decoupled from eval weights)
 ORDER_VALUES = {1: 100, 2: 320, 3: 330, 4: 500, 5: 900, 6: 0}
+# Sort value for a king inside static exchange evaluation only: it must be
+# considered last, never first. ORDER_VALUES keeps 0 for the king because
+# move ordering uses it as a victim value elsewhere.
+KING_LAST = 10 ** 6
 
 MATE_SCORE = 100_000
 MATE_THRESHOLD = 90_000
@@ -391,10 +395,23 @@ class Searcher:
             while bb:
                 lsb = bb & -bb
                 sq = lsb.bit_length() - 1
-                v = ORDER_VALUES.get(board.piece_type_at(sq), 0)
+                pt_ = board.piece_type_at(sq)
+                # The king sorts LAST, not first. It is valued 0 for move
+                # ordering elsewhere, which would make the swap prefer it to a
+                # pawn -- backwards, since it is the one attacker whose capture
+                # can be illegal. It is only ever chosen when nothing else
+                # attacks the square, and then only if rule two below allows it.
+                v = KING_LAST if pt_ == chess.KING else ORDER_VALUES.get(pt_, 0)
                 if v < best_val:
                     best_val, best_sq = v, sq
                 bb ^= lsb
+            # Rule two: a king may only capture onto a square that is
+            # undefended once it gets there. Reached only when the king is the
+            # sole remaining attacker, since it now sorts last.
+            if board.piece_type_at(best_sq) == chess.KING:
+                rest = occupied & ~(1 << best_sq)
+                if board.attackers_mask(not color, to, rest) & rest:
+                    break
             gain.append(attacker_value - gain[-1])
             attacker_value = best_val
             occupied &= ~(1 << best_sq)

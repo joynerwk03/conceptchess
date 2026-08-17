@@ -48,6 +48,10 @@ void c_set_multipv(int on){ g_want_second = on?1:0; }
 #define PROBCUT_MARGIN 180 /* ...cp above beta the capture must clear */
 
 static const int SEEV[6]={100,320,330,500,900,0};
+/* King sort value inside see() only; SEEV keeps 0 for the king because it is
+ * also read as a victim value in move ordering. Mirrors KING_LAST in
+ * engine/search.py. */
+#define SEE_KING_LAST 1000000
 
 /* Zobrist tables + zobrist_init() live in cengine.c (make() needs them to
  * maintain Board.hash incrementally); this file just consumes b->hash. */
@@ -173,7 +177,22 @@ static int see(const Board *b, Move m){
         U64 myatt=att&side_occ;
         if(!myatt) break;
         int bestsq=-1, bestval=1000000; U64 x=myatt;
-        while(x){ int sq=lsb(x); x&=x-1; int v=SEEV[piece_on(b,sq)]; if(v<bestval){bestval=v;bestsq=sq;} }
+        while(x){ int sq=lsb(x); x&=x-1; int pt_=piece_on(b,sq);
+                  /* the king sorts LAST: SEEV rates it 0, which would make the
+                   * swap prefer it to a pawn -- backwards, since it is the one
+                   * attacker whose capture can be illegal */
+                  int v=(pt_==KING)?SEE_KING_LAST:SEEV[pt_];
+                  if(v<bestval){bestval=v;bestsq=sq;} }
+        /* Reached only when the king is the sole remaining attacker. It may
+         * capture only onto a square that is undefended once it gets there;
+         * otherwise the exchange ends here. qsearch PRUNES on see()<0, so
+         * getting this wrong makes winning captures unsearchable.
+         * Mirrors engine/search.py::_see. */
+        if(piece_on(b,bestsq)==KING){
+            U64 rest = occ & ~(1ULL<<bestsq);
+            U64 opp = (side==WHITE)?b->occ[BLACK]:b->occ[WHITE];
+            if(attackers_to(b,to,rest) & rest & opp) break;
+        }
         gain[n]=aval-gain[n-1]; n++;
         aval=bestval; occ&=~(1ULL<<bestsq); side=!side;
         if(n>=31) break;
