@@ -2,6 +2,60 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Cut-node reduction: -5.7 Elo [-38.5, +27.2], and with it the whole reduction
+seam closes.** The search knew about PV nodes but had no notion of a CUT NODE --
+a node the parent expects to fail high -- which Stockfish has used as a major
+reduction term for a decade. Threading `cutnode` through negamax with
+Stockfish's propagation and adding `if(cutnode) red += 2` made the tree **30.4%
+smaller** at fixed depth (3.32M -> 2.31M nodes over four positions) and moved
+depth at 3s by +1, +1, +2, -1. Paired external gate over 600 shared slots
+against stockfish:2700: 64.3% -> 63.6%, **-5.7 Elo, not distinguishable from
+zero**.
+
+A 30% smaller tree bought nothing, and that completes a pattern rather than
+being an isolated failure:
+
+    log-log LMR table         bounded under +25, never resolved
+    history-scaled LMR        -2.61 [-4.66, -0.56]
+    LMR onset 3rd -> 4th      -2.83 [-4.86, -0.80]
+    cut-node reduction        -5.7  [-38.5, +27.2]
+
+**Neutral-to-negative in BOTH directions is what a local optimum looks like.**
+Reducing harder gains nothing; reducing less loses. So the 5.3x tree-size gap to
+Stockfish 11 is not sitting there waiting to be collected by reducing more.
+
+The reduction statistics say why, and they say something surprising. The
+re-search rate -- how often a reduced search fails high and must be repeated --
+is **1.08%** (3,479 of 322,201), against 5-10% in strong engines, and it falls
+as the reduction grows (1.62% at red=2, 1.00% at red=3, 0.26% at red=4). A low
+re-search rate has two readings: the reductions are very safe, or they are so
+deep that the reduced search can no longer discover anything and always fails
+low. The second reading is the right one, and the earlier -2.83 for reducing
+LESS is what distinguishes them: if reductions were merely safe, backing off
+would be free.
+
+Ordering is not the explanation either. The best move is found on the first try
+88.29% of the time and within four 97.68%, so the tail this engine reduces is
+ordered about as well as the head.
+
+**One measurement was worth re-doing.** Outcome loss says this evaluation
+matches SF11's, which sits badly next to losing 98% of games to it, so the
+metric was checked against the question a search actually asks -- not "predict
+the result of this position" but "of these thirty siblings, which is best".
+`research/move_rank.py` compares each static evaluation's preferred move against
+a depth-12 search:
+
+    this engine    20.00%
+    stockfish 11   13.17%
+
+The evaluation ranks moves at least as well as SF11's on top of predicting
+outcomes as well. It is closed on both metrics, and this project has now checked
+both. (The first run of this returned 1.75% and 1.25% -- both far too low for
+any static evaluation. `b.turn` was being read after the matching `pop`, which
+returns the mover rather than the opponent, so both engines were being asked for
+their WORST move. The implausibility of the numbers is what caught it.)
+
+
 **King-relative evaluation capacity: REJECTED, and the way it failed is worth
 more than the result.** If the evaluation is limited by model class rather than
 by missing terms, the fix is capacity, and the cheapest large block of real
