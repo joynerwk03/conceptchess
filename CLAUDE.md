@@ -206,13 +206,13 @@ Rules of thumb:
   is closed; so is cheap capacity (1920 parameters of king-relative interaction
   transfer negatively).
 - **The reduction axis is CLOSED, bounded on both sides by resolved gates.**
-  Reducing less: -2.83 Elo. Reducing much harder (,
+  Reducing less: -2.83 Elo. Reducing much harder (`red = 0.7 + ln(d)*ln(m)/0.80`,
   worth **+1.9 plies** at 0.3s): **-57.2 [-81.4,-33.0]** vs stockfish:2700 and
   **-33.7 [-60.9,-6.5]** vs stockfish:2600. Nominal depth bought by reduction is
   worth strongly negative Elo here. Note this was only settled by moving a LONG
   way -- every +/-1 ply experiment measured neutral, which showed the surface is
   flat nearby, not that it is optimal.
-- **Compare engines at equal DEPTH, not just equal time** ().
+- **Compare engines at equal DEPTH, not just equal time** (`research/depth_match.py`).
   Equal time conflates how big a tree an engine builds with what its nodes are
   worth. At equal time this engine scores 2.0% against Stockfish 11; at equal
   nominal depth 9 it scores **65.0% (+108 Elo)**. Our nodes are the better ones,
