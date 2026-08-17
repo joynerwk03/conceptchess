@@ -2,6 +2,64 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Aggressive reduction: -57.2 and -33.7 Elo, both intervals clear of zero. The
+reduction seam is closed, and this time the measurement resolves.**
+
+The equal-depth match had reopened it. At equal TIME this engine scores 2.0%
+against Stockfish 11 (-676 Elo); at equal nominal DEPTH 9 it scores **65.0%
+(+108 Elo)**. Our nodes are worth more than SF11's -- which finally reconciles
+the evaluation measurements with the match results instead of contradicting them
+-- and the entire gap is that SF11 turns 0.3s into ~20 plies where we reach ~12.
+
+That exposed a real methodological error. Every reduction experiment here had
+moved ONE ply: cut-node +2, LMR onset from the 3rd quiet to the 4th, a log-log
+table. All measured neutral, and that was read as "the schedule is optimal". It
+only showed the surface is flat NEARBY. SF11 operates eight plies away, and a
+local search cannot find a distant optimum.
+
+So the schedule was moved a long way instead of nudged --
+`red = 0.7 + ln(d)*ln(m)/DIV`, sweeping DIV downwards -- and it does exactly
+what it was built to do:
+
+    baseline    depth@0.3s 11.62
+    DIV 1.30               12.00
+    DIV 1.00               12.62
+    DIV 0.80               13.50     <- +1.9 plies
+    DIV 0.65               13.38
+    DIV 0.50               13.38     saturates
+    DIV 0.40               13.12     declines: over-reduction repaid in re-searches
+
+At EBF 1.82, +1.9 plies is ~1.6 doublings, which the measured +40.5 Elo per
+doubling prices at about +66 Elo. Gated at DIV 0.80 over 1000 paired slots
+against BOTH anchors:
+
+    vs stockfish:2700   64.3% -> 56.5%   **-57.2 Elo [-81.4, -33.0]**
+    vs stockfish:2600   72.9% -> 68.9%   **-33.7 Elo [-60.9, -6.5]**
+
+**Nominal depth bought by reduction is worth strongly NEGATIVE Elo here.** Both
+intervals exclude zero, on two anchors, which makes this the only decisively
+resolved search result this project has produced in either direction -- every
+other reduction experiment sat inside the noise.
+
+**Why, and it re-reads the equal-depth win.** We beat SF11 at depth 9 BECAUSE
+our depth-9 tree is 5.3x denser than its depth-9 tree. The thoroughness is the
+node quality. Thinning the tree to SF11's density removes the very thing that
+made our nodes good, and the plies gained do not pay for it. The two engines sit
+at genuinely different operating points on the same axis, and each is correct
+for its own package: SF11's thin tree works because its ordering, histories,
+extensions and evaluation were all built around one, and ours does not become
+SF11 by adopting one of its five parts.
+
+Combined with the earlier -2.83 for reducing LESS, the schedule is now bounded
+on both sides by resolved measurements rather than by nulls. **The reduction
+axis is closed** -- not "flat", closed.
+
+Tooling kept: `research/depth_match.py`, which is the diagnostic that found all
+of this. Comparing at equal depth rather than equal time separates tree SIZE
+from node QUALITY, and those two had been silently conflated in every previous
+comparison against another engine.
+
+
 **Mate scores are exactly right; the PV shown for them is one ply short. Open
 defect, reproduction recorded.**
 
