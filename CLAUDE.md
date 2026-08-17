@@ -157,6 +157,29 @@ Rules of thumb:
 - **Probe before refactoring.** Making a structure *worse* costs minutes and
   tells you the ceiling: padding the Board and doubling the `pat` stride both
   measured ~0, which killed two planned rewrites before they were written.
+- **A loss screen is evidence only against an INDEPENDENT GENERATION RUN.** This
+  data is sampled every few plies from self-play games, so a position-level split
+  leaves the same game — same opening, same structure, one correlated result — on
+  both sides. King-relative piece tables screened **+1.249%** on a position split
+  and **−0.925%** on `texel4` (a different run, 0.1% overlap), while the PST
+  control transferred in both. The entire gain was the split. `screen_capacity.py`
+  defaults `--test-data` to texel4; treat any older position-split screen as an
+  upper bound.
+- **The evaluation is not the seam, and this is measured, not assumed.**
+  `research/eval_room.py`: this engine is −2.96% against Stockfish 11's classical
+  eval (same class) and +16.94% against an NNUE, with the NNUE gap spread evenly
+  across every bucket (10.8–24.9%, mostly 15–20%). A missing term is a large gap
+  in ONE bucket; a uniform deficit is the model class. Nine hand-picked bundles
+  measured zero because the model was never term-limited. Adding classical terms
+  is closed; so is cheap capacity (1920 parameters of king-relative interaction
+  transfer negatively).
+- **The seam is the reduction schedule.** SF11 is only 1.26x faster and grows its
+  tree at the same rate per ply (1.80 vs 1.82), yet reaches the same nominal depth
+  in **5.3x fewer nodes** — a uniformly fatter tree, not a faster-growing one.
+  Ordering is acquitted: 88.82% of beta cutoffs come on the first move tried,
+  98.46% within four, mean cut index 1.347, and quiescence is a normal 44.4% of
+  nodes. With cutoffs that early, LMR barely runs at cut nodes; the tree's cost is
+  set at ALL-nodes, where the reduction schedule alone decides it.
 - **Any tuning number must be scale-invariant.** The Texel loss is
   `sigmoid(eval/(K*400))`. With K held fixed, multiplying the whole evaluation by
   a constant lowers the loss while changing no move — at K=0.6, x1.2 "gains"

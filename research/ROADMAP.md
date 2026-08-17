@@ -167,6 +167,57 @@ entry reference; add new ideas as they come up.
 - [ ] Explanation quality checks: does the stated top concept delta actually track the
       move choice? (e.g., ablation: remove top concept, does move change?)
 
+
+## The tree (s33 onwards) — where the remaining Elo actually is
+
+Measured, not assumed. Against Stockfish 11 head-to-head: **+0 =8 -192 (2.0%,
+-676 Elo)** at 0.3s, with an evaluation in SF11's class (-2.96% outcome loss)
+and 1.26x of its speed. So the gap is neither knowledge nor NPS. It is the tree:
+
+    nodes to nominal depth 15   2,096,933 vs 394,273    5.3x
+    per-ply growth rate         1.82 vs 1.80            the same
+    first-move beta cutoffs     88.82%, mean index 1.347
+    quiescence share            44.4% of nodes          normal
+
+A uniformly fatter tree at an identical growth rate, with ordering already good
+and quiescence already normal, points at one thing: the reduction schedule. Ours
+is flat in depth — `if(i>=12) red=3; else if(i>=3) red=2` — so depth 4 move 12
+and depth 20 move 30 are reduced identically.
+
+**Why this is worth the effort.** Closing the tree gap entirely is ~2.4 plies
+(5.3x at EBF 1.82), and plies at this level are worth roughly 40-60 Elo each
+early on. Even capturing half of it is the largest block of Elo this project has
+had a credible route to since the RFP/ProbCut/IIR era. It is also the only seam
+left with evidence behind it.
+
+Sequence, single hypothesis per gate, external paired gates only:
+
+- [ ] **cut-node reduction** — reduce +2 at nodes the parent expects to fail
+      high. Implemented; -30.4% nodes at fixed depth; in gate.
+- [ ] **depth-scaled LMR table** — `0.5 + ln(d)*ln(m)/2.25`, replacing the flat
+      schedule. Built and validated (`research/worktrees/cl`), stacked on
+      cut-node. The previous rejection of a log table predates cut-node
+      awareness, and the two interact: cut nodes are where reduction is cheapest.
+- [ ] reduction adjustments that need the above first: reduce killers and
+      countermoves less, reduce more when the TT move is a capture, less when the
+      move gives check
+- [ ] re-tune LMP thresholds under the new schedule (they were fitted against the
+      old one, so they are now measuring a different tree)
+- [ ] revisit razoring and SEE pruning, both previously "neutral, overlaps
+      futility" — that overlap changes once the tree is thinner
+
+Closed, with the measurement that closed it:
+
+- [x] ~~new evaluation terms~~ — matches SF11's classical eval; the 16.94% gap is
+      to an NNUE and is uniform across all buckets (`research/eval_room.py`)
+- [x] ~~evaluation capacity (king-relative / HalfKP-style tables)~~ — +1.249% on
+      a position split, **-0.925% on independent games**; the gain was the split
+      (`research/screen_capacity.py`)
+- [x] ~~move ordering~~ — 88.82% first-move cutoffs, mean cut index 1.347
+- [x] ~~eval-hash keying~~ — stripping castling/ep is provably correct and buys
+      +0.167pp of hit rate, ~0.06% of runtime
+
+
 ## Interpretability / product
 
 - [ ] Show top alternative moves + why they were rejected (root move scores are nearly free)
