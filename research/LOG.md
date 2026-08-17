@@ -2,6 +2,83 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Syzygy set completed to 3-4-5 man, which exposed a DTZ ranking bug that was
+drawing won endings. Conversion 12/15 -> 15/15.**
+
+`~/syzygy345` was named for the 3-4-5 set but held 70 files / 4.4MB -- 3-4 man
+only, with `tablebase.max_pieces()` reporting 4. The engine probes tablebases in
+every rated game already (`engine/uci.py` builds `Engine()` with
+`use_tablebase=True`, and `research/match.py` runs our side through that UCI
+entry point), so five-piece endings were falling back to the hand-crafted
+evaluation -- precisely where it is weakest and the horizon helps least.
+Completed to 290 files / 939MB from the lichess mirror; `max_pieces()` now
+reports 5.
+
+The existing conversion benchmark said 8/8 both before and after, and it was
+right to: every position in it is four men or fewer, so it could not see the new
+tables at all. Seven five-man endings were added -- each checked
+programmatically for legality, for having exactly five men, and for tablebase
+coverage, with the truth read OUT of the tablebase rather than asserted, because
+hand-labelling positions has now produced a wrong label four times in this
+project (a "KQ vs KP" that was illegal, a queen checking the king with the wrong
+side to move).
+
+**Three of the seven then failed to convert**, with the tables present:
+
+    KBN vs KP   win (DTZ 7)   drawn by fifty moves      111 plies
+    KQ vs KRP   win (DTZ 7)   drawn by repetition        95 plies
+    KPP vs KP   win (DTZ 1)   drawn by fifty moves      102 plies
+
+Tracing KPP vs KP ply by ply showed the tablebase was consulted and followed on
+every single move. The engine was doing exactly what it was told; what it was
+told was wrong. It won the pawn, reached KPP vs K, then walked its king
+f4-g5-h6-g6-f6-f7-f8-e8-d8-c8-b8-a8-b7-b8-c8-d8-e8 while both pawns stood still
+and DTZ sat at 1 forever.
+
+The ranking key was:
+
+    progress = -abs(dtz_them)
+    key = (wdl_us, anti_rep, progress, zeroing)
+
+**Minimising the child's DTZ actively avoids progress.** DTZ is the distance to
+the next irreversible move, not to mate. A quiet king move leaves the position
+one ply from zeroing, so the child reports DTZ 2; actually pushing the pawn
+resets the fifty-move counter and the child reports the distance to the NEXT
+zeroing move, which is far larger. Ranked by smallest child DTZ, "about to make
+progress" beats "making progress" every time, and `zeroing` sat last in the
+tuple where `progress` had already separated every move. Following a countdown
+downwards while never taking the step it counts down TO is a loop by
+construction.
+
+Fixed by ranking `zeroing` above `progress` -- `wdl_us` is still first, so only
+win-preserving moves are candidates and the engine cannot push a pawn into a
+draw to satisfy it. A latent bug on the same line went with it: `is_capture` was
+evaluated AFTER `board.push(move)`, asking whether the move was a capture in the
+position it produced; `board.is_zeroing(move)` on the parent is the right
+question and covers captures and pawn moves together.
+
+    KBN vs KP   draw (111 plies)  ->  win in 63
+    KQ vs KRP   draw  (95 plies)  ->  win in 25
+    KPP vs KP   draw (102 plies)  ->  win in 29
+    KQ vs KBN   win  (87 plies)   ->  win in 35
+    KPvK drawn  threefold, 21/23  ->  insufficient material, 10/8
+
+One regression, recorded rather than hidden: KRP vs KB slowed from 11 plies to
+55. Preferring a zeroing move can lengthen a win. It still converts, and under
+the fifty-move rule conversion is the property that matters.
+
+`eval_check` 0.000000, perft ALL PASS, 93 tests green. This is a Python-only
+change to `engine/tablebase.py`; the concept sum, the C mirror and the
+faithfulness invariants are untouched, since the tablebase is consulted at the
+ROOT and reported as its own labelled authority rather than feeding the eval.
+
+**Not gated, deliberately.** The effect lives in positions a strong opponent
+rarely allows, so it sits far below the ~+23 Elo a 1200-slot gate can resolve --
+but a drawn won game is a whole point, and correctness here is verifiable
+directly against ground truth, which is stronger evidence than a game gate could
+give for this particular change.
+
+
 **Cut-node reduction: merged on one anchor, REVERTED on three
 measurements. The protocol was wrong, not just the result.**
 

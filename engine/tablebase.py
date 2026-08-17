@@ -127,6 +127,9 @@ def best_move(board):
 
     best = None
     for move in board.legal_moves:
+        # Computed before the push: asking board.is_capture(move) after
+        # board.push(move) interrogates the child, not the move.
+        zeroing = 1 if board.is_zeroing(move) else 0
         board.push(move)
         try:
             if board.is_checkmate():
@@ -155,10 +158,18 @@ def best_move(board):
                 # losses prefer the LARGEST (resist longest).
                 progress = -abs(dtz_them) if wdl_us > 0 else \
                            (abs(dtz_them) if wdl_us < 0 else 0)
-                # A move that resets the fifty-move counter is real progress.
-                zeroing = 1 if (board.is_capture(move)
-                                or board.piece_type_at(move.to_square) == chess.PAWN) else 0
-                key = (wdl_us, anti_rep, progress, zeroing)
+                # A move that resets the fifty-move counter is real progress,
+                # and it must outrank raw DTZ rather than merely break its ties.
+                # DTZ counts plies to the next irreversible move, so a quiet move
+                # that leaves the position one ply from zeroing scores BETTER on
+                # DTZ than the zeroing move itself, which resets the count and
+                # reports the distance to the next one. Ranking DTZ first
+                # therefore prefers being about to make progress over making it,
+                # and the winning side shuffles until the fifty-move rule ends
+                # the game -- which is exactly what KPP vs KP did, for 102 plies.
+                # wdl_us is still first in the key, so only moves that preserve
+                # the win are candidates at all.
+                key = (wdl_us, anti_rep, zeroing, progress)
         finally:
             if board.move_stack and board.peek() == move:
                 board.pop()

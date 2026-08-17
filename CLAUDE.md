@@ -172,12 +172,19 @@ Rules of thumb:
   sessions. Calibration is an absolute measurement and drifts; a paired gate is
   built to survive drift. Compare like with like.
 - **Price the expected effect against the instrument BEFORE gating.** 600 paired
-  slots resolve ~±31 Elo, 1200 slots ~±23. Time scaling here is **+40.5 Elo per
-  doubling** (measured: +95/+113/+176 at 0.3/0.6/1.2s vs a pinned anchor), so a
-  tree change can be converted to an expected Elo up front — a 30% smaller tree is
-  0.52 doublings ≈ +21. If the expectation sits inside the interval, the gate
-  cannot answer the question and running it just generates a number that will be
-  over-read in both directions.
+  slots resolve ~±31 Elo, 1200 slots ~±23. If the expectation sits inside the
+  interval, the gate cannot answer the question, and running it just produces a
+  number that gets over-read in both directions — the same change read as a
+  rejection (−5.7) and an acceptance (+28.5) within one day.
+- **+40.5 Elo per doubling prices SPEED, never a tree reduction.** Time scaling was
+  measured at +95/+113/+176 Elo at 0.3/0.6/1.2s against a pinned anchor. That
+  curve applies to searching the same tree faster (NPS), where the extra work is
+  free. It does **not** apply to a pruning or reduction change that shrinks the
+  tree by discarding information: cut-node reduction cut nodes 30.4%, which this
+  rule priced at ≈+21 Elo, and it measured +1.8 against a second anchor. Nodes
+  saved by not looking are not nodes saved by looking faster. Consequence: at
+  1–7% per memory-layout win, no available speed change reaches the ~35% needed
+  for +25 Elo, so a change must be justified by something other than tree size.
 - **A loss screen is evidence only against an INDEPENDENT GENERATION RUN.** This
   data is sampled every few plies from self-play games, so a position-level split
   leaves the same game — same opening, same structure, one correlated result — on

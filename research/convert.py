@@ -39,6 +39,15 @@ SUITE = [
     ("KPvK      (drawn, opp)", "8/8/4k3/8/4P3/4K3/8/8 w - - 0 1"),
     ("KBB vs K",               "8/8/4k3/8/8/8/2BB4/4K3 w - - 0 1"),
     ("KQ vs KR",               "8/8/4k3/7r/8/8/3Q4/4K3 w - - 0 1"),
+    # --- five men: newly covered once the 3-4-5 Syzygy set was completed.
+    # Each verified legal, five-man and tablebase-covered before being added.
+    ("KRP vs KR             ", "8/8/8/8/1k6/8/1P1K4/1R4r1 w - - 0 1"),
+    ("KBN vs KP             ", "8/8/8/8/4k3/4p3/3BN3/4K3 w - - 0 1"),
+    ("KQ vs KRP             ", "8/8/8/8/8/1k6/1p1r4/1K5Q w - - 0 1"),
+    ("KRB vs KR             ", "8/8/4k3/7r/8/8/3B1R2/4K3 w - - 0 1"),
+    ("KPP vs KP             ", "8/8/8/8/2k5/4p3/1PP1K3/8 w - - 0 1"),
+    ("KQ vs KBN             ", "8/8/4k3/8/5n2/4b3/3Q4/4K3 w - - 0 1"),
+    ("KRP vs KB             ", "8/8/4k3/8/4b3/8/3P4/R3K3 w - - 0 1"),
 ]
 
 MAX_PLIES = 400
