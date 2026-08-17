@@ -40,10 +40,8 @@ def main():
 
     # PST tables (flat, indexed by square 0..63 from White's side)
     for name, tbl in [("PST_PAWN_MG", pp.PAWN_MG), ("PST_PAWN_EG", pp.PAWN_EG),
-                      ("PST_KNIGHT_MG", pp.KNIGHT_MG), ("PST_KNIGHT_EG", pp.KNIGHT_EG),
-                      ("PST_BISHOP_MG", pp.BISHOP_MG), ("PST_BISHOP_EG", pp.BISHOP_EG),
-                      ("PST_ROOK_MG", pp.ROOK_MG), ("PST_ROOK_EG", pp.ROOK_EG),
-                      ("PST_QUEEN_MG", pp.QUEEN_MG), ("PST_QUEEN_EG", pp.QUEEN_EG),
+                      ("PST_KNIGHT", pp.KNIGHT), ("PST_BISHOP", pp.BISHOP),
+                      ("PST_ROOK", pp.ROOK), ("PST_QUEEN", pp.QUEEN),
                       ("PST_KING_MG", pp.KING_MG), ("PST_KING_EG", pp.KING_EG)]:
         parts.append(c_array(name, tbl))
         parts.append("")
@@ -85,7 +83,7 @@ def main():
     parts.append("")
     parts.append("#endif")
     OUT.write_text("\n".join(parts) + "\n")
-    print(f"wrote {OUT} ({len(W)} weights, 12 PST tables)")
+    print(f"wrote {OUT} ({len(W)} weights, 8 PST tables)")
 
 
 if __name__ == "__main__":
