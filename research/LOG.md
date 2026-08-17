@@ -64,6 +64,10 @@ about -1.1 Elo at the measured +40.5 per doubling, against removing a class of
 tactical blindness affecting roughly one capture in a hundred. `eval_check`
 0.000000, perft ALL PASS, 93 tests green, tactics 24/24.
 
+Guard gate (not acceptance evidence, a check for an unexpected regression):
+1200 paired slots vs stockfish:2700, **+0.3 Elo [-22.1, +22.7]**. The interval
+rules out anything worse than -22, which is all a guard is for.
+
 **Not gated as acceptance evidence, and this is the pattern worth keeping from
 this session.** An effect of this size is far below the ~+23 Elo a 1200-slot
 gate resolves, so games cannot judge it either way -- but a brute-force exchange
