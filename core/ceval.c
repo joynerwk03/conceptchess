@@ -482,13 +482,15 @@ double eval_core(U64 bb[2][6], int side){
         U64 atkby[2], pawnatk[2], minoratk[2], rookatk[2];
         for(int c=0;c<2;c++){
             U64 pa = c==WHITE ? WPAWN_ATK(bb[WHITE][PAWN]) : BPAWN_ATK(bb[BLACK][PAWN]);
-            U64 ma=0, ra=0, qa=0;
+            U64 ma=0, ra=0;
             for(int i=0;i<pna[c][KNIGHT];i++) ma|=pat[c][KNIGHT][i];
             for(int i=0;i<pna[c][BISHOP];i++) ma|=pat[c][BISHOP][i];
             for(int i=0;i<pna[c][ROOK];i++)   ra|=pat[c][ROOK][i];
-            for(int i=0;i<pna[c][QUEEN];i++)  qa|=pat[c][QUEEN][i];
             pawnatk[c]=pa; minoratk[c]=ma; rookatk[c]=ra;
-            atkby[c] = pa|ma|ra|qa|KING_ATK[lsb(bb[c][KING])];
+            /* au[c] is this exact union -- pawns, all pieces, king -- built
+             * earlier. Recomputing it meant a second full pass over pat[][][],
+             * the biggest array here, for a value already in a local. */
+            atkby[c] = au[c];
         }
         static const double PV[6]={100,320,330,500,900,0};
         for(int c=0;c<2;c++){
@@ -498,8 +500,16 @@ double eval_core(U64 bb[2][6], int side){
             /* value by (kind, victim) from the fitted table, not weight x victim
              * value; mirrors THREAT_MG/THREAT_EG in threats.py. A lookup
              * replaces the multiply, so the extra freedom is free. */
+            /* Only pieces standing on a square where some clause could fire
+             * can contribute; the rest execute no `s +=` at all, so skipping
+             * them cannot change the sum. Conservative (a piece may pass this
+             * and still fail its piece-type test), which keeps it cheap and
+             * leaves the ORDER of the surviving additions untouched -- that
+             * order is what makes the float total match threats.py exactly. */
+            U64 cand = pawnatk[c] | minoratk[c] | rookatk[c]
+                     | (atkby[c] & ~atkby[!c]);
             for(int p=0;p<5;p++){            /* PAWN..QUEEN (0-indexed here) */
-                U64 x=bb[!c][p];
+                U64 x=bb[!c][p] & cand;
                 while(x){ int sq=lsb(x); x&=x-1; U64 m=1ULL<<sq;
                     if((pawnatk[c]&m)  && p>=KNIGHT) s += sign*w*TAP(THR_MG[0*5+p], THR_EG[0*5+p]);
                     if((minoratk[c]&m) && p>=ROOK)   s += sign*w*TAP(THR_MG[1*5+p], THR_EG[1*5+p]);
