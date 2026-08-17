@@ -206,5 +206,50 @@
       }
     ],
     "machine": "Linux x86_64 / 20 cpus"
+  },
+  {
+    "date": "2026-08-17",
+    "commit": "b5cc8e7",
+    "label": "cut-node reduction merged (+28.5 external)",
+    "elo": 2773.8,
+    "ci": [
+      2752.3,
+      2795.5
+    ],
+    "ci_bootstrap": [
+      2754.0,
+      2793.0
+    ],
+    "draw_elo": 109.6,
+    "games": 900,
+    "movetime": 0.3,
+    "threads": 1,
+    "concurrency": 16,
+    "book": "uho_1000.epd",
+    "opponent": "Stockfish 18",
+    "anchors": [
+      {
+        "elo": 2600,
+        "w": 171,
+        "d": 64,
+        "l": 65,
+        "score_pct": 67.66666666666667
+      },
+      {
+        "elo": 2700,
+        "w": 157,
+        "d": 65,
+        "l": 78,
+        "score_pct": 63.166666666666664
+      },
+      {
+        "elo": 2800,
+        "w": 73,
+        "d": 125,
+        "l": 102,
+        "score_pct": 45.166666666666664
+      }
+    ],
+    "machine": "Linux x86_64 / 20 cpus"
   }
 ]

@@ -2,6 +2,59 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Cut-node reduction: merged on one anchor, REVERTED on three
+measurements. The protocol was wrong, not just the result.**
+
+    paired gate vs stockfish:2700, 1200 slots    +28.5 Elo [+5.6, +51.4]
+    paired gate vs stockfish:2600, 1200 slots     +1.8 Elo [-24.0, +27.6]
+    full ladder (2600/2700/2800), same conditions  2774 [2752,2795]
+                                     vs baseline   2789 [2767,2811]  = -15
+
+The first number cleared zero, so it was merged. It does not reproduce. Pooling
+the two paired gates by inverse variance gives about +17 +/- 17, whose interval
+contains zero, and the ladder -- the number this project actually tracks -- moves
+the wrong way. Reverted, with `eval_check` 0.000000, perft ALL PASS and 88 tests
+green on the revert.
+
+**The ladder residuals said it before the second gate did.** Against the anchor
+the gate used, the merged engine beat expectation by more than the baseline did
+(+3.6% vs +2.1% at 2700); against 2600 it did worse (-3.7% vs -1.7%). A change
+that outperforms specifically against the opponent it was measured on, and not
+against the others, is an over-fitted single-anchor result, and that shape was
+visible in the calibration table before another 1200 games were spent
+confirming it.
+
+**Three lessons, in order of how much they cost.**
+
+*One external gate is not an external gate.* "Gate against Stockfish, or don't
+claim Elo" (s24) has been the rule here, and it is not sufficient. A single
+anchor at a single strength is one opponent, and 1200 paired slots against it
+still leaves ~+/-23 Elo of interval, which is wide enough for a null to clear
+zero by chance perhaps one time in twenty. Two anchors before merging, from now
+on. The second gate cost two hours; the merge would have cost a permanently
+worse baseline that every later experiment was measured against.
+
+*Absolute calibrations across sessions are not comparable.* The post-merge
+calibration read 2774 against 2803 recorded earlier, which looked like the merge
+had lost 29 Elo. Re-calibrating the OLD code the same day at the same
+concurrency put it at 2789, so most of that difference was between sessions, not
+between versions. Compare like with like or do not compare.
+
+*A wide interval that clears zero is still a wide interval.* Earlier today the
+same change measured -5.7 [-38.5,+27.2] and was called a rejection; then +28.5
+[+5.6,+51.4] and was called an acceptance. Both readings took the point estimate
+seriously and both were wrong. The instrument resolves about +/-23 at 1200
+slots, and effects of the size this engine can still produce sit inside that
+band. That is the fact to design around, not to argue with.
+
+**Where this leaves the search.** Cut-node reduction genuinely shrinks the tree
+30.4% and time scaling is genuinely +40.5 Elo per doubling, so the theory that
+predicted ~+21 was sound; the effect is simply smaller than the noise and not
+worth a permanent change on this evidence. It can be re-tested at several
+thousand games per anchor if a reason appears. The reduction schedule stays
+where it was.
+
+
 **Cut-node IIR: -1.5 Elo [-23.4, +20.3], REJECTED -- and this null means
 something.** With cut-node reduction merged, the obvious follow-up was
 Stockfish's second use of the node type: reduce an extra ply at a cut node that

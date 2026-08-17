@@ -157,6 +157,27 @@ Rules of thumb:
 - **Probe before refactoring.** Making a structure *worse* costs minutes and
   tells you the ceiling: padding the Board and doubling the `pat` stride both
   measured ~0, which killed two planned rewrites before they were written.
+- **One external gate is not an external gate — require TWO ANCHORS before
+  merging.** Cut-node reduction measured **+28.5 Elo [+5.6, +51.4]** against
+  stockfish:2700 over 1200 paired slots and was merged. Against stockfish:2600 it
+  measured **+1.8 [−24.0, +27.6]**, and a same-day ladder calibration put it at
+  **2774 [2752,2795] vs 2789 [2767,2811]** for the code without it. Reverted. A
+  single anchor is a single opponent, and ±23 Elo of interval is wide enough for a
+  null to clear zero by chance about one time in twenty. The tell was visible in
+  the calibration residuals first: it beat expectation against the anchor it was
+  gated on (+3.6% vs +2.1% at 2700) and underperformed against 2600.
+- **Never compare calibrations across sessions.** The same merge read 2774 against
+  a 2803 recorded earlier and looked like −29; re-calibrating the OLD code the
+  same day at the same concurrency gave 2789, so most of the gap was between
+  sessions. Calibration is an absolute measurement and drifts; a paired gate is
+  built to survive drift. Compare like with like.
+- **Price the expected effect against the instrument BEFORE gating.** 600 paired
+  slots resolve ~±31 Elo, 1200 slots ~±23. Time scaling here is **+40.5 Elo per
+  doubling** (measured: +95/+113/+176 at 0.3/0.6/1.2s vs a pinned anchor), so a
+  tree change can be converted to an expected Elo up front — a 30% smaller tree is
+  0.52 doublings ≈ +21. If the expectation sits inside the interval, the gate
+  cannot answer the question and running it just generates a number that will be
+  over-read in both directions.
 - **A loss screen is evidence only against an INDEPENDENT GENERATION RUN.** This
   data is sampled every few plies from self-play games, so a position-level split
   leaves the same game — same opening, same structure, one correlated result — on
