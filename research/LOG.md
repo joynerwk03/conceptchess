@@ -2,6 +2,160 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**King-relative evaluation capacity: REJECTED, and the way it failed is worth
+more than the result.** If the evaluation is limited by model class rather than
+by missing terms, the fix is capacity, and the cheapest large block of real
+capacity is the one thing NNUE has that a piece-square table does not: piece
+placement conditioned on a king. HalfKP indexes every piece by (piece, square,
+own-king-square); kept interpretable and data-efficient that becomes a table over
+the RELATIVE offset from a king, folded left-right, tapered mg/eg -- 960
+parameters per king, each one readable as a sentence.
+
+Screened against the standard held-out split it looked like the best evaluation
+result this project has ever produced:
+
+    both kings   +1.249%   (~+5.9 Elo)     1920 parameters
+    enemy king   +0.700%
+    own king     +0.442%
+    PST control  +0.343%   <- re-fitting the tables that already exist
+
+3.6x the control. Then two things did not add up. The fitted tables were not
+chess: adjacent offsets swung +34 / -24 for positions that are nearly the same
+chess fact, and a pre-registered expectation (that rooks should care LESS about
+king proximity than knights, working at range as they do) came out backwards.
+And the split was by POSITION, on data sampled every few plies from self-play
+games -- so positions from the same game, sharing an opening, a structure and
+one correlated result, sat on both sides of it.
+
+`texel4.jsonl` was generated in a different run and overlaps `texel_all` by
+0.1%: genuinely independent games. Re-screened against it:
+
+    both kings   -0.925%       (was +1.249%)
+    band (coarse) -0.831%      384 parameters, cannot fit the oscillation
+    enemy king   -0.365%       (was +0.700%)
+    PST control  +0.411%       (was +0.343%)   <- the ONLY one that transfers
+
+**The entire gain was the split.** Every king-relative variant makes the
+evaluation WORSE on independent games, including the coarse one whose 24 cells
+per piece cannot encode noise. The control meanwhile behaves exactly as a
+healthy fit should -- it early-stops at step 225, its largest adjustment is 9
+centipawns, and it transfers slightly BETTER on independent data than it did on
+the contaminated split. The control working while the candidate inverts is what
+makes this a real answer rather than a broken harness.
+
+**The methodology bug, which is the part that generalises.** Every loss screen
+in this project has used a position-level split of self-play data, and that
+inflates any model with enough parameters to notice the correlation. It cost
+nothing where the number was small and the change was then game-gated (the PST
+re-fit's +4.8 Elo was measured in games and stands), but it means a screen result
+is evidence only when the test set is a different GENERATION RUN. `--test-data`
+now defaults to texel4 for exactly this reason, and screens quoted against a
+position split should be treated as upper bounds.
+
+So the evaluation is closed from both directions: not term-limited (it matches
+Stockfish 11's classical eval) and not cheaply capacity-limited (1920 parameters
+of genuine interaction capacity transfer negatively). What is left is the search.
+
+
+**The evaluation is not the problem, and here is the measurement that settles
+it.** Nine hand-picked knowledge bundles had measured ~zero, and the conclusion
+drawn was "the knowledge seam is closed". That conclusion was reached by running
+out of ideas, which is not evidence. `research/eval_room.py` scores the same
+80,000 positions with three evaluators and compares decisive-game outcome loss,
+each at its OWN best K:
+
+    this engine            0.098681
+    stockfish 11 classical 0.101598    -2.96%   <- WE ARE AHEAD
+    stockfish (NNUE)       0.081968   +16.94%
+
+**This engine's concept sum predicts game outcomes slightly BETTER than
+Stockfish 11's classical evaluation**, and the whole 16.94% deficit is against an
+NNUE. That is not a pool of chess knowledge waiting to be written down as terms;
+it is the gap between any hand-crafted concept sum and a neural network.
+
+The bucket breakdown says the same thing from the other side. Splitting by
+phase, material, pawn count, queens, passers, bishop pair, piece mix and king
+exposure, the NNUE gap sits between 10.8% and 24.9% with almost everything
+clustered at 15-20%. **A missing TERM looks like a large gap in the one bucket
+where it fires and nothing anywhere else. A uniform deficit everywhere is a
+statement about the model class, not about chess knowledge.** Nine zero bundles
+were not nine unlucky guesses; they were nine terms added to a model that was
+not term-limited.
+
+Confound, stated because it cuts against the conclusion: the positions are this
+engine's own self-play and the labels are results of games this engine played,
+which favours its own evaluation. The -2.96% should not be read as "better than
+Stockfish 11". It should be read as "in the same class", which is all the
+argument needs.
+
+**What that implies is the useful part.** Stockfish 11 is a ~3300-Elo engine
+whose evaluation is in this one's class. So its advantage is not knowledge -- it
+is search and speed. Measuring those:
+
+    raw speed          2.08M NPS vs 1.65M      1.26x  -> worth only ~17 Elo
+    depth at 3s        22-28 vs 14-20
+    nodes at depth 15  394,273 vs 2,096,933    5.3x MORE for the same depth
+    per-ply growth     1.80 vs 1.82            nearly identical
+
+Same growth rate, same speed class, five times the tree. Not a faster-growing
+tree -- a uniformly fatter one, which is what a uniformly lighter reduction
+schedule produces. (Nominal depth is not comparable between engines, and part of
+SF11's thinner tree is simply that it reduces harder, so the 5.3x is not a pure
+deficiency. It is still where the difference lives.)
+
+**So the seam is search, and specifically reduction, not knowledge and not
+ordering.** Ordering was the first suspect and the statistics acquitted it:
+88.82% of main-search beta cutoffs come on the first move tried, 95.64% within
+two, 98.46% within four, mean cut index 1.347. Quiescence is 44.4% of nodes,
+which is normal. With cutoffs that early, LMR hardly runs at cut nodes at all --
+the tree's size is set at ALL-nodes, where every move is searched and the
+reduction schedule alone decides the cost.
+
+Tooling kept: `research/eval_room.py` (three-way evaluator comparison, bucketed),
+`research/speed_gap.py`, `research/ebf.py`, and a Stockfish 11 build at
+`~/bin/stockfish11` used purely as a measuring instrument, as `stockfish`
+already is for calibration and suite mining. No Stockfish code enters this repo.
+
+
+**Eval-hash key stripped of castling and ep: correct, tree-identical, REJECTED.**
+
+`eval_core(bb, side)` takes the piece bitboards and the side to move and nothing
+else -- it cannot read castling rights or the en-passant square. But the eval
+hash was keyed on the full Zobrist `b->hash`, so two positions with identical
+placement differing only in castling or ep occupied different slots despite
+having provably identical evaluations. Zobrist is XOR-based, so the offending
+components come straight back out:
+
+    h = hash ^ Z_CASTLE[castle] ^ (ep >= 0 ? Z_EP[ep & 7] : 0)
+
+Everything about it checked out. `eval_check` 0.000000, perft ALL PASS, and
+fixed-depth node counts identical to the node across six positions -- a pure
+speed change by the self-validating rule. Then it measured **-3.36% NPS** over 8
+interleaved pairs.
+
+Instrumenting the probe explains it, and the explanation is the useful part:
+
+    main   probes 330,245   hits 186,443   rate 56.456%
+    ehk    probes 330,245   hits 186,993   rate 56.623%
+
+**+0.167 percentage points -- 550 extra hits out of 330,245 probes.** At 36.7% of
+runtime in `eval_core`, 0.17% of probes skipping it is worth ~0.06% of runtime,
+and that is the *entire* prize, collected by paying two lookups and two XORs on
+every one of the other 329,695 probes.
+
+This is worth writing down because the cost could have been engineered away --
+maintain the stripped key incrementally in make/unmake and the probe path goes
+back to zero overhead. It would not have mattered. **The measurement to take
+first was the size of the prize, not the size of the cost.** Positions reaching
+identical placement while differing only in castling or ep are rare in a real
+tree: ep squares survive one ply, castling rights change only on king and rook
+moves, and the TT already absorbs most transpositions upstream of the eval hash.
+
+Same shape as the arithmetic micro-optimisations: a real inefficiency, correctly
+identified and correctly fixed, whose ceiling was below the noise floor before
+any code was written.
+
+
 **Pawn islands and candidate passers: +0.2 Elo. The last structural idea, and
 it closes the knowledge seam.**
 
