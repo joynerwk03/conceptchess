@@ -2,6 +2,52 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Unspent time budget: found, fixed, and worth nothing measurable
+(-13.0 Elo [-44.3, +18.3]).** At a fixed 3.0s move time the engine returned
+after 2.19s; at 0.5s after 0.437s. It was handing back 13-27% of every move's
+budget, at every move of every calibration game, and no NPS measurement could
+see it because they all report nodes per second rather than seconds used.
+
+The cause was structural. At the root, `if(SS.stopped) break;` discarded
+everything the current iteration had found, so an iteration that could not be
+finished was worth exactly nothing -- and given that, refusing to start one past
+half the budget was the right call. Fixing the cause (keep the partial
+iteration's best move when a root move completed, beat the previous score and
+sat above the aspiration window's lower bound) allowed the soft limit to go from
+0.5 to 0.85 of the budget. The engine then used **100.0-100.4%** of its time and
+gained up to **+2 plies at 3s** (depths 15/13/16 -> 15/15/17).
+
+Two more plies of depth, and the gate says nothing: 63.7% -> 61.9%, **-13.0
+Elo**. REJECTED.
+
+**The session's real finding is the measurement wall.** Two changes were gated
+this session -- cut-node reduction (-5.7 [-38.5,+27.2]) and this (-13.0
+[-44.3,+18.3]). Both CIs are ~30-45 Elo wide at 600 paired slots, and every
+remaining candidate is worth less than that. **Changes are now being produced
+below the resolution of the instrument that judges them.** 600 paired slots
+resolves about +/-31 Elo; resolving +10 needs roughly 6,000 games, which is
+about 7 hours per experiment on this box. Accepting anything on a point estimate
+would just be accumulating noise, which is the one mistake that would undo the
+work already banked.
+
+**A motivation checked before it was built, and found false.** Bounded history
+with gravity was next: `order()` scores killers at 80000/79000 and the
+countermove at 78000, while a quiet gets its RAW history value, and history
+accumulates depth*depth per cutoff with no bound -- so a hot from/to pair should
+eventually outrank the killers and silently replace the designed ordering.
+Instrumenting the update site over a full game's worth of searches:
+
+    history updates        711,919
+    largest value reached   41,360
+    updates above 78,000         0
+
+**The inversion never happens.** The bound is real but never reached, so the
+argument for the change evaporated before any code was written. Third time this
+session that pricing the prize first saved the work -- the eval-hash key (+0.167
+percentage points of hit rate), the king-relative tables (the gain was the
+split), and now this.
+
+
 **Cut-node reduction: -5.7 Elo [-38.5, +27.2], and with it the whole reduction
 seam closes.** The search knew about PV nodes but had no notion of a CUT NODE --
 a node the parent expects to fail high -- which Stockfish has used as a major
