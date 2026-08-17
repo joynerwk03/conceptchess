@@ -118,6 +118,12 @@ def main():
                          "tablebase already solves at the root are ~17% of the "
                          "data and the eval's accuracy in them cannot affect "
                          "play, so fitting them spends capacity on nothing.")
+    ap.add_argument("--freeze", default="",
+                    help="comma-separated key prefixes to hold fixed. Freezing "
+                         "'material.' anchors the centipawn unit: material "
+                         "dominates the sum, so letting it drift rescales the "
+                         "whole evaluation and silently re-bases every margin "
+                         "in the search.")
     ap.add_argument("--target", default="outcome",
                     choices=("outcome", "teacher"),
                     help="'teacher' fits towards an outside evaluator's "
@@ -181,9 +187,12 @@ def main():
 
     lo = np.empty(len(names))
     hi = np.empty(len(names))
+    frozen = tuple(x for x in a.freeze.split(",") if x)
     for i, (k, _s) in enumerate(names):
         v = w0[i]
-        if k.startswith("material."):
+        if frozen and k.startswith(frozen):
+            lo[i] = hi[i] = v          # pinned: the trust region cannot move it
+        elif k.startswith("material."):
             lo[i], hi[i] = v * 0.88, v * 1.12
         elif k in TUNABLE:
             f0, f1 = TUNABLE[k]

@@ -2,6 +2,57 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Fitting the ninety concept WEIGHTS to the teacher: +0.429% that was mostly
+scale, +0.053% once the scale was pinned. The evaluation is finished.**
+
+With the piece-square tables done, the weights were the last block. Fitted to
+the teacher, the independent-games outcome loss improved **+0.429% (~+2.0 Elo)**
+with K refitted for both sides -- which should have absorbed any pure rescale,
+so this looked real.
+
+Two things in the output said otherwise. `material.bishop` moved 295.4 -> 330.9
+and `material.knight` 274.2 -> 307.1: **both exactly +12.0%, which is their
+clamp.** A parameter pinned to its bound is one the optimiser wanted to push
+further. And the refitted K came back 0.7.
+
+Material dominates the concept sum, so raising it IS approximately multiplying
+the whole evaluation, and the direct measurement confirmed it: the fitted
+evaluation regressed on the current one at **slope 1.0628** -- a 6.3% rescale,
+correlation 0.9989. K was refitted on a grid whose spacing near the optimum is
+about 8%, so a 6% rescale can hide inside one grid step; the refit did not
+absorb what it appeared to absorb.
+
+That cannot ship whatever the loss says. Reverse futility, futility, ProbCut,
+delta pruning and the aspiration width are all constants calibrated against the
+current unit, and a 6.3% rescale re-bases every one of them without any being
+edited. Nor can it be divided out afterwards, because the weight vector mixes
+centipawn quantities with MULTIPLICATIVE factors (ocb.draw_scale,
+pawn.passed_eg_scale, the queenless discount) for which 1/1.063 is meaningless.
+
+So the scale was removed at the source instead: `--freeze material.` pins the
+piece values, making them the unit of account -- material is what "a centipawn"
+means, and holding it fixed deletes the degree of freedom rather than trying to
+subtract it later. Re-fitted that way:
+
+    HELD-OUT 0.104216 -> 0.104160   +0.053%   ~+0.3 Elo   (scale-invariant)
+
+with rounds 2 through 5 all REJECTED by the trust region. **Nine tenths of the
+apparent gain was the rescale.**
+
+So the evaluation is closed from every direction this project can test: not
+term-limited (level with Stockfish 11's classical eval, ahead of it on move
+ranking), not capacity-limited (1920 king-relative parameters do not beat
+re-fitting the existing tables even with good labels), and not label-limited
+(a stronger teacher moves the tables +0.469% and the weights +0.053%, both far
+under what any gate here can resolve). The features are the limit, and better
+numbers for those features are worth a couple of Elo in total.
+
+Tooling kept: `--freeze` on linfit_tr, and `/home/joynerwk03/ccruns/wcheck.py`
+pattern -- measure the regression slope of a candidate evaluation on the current
+one before believing any tuning result. A K grid cannot be trusted to absorb a
+rescale when its spacing is coarser than the rescale.
+
+
 **An outside teacher beats game outcomes as a label -- clearly, repeatedly, and
 still not enough to survive a game gate.**
 
