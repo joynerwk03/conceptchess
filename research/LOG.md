@@ -2,6 +2,51 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Time scaling: +40.5 Elo per doubling, which is normal -- and it means two
+"rejected" changes were never measurable in the first place.** Two gates came
+back null this session while both changes demonstrably delivered what they
+promised in search terms (cut-node: 30.4% smaller tree; time budget: +2 plies).
+That pair is hard to explain one at a time and easy to explain together, if
+extra search simply does not pay for this engine. So the payoff curve was
+measured directly, with the anchor pinned at 0.3s and only this engine's clock
+moving:
+
+    0.3s   63.4%   +95 Elo   [+67, +125]
+    0.6s   65.8%  +113 Elo   [+87, +141]     +18 per doubling
+    1.2s   73.4%  +176 Elo   [+145, +210]    +63 per doubling
+
+**+40.5 Elo per doubling averaged over both steps: entirely healthy.** The +18
+first step was noise -- its interval overlaps the baseline's almost completely --
+and reading a slope off two points was the mistake. Depth converts to strength
+here at the normal rate.
+
+Which re-prices everything that was rejected:
+
+    cut-node reduction   30.4% fewer nodes = 1.44x = 0.52 doublings = ~+21 Elo
+    time budget fix      ~15% more time    = 0.20 doublings = ~+8 Elo
+
+Both were measured with a paired gate resolving about +/-31 Elo. **Neither
+result was evidence of anything.** The changes were not failures; the instrument
+could not see effects of that size, and "not distinguishable from zero" was
+being read as "zero".
+
+**The instrument was the fixable part.** Concurrency had been validated at 8 on a
+ten-core box; this box has 20. Holding the book, anchor, move time and game count
+fixed and varying only concurrency:
+
+    concurrency  8    64.1%   +101 Elo   [+74, +130]
+    concurrency 16    63.5%    +96 Elo   [+67, +127]
+
+Unbiased, and it halves the wall-clock cost of every future gate. (The first
+attempt at this measured +40 Elo for concurrency 16 and would have condemned it:
+that run omitted the UHO book that abgate passes by default, so it was comparing
+book games with bookless ones. Two variables, one conclusion, nearly banked.)
+
+Cut-node reduction is therefore being re-gated at 1200 paired slots with
+concurrency 16, which resolves roughly +/-15 Elo -- enough to see +21 if it is
+there.
+
+
 **Unspent time budget: found, fixed, and worth nothing measurable
 (-13.0 Elo [-44.3, +18.3]).** At a fixed 3.0s move time the engine returned
 after 2.19s; at 0.5s after 0.437s. It was handing back 13-27% of every move's
