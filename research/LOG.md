@@ -2,6 +2,66 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**eval_core profiled by concept for the first time; threats made 2.4% faster
+bit-identically.**
+
+Speed was re-priced by the equal-depth match. Our nodes are worth MORE than
+Stockfish 11's (+108 Elo at depth 9) and buying depth by thinning the tree
+measured -57, so the only way left to turn time into strength is to make the
+SAME dense tree cheaper. Raw NPS converts at the measured +40.5 Elo per doubling
+with nothing traded away.
+
+Every previous attempt on eval_core was aimed blind. Profiling it from the
+inside (rdtsc per block, 4.95M calls, 1847 cycles/call) shows the cost is
+concentrated:
+
+    threats             22.4%   413 cycles/call
+    attack precompute   14.7%   271
+    king attack         13.5%   249
+    placement            9.0%   166
+    minor pieces         7.4%   137
+    imbalance+space      7.1%   131
+    pawn structure       5.5%   102
+    attack union         5.1%    95
+    mobility             4.3%    79
+    king safety          3.2%    58
+    ...
+
+Threats alone is 8.2% of total runtime, and had two wastes that do not touch its
+value. It rebuilt an attack union that already existed -- `atkby[c]` unions
+pawns, every piece and the king, which is exactly the `au[c]` computed earlier,
+so it was a second full pass over `pat[][][]` for a value already in a local.
+And it visited every enemy piece to discover most were not threatened, when a
+piece satisfying no clause executes no addition and therefore cannot affect the
+sum.
+
+Masking the iteration by the union of squares any clause could fire on keeps the
+additions in their original pawn/minor/rook/hanging order. That order is the
+constraint that rules out the obvious rewrite: summing per CLAUSE with bitboards
+instead of per PIECE would reassociate the float additions and break
+`eval_check`, which is why this block looks unoptimised in the first place.
+
+Bit-identical, therefore tree-identical, therefore self-validating -- fixed-depth
+node counts matched to the node across five positions. **NPS 1,488,919 ->
+1,524,626, +2.4%**, medians of three interleaved rounds with the new build ahead
+in every one. About +1.4 Elo, which no gate here could resolve; the tree-identity
+check is the right evidence precisely because the effect is small.
+
+**The ceiling this sets.** eval_core is 36.7% of runtime, so making the
+evaluation entirely free would be 1.58x speed, 0.66 doublings, **+27 Elo** -- the
+absolute maximum available from all evaluation speed work, ever. The two
+remaining large blocks resist bit-identical treatment: attack precompute is the
+irreducible slider cost with PEXT already in use and `pat` stride previously
+probed at ~0, and king attack's cost is the AND-and-popcount of each piece's
+attacks against the king zone, which cannot be skipped without knowing the answer
+it computes. Realistically a few more Elo remain here, not tens.
+
+Tooling kept: the profiler pattern -- mark each block with rdtsc, aggregate over
+millions of calls. Worth re-running before any future optimisation of this file,
+because the answer ("one block is a fifth of it") is not what a decade of
+micro-optimisation attempts assumed.
+
+
 **Aggressive reduction: -57.2 and -33.7 Elo, both intervals clear of zero. The
 reduction seam is closed, and this time the measurement resolves.**
 
