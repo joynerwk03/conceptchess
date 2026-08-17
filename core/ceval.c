@@ -132,10 +132,10 @@ double eval_core(U64 bb[2][6], int side){
             while(x){ int sq=lsb(x); x&=x-1; int i=sq^flip; double v;
                 if(p==PAWN) v=phase*PST_PAWN_MG[i]+(1-phase)*PST_PAWN_EG[i];
                 else if(p==KING) v=phase*PST_KING_MG[i]+(1-phase)*PST_KING_EG[i];
-                else if(p==KNIGHT) v=PST_KNIGHT[i];
-                else if(p==BISHOP) v=PST_BISHOP[i];
-                else if(p==ROOK) v=PST_ROOK[i];
-                else v=PST_QUEEN[i];
+                else if(p==KNIGHT) v=phase*PST_KNIGHT_MG[i]+(1-phase)*PST_KNIGHT_EG[i];
+                else if(p==BISHOP) v=phase*PST_BISHOP_MG[i]+(1-phase)*PST_BISHOP_EG[i];
+                else if(p==ROOK) v=phase*PST_ROOK_MG[i]+(1-phase)*PST_ROOK_EG[i];
+                else v=phase*PST_QUEEN_MG[i]+(1-phase)*PST_QUEEN_EG[i];
                 s += sign*PSTSCALE[p]*v;
             }
         }

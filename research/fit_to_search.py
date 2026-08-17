@@ -63,6 +63,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default=str(ROOT / "research/data/labelled.jsonl"))
     ap.add_argument("--holdout", type=float, default=0.35)
+    # The honest number must come from different GAMES, not different
+    # positions in the same games: this data is sampled every few plies
+    # from self-play, so a position split shares openings, structures and
+    # one correlated result across both sides of it.
+    ap.add_argument("--test-data", default="",
+                    help="independent file for the outcome check; "
+                         "empty = position-level holdout (not trustworthy)")
     ap.add_argument("--steps", type=int, default=4000)
     ap.add_argument("--lr", type=float, default=0.4)
     ap.add_argument("--k", type=float, default=0.46, help="win-prob scale")
@@ -78,8 +85,14 @@ def main():
 
     rows = [json.loads(l) for l in open(a.data)]
     random.Random(31415).shuffle(rows)
-    cut = int(len(rows) * (1 - a.holdout))
-    fit_rows, hold_rows = rows[:cut], rows[cut:]
+    if a.test_data:
+        fit_rows = rows
+        hold_rows = [json.loads(l) for l in open(a.test_data)]
+        random.Random(31415).shuffle(hold_rows)
+        print(f"held-out set: {a.test_data} (independent games)")
+    else:
+        cut = int(len(rows) * (1 - a.holdout))
+        fit_rows, hold_rows = rows[:cut], rows[cut:]
     print(f"{len(fit_rows)} fitting positions, {len(hold_rows)} held out "
           f"(search-score labels)")
 

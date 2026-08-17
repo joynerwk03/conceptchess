@@ -206,6 +206,12 @@ def main():
     ap.add_argument("--test-data", default=str(ROOT / "research/data/texel4.jsonl"),
                     help="independent test file; '' to split by position instead")
     ap.add_argument("--test-n", type=int, default=90000)
+    # What the fit is pulled TOWARDS. The reported number is the same either
+    # way -- decisive-game outcome loss on the independent test set -- so the
+    # two targets are directly comparable, and "outcome" is the control.
+    ap.add_argument("--target", default="outcome", choices=("outcome", "teacher"),
+                    help="'teacher' fits towards an outside evaluator's static "
+                         "score (field 'sv'), 'outcome' towards the game result")
     ap.add_argument("--workers", type=int, default=12)
     ap.add_argument("--holdout", type=float, default=0.35)
     ap.add_argument("--steps", type=int, default=3000)
@@ -256,7 +262,18 @@ def main():
     fb, fr, fc, fv = build([r["fen"] for r in tr], a.mode, a.workers)
     vb, vr, vc, vv = build([r["fen"] for r in va], a.mode, a.workers)
     hb, hr, hc, hv = build([r["fen"] for r in te], a.mode, a.workers)
-    ftr = np.asarray([r["res"] for r in tr], dtype=float)
+    if a.target == "teacher":
+        # Fitted in WIN-PROBABILITY space, not centipawns: a hundred centipawns
+        # of error matters enormously at level material and almost not at all at
+        # +800, and squared centipawn error would spend its effort in exactly
+        # the wrong place. sig() puts the teacher's score on the same scale the
+        # outcome labels live on, so the two targets are interchangeable here
+        # and the comparison between them is clean.
+        missing = [r for r in tr if "sv" not in r]
+        assert not missing, f"{len(missing)} training rows have no teacher label"
+        ftr = sig(np.asarray([r["sv"] for r in tr], dtype=float), a.k)
+    else:
+        ftr = np.asarray([r["res"] for r in tr], dtype=float)
     vres = np.asarray([r["res"] for r in va], dtype=float)
     hres = np.asarray([r["res"] for r in te], dtype=float)
     vdec, hdec = vres != 0.5, hres != 0.5
