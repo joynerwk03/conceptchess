@@ -649,7 +649,23 @@ static void run_id(ThreadCtx *tc){
                 re->key=rh; re->mdf=TTM_PACK(best, depth, TT_EXACTF); re->score=score;
             }
             for(int i=0;i<rn;i++) if(root[i]==best){ Move t=root[i]; for(int j=i;j>0;j--)root[j]=root[j-1]; root[0]=t; break; } }
-        if(score>S_MATE_TH||score<-S_MATE_TH) break;
+        /* A mate is a reason to stop only once it is PROVEN SHORTEST. Mate
+         * scores are ply-relative (S_MATE - ply), so a shorter mate already
+         * scores higher and the search prefers it on its own -- but it can only
+         * find one if it is allowed to keep looking. Breaking on any mate meant
+         * accepting the first one noticed, which is not the fastest and is not
+         * stable from move to move: play a move from a sub-optimal mating line
+         * and the next position's first-noticed mate can be LONGER, which is
+         * how the engine ended up shuffling instead of converging.
+         *
+         * A mate in N plies is resolved once depth >= N, because a shorter one
+         * would have been found first. Below that, keep searching. The same
+         * rule applied to a losing score makes the engine seek the longest
+         * defence rather than settling for the first loss it sees. */
+        if(score>S_MATE_TH || score<-S_MATE_TH){
+            int mate_plies = (score>S_MATE_TH) ? (S_MATE-score) : (S_MATE+score);
+            if(mate_plies <= depth) break;
+        }
         /* Time management. Fixed movetime (max==opt) keeps the exact old rule.
          * Clock mode (max>opt) adapts around the optimum budget:
          *   - falling eval (score dropped vs the previous iteration) is a real
