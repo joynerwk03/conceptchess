@@ -2,6 +2,55 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Phase-aware LMR, eval-hash sizing and TT sizing: all closed.**
+
+**Phase-aware LMR -- REJECTED, and it was the best-motivated search idea left.**
+The search is entirely phase-blind (`grep phase core/csearch.c` returns nothing)
+while every evaluation weight is phase-interpolated. The hypothesis was not
+"another LMR tweak": the reduction axis was closed by moving a single GLOBAL
+setting, and if middlegames and endgames want different amounts then that global
+optimum is a compromise no global move can improve on. Endgames have a strong
+prior for wanting LESS reduction -- few legal moves leave little to prune,
+ordering is weakest where there are almost no captures to sort by, and zugzwang
+or a pawn race makes the one winning move easy to reduce away.
+
+Implemented as one ply less below phase 0.30, with root phase computed once per
+search (same formula as ceval.c; per-node would cost more than it saves). The
+scoping check was clean: **middlegame node counts byte-identical**, endgames
+50-66% wider. Gated on both anchors at 1000 paired slots:
+
+    vs stockfish:2700   -8.9 Elo [-33.2, +15.3]
+    vs stockfish:2600   +8.7 Elo [-19.3, +36.7]
+
+**The signs disagree and both intervals span zero.** Under the two-anchor rule
+that is a null, not a win -- exactly the discipline that caught cut-node
+reduction merging at +28.5 and failing to reproduce.
+
+**Eval hash sizing -- REJECTED.** eval_core is 36.7% of runtime and the hash
+answers 56.5% of probes, so more room looked free. It is not: values are
+identical whether hit or missed, so node counts stayed identical to the node
+(self-validating), but NPS went the wrong way.
+
+    16MB (current, 21 bits)   1,480,925    <- best
+    32MB (22 bits)            1,471,523    wash
+    128MB (24 bits)           1,431,743    -3.3%
+
+A bigger table has a worse L3 profile, and the added miss latency costs more
+than the recovered hits return. 16MB is already the right size.
+
+**TT sizing at the GOAL configuration -- no effect.** Every previous TT
+experiment ran at 0.3s and low thread counts. The configuration the 3000 claim
+rests on is different in kind: 16 threads for a full second search ~20M nodes
+into a 4M-entry table, sixteen threads competing for the same entries. Depth
+reached at 1.0s with 16 threads:
+
+    64MB (current)  15.00      512MB   15.25
+    256MB           15.25      1024MB  14.75
+
+Quarter of a ply across a sixteen-fold size range, on four positions -- noise.
+The table is not the constraint there either.
+
+
 **3000 reached — at 16 threads and 1.0s per move, and the configuration is part
 of the result, not a footnote.**
 
