@@ -28,8 +28,23 @@ The time control is part of the number, not a detail: against the same anchors
 this engine scores +95 Elo at 0.3s and +176 at 1.2s, because UCI_Elo-limited
 Stockfish barely gains from extra time and this engine gains +40.5 per doubling.
 Quote a rating without its TC and it means nothing;
-about 2907 at full thread width, adding the separately measured +96 for ten
-threads. `research/data/elo_history.json` tracks this over time.)*
+`research/data/elo_history.json` tracks this over time.)*
+
+**At 8 threads: 2920, 95% CI [2885, 2956]** (450 ladder games, anchors on 1
+thread, concurrency 2). Measured directly rather than added: against
+stockfish:2700 the same engine scores 60.0% at 1 thread and **81.5% at 8**, a
+**+188** delta. The **+96 for ten threads** this file used to quote was a
+cross-session composite and understates SMP by roughly half — the same class of
+arithmetic that produced a phantom −29 Elo elsewhere in s33. Quote the thread
+count with the rating, always; they are different configurations of the engine,
+not one number with a footnote.
+
+**The ladder cannot certify a rating above its top anchor.** At 8 threads the
+implied rating FALLS as the anchor strengthens — ~2941 vs 2600, ~2917 vs 2700,
+~2858 vs 2800 (residual −6.2%) — because the engine now sits at or above the
+ladder's ceiling and the fit is extrapolating. For any target near or above
+2800, add anchors AT the target: `UCI_Elo` runs to 3190, and scoring 50% against
+a 3000-rated reference is the only evidence that settles a 3000 claim.
 
 `engine/Engine` searches with a **compiled C core** by default (`engine/core.py`
 binds `core/libcengine.dylib` on macOS / `core/libcengine.so` on Linux+WSL2 via

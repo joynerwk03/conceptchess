@@ -2,6 +2,46 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**SMP measured rather than added: +188 Elo at 8 threads, not the +96 on record
+for ten. And the anchor ladder cannot certify what it is being asked to.**
+
+CLAUDE.md quoted "about 2907 at full thread width" as a single-thread rating
+plus a separately measured +96 for ten threads — two numbers from different days
+under different conditions. Measured in one session instead, same book, same
+move time, same anchor, concurrency chosen so neither arm oversubscribes this
+20-core box:
+
+    1 thread  (concurrency 16)   60.0% vs stockfish:2700   +70 Elo
+    8 threads (concurrency 2)    81.5% vs stockfish:2700   +258 Elo
+
+**+188 for eight threads.** The stored +96 for TEN understates SMP by roughly
+half. The full ladder at 8 threads then fits **2920 [2885, 2956]** over 450
+games.
+
+**But the residuals say that number is soft, and how it is soft matters:**
+
+    vs 2600   87.7%   implies ~2941
+    vs 2700   77.7%   implies ~2917
+    vs 2800   58.3%   implies ~2858   (residual -6.2%)
+
+The implied rating falls monotonically as the opposition strengthens. That is
+what it looks like when an engine sits at or above the top of its own ladder:
+the ML fit is extrapolating past its anchors, and it is pulled upwards by the
+weak ones. For a 3000 target this is precisely the wrong direction to
+extrapolate in — the most relevant anchor is the strongest, and it gives the
+lowest number.
+
+**The fix was available the whole time and had never been used.** `UCI_Elo` runs
+to 3190. A ladder that tops out at 2800 cannot answer "is this engine 3000?" at
+any sample size, but a match against a 3000-rated reference answers it directly:
+50% is the claim, 35% is not, and no fit can argue either away. Anchors at 2900
+and 3000 are now being played.
+
+The general lesson, which cost nothing to learn and would have cost a lot to
+miss: **a rating is only as trustworthy as the nearest anchor.** This project
+has been quoting ratings for an engine that outgrew its measuring stick.
+
+
 **eval_core profiled by concept for the first time; threats made 2.4% faster
 bit-identically.**
 
