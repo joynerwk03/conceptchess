@@ -39,6 +39,18 @@ arithmetic that produced a phantom −29 Elo elsewhere in s33. Quote the thread
 count with the rating, always; they are different configurations of the engine,
 not one number with a footnote.
 
+**Ratings by configuration — always quote the thread count:**
+
+| threads | rating | how measured |
+|---|---|---|
+| 1 | **2805** [2783, 2827] | 3-anchor ladder, 900 games |
+| 8 | **~2900** | vs stockfish:2900 49.2%, vs stockfish:3000 37.0% |
+| 16 | **~2930** | vs stockfish:3000 40.0%, −70 Elo [−106, −37] |
+
+8→16 threads is worth only **+22 Elo** (sub-linear Lazy SMP). The engine does not
+reach 3000 in any available configuration; the shortfall is 70 Elo at full width,
+measured against a reference at the target strength.
+
 **Anchored directly at 8 threads: vs stockfish:2900 49.2% (~2895), vs
 stockfish:3000 37.0% (~2908).** Two anchors agreeing to 13 points, so ~2900 is a
 measured rating rather than a fitted one. Use `--opponent stockfish:2900/3000`

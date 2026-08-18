@@ -2,6 +2,51 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Full thread width measured: ~2930, and the 3000 question now has a precise
+answer instead of an estimate.**
+
+    1 thread    2805 [2783, 2827]   (3-anchor ladder, 900 games)
+    8 threads   ~2900               (vs 2900: 49.2%; vs 3000: 37.0%)
+    16 threads  ~2930               (vs 3000: 40.0%, -70 Elo [-106, -37])
+
+8 -> 16 threads is worth **+22 Elo** (37.0% -> 40.0% against the same
+reference): the sub-linear Lazy SMP scaling expected, and worth measuring rather
+than assuming, since the +96-for-ten-threads figure this project carried turned
+out to be wrong by half.
+
+**So the engine does not reach 3000 in any configuration available here, and the
+shortfall is 70 Elo at full width** -- measured against a reference AT the target
+strength, with an interval that excludes zero, rather than extrapolated from a
+ladder topping out at 2800. That is the difference between "we think we are
+about 2907" and a number that can be defended.
+
+The three ratings are all real and all different, and none of them means
+anything without its thread count attached. Quoting a single Elo for this engine
+was always a category error; the file now records the configuration with the
+number.
+
+**What this session actually moved.** Two genuine bugs fixed, both found by
+ground truth rather than by games: static exchange evaluation was recapturing
+with kings that could not legally move (sign errors 44 -> 12 over 4,000 real
+captures, and quiescence PRUNES on that sign, so winning captures were never
+searched), and the tablebase DTZ ranking avoided progress by construction
+(endgame conversion 12/15 -> 15/15). The Syzygy set was completed to 5 men, and
+the threats block made 2.4% faster bit-identically. Everything else measured
+negative or unresolvable and was reverted, including a cut-node reduction that
+cleared one anchor and failed two others.
+
+**What would actually close 70 Elo, stated so the next session does not
+re-derive it.** Not the evaluation: it matches Stockfish 11's classical eval on
+outcome prediction, beats it on move ranking, gains +0.053% scale-invariant from
+a stronger teacher, and gains nothing from 1920 parameters of new capacity. Not
+the reduction schedule: bounded on both sides by resolved gates (-2.83 for less,
+-57.2 and -33.7 for much more). Not evaluation speed: eval_core is 36.7% of
+runtime, so making it entirely free caps out at +27 Elo. The remaining honest
+options are a learned evaluation (the 16.94% NNUE gap is the one measured pool
+left, and it costs the project its premise), or many small verified wins at
+roughly 6,000 games each to confirm.
+
+
 **Anchored at the target instead of extrapolated to it: ~2900 at 8 threads, and
 the two nearest anchors finally agree.**
 
