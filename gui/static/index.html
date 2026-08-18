@@ -236,6 +236,7 @@
           </div>
         </div>
         <h3 class="sec">Evaluation breakdown — <span id="cScope" style="text-transform:none">position on the board</span></h3>
+        <div class="phasewrap"><span class="meta" id="threadTxt">threads</span><input type="range" id="threadRange" min="1" max="16" value="10" style="width:88px;accent-color:var(--accent)"><span class="meta" id="threadVal" style="min-width:18px">10</span></div>
         <div class="phasewrap"><span class="meta" id="phaseTxt">phase —</span><span class="phasebar"><span class="phasefill" id="phaseFill" style="width:100%"></span></span><span class="scopebtn on" id="scopeNow">board</span><span class="scopebtn" id="scopeLeaf">end of line</span></div>
         <div class="gap" id="scopeGap"></div>
         <div class="meta" style="margin:0 0 6px">Positive favors White. Click a row for detail; open Concepts to learn each one.</div>
@@ -279,7 +280,7 @@ const $=id=>document.getElementById(id);
 async function api(path,body,signal){ const r=await fetch(path,{method:"POST",
   headers:{"Content-Type":"application/json"},body:JSON.stringify(body),signal});
   return r.json(); }
-const payload=()=>({start_fen:state.startFen,moves:state.moves});
+const payload=()=>({start_fen:state.startFen,moves:state.moves,threads:state.threads});
 
 function fenBoard(fen){ const rows=fen.split(" ")[0].split("/"),g={};
   rows.forEach((row,i)=>{let f=0;for(const c of row){ if(/\d/.test(c))f+=+c;
@@ -691,6 +692,13 @@ function renderAnalysis(r){
                     static_now: r.static_now, score_white: r.score_white,
                     depth: r.depth, pv_plies: r.pv_plies};
     renderPhase(r.phase);
+    if(r.threads_max&&$("threadRange")){
+      const rg=$("threadRange");
+      rg.max=r.threads_max;
+      if(state.threads===null&&r.threads){ state.threads=r.threads;
+        rg.value=r.threads; $("threadVal").textContent=r.threads; }
+      $("threadTxt").textContent=`threads (max ${r.threads_max})`;
+    }
     renderScoped(state.lastEx);
   }
   state.bestArrow=r.best; state.secondArrow=r.second; drawArrows();
@@ -711,7 +719,8 @@ async function startAnalysis(){
     // the browser is not holding a promise for a position we have left.
     state.analyzeAbort=new AbortController();
     try{ r=await api("/api/think",{start_fen:state.startFen,moves:state.moves,
-      max_depth:depth,movetime:20,book:state.useBook},state.analyzeAbort.signal); }
+      max_depth:depth,movetime:20,book:state.useBook,threads:state.threads},
+      state.analyzeAbort.signal); }
     catch(e){ break; }                          // includes AbortError
     if(token!==state.analyzeToken) return;      // position changed under us
     if(r.error){ $("aMeta").textContent="Engine error: "+r.error; break; }
@@ -786,6 +795,16 @@ async function newGame(color){
   if(color==="black") engineMove();
 }
 $("newWhite").onclick=()=>newGame("white"); $("newBlack").onclick=()=>newGame("black");
+state.threads = null;                       // null = server default until we know it
+(function(){
+  const r=$("threadRange"), v=$("threadVal");
+  if(!r) return;
+  r.oninput=()=>{ v.textContent=r.value; };
+  // Restart on release rather than on every tick: changing width mid-search
+  // would otherwise fire a request per pixel dragged.
+  r.onchange=()=>{ state.threads=+r.value; v.textContent=r.value;
+    if(state.analyzing){ stopAnalysis(); startAnalysis(); } };
+})();
 $("scopeNow").onclick=()=>setScope("now");
 $("scopeLeaf").onclick=()=>setScope("leaf");
 $("flipBtn").onclick=()=>{state.flipped=!state.flipped;renderBoard();};

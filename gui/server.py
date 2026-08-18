@@ -29,6 +29,21 @@ _engine_lock = threading.Lock()
 # analyze / review) stay single-threaded for reproducibility. We raise the thread
 # count only around a play/analysis search and reset to 1 afterward.
 ANALYSIS_THREADS = _core.play_threads()
+MAX_THREADS = 16          # mirrors MAX_THREADS in core/csearch.c
+
+
+def _threads_from(payload):
+    """Thread count for this request, clamped to what the core supports.
+
+    Thread width is a strength setting, not a preference: 1 thread and 8 differ
+    by ~188 Elo on this engine. Clamped here as well as in C so the UI can be
+    told the number actually in effect.
+    """
+    try:
+        n = int(payload.get("threads") or ANALYSIS_THREADS)
+    except (TypeError, ValueError):
+        n = ANALYSIS_THREADS
+    return max(1, min(n, MAX_THREADS))
 
 
 def build_board(payload):
@@ -80,7 +95,7 @@ def _phase_of(board):
     return EvalContext(board).phase
 
 
-def analysis_step(board, max_depth, movetime, use_book):
+def analysis_step(board, max_depth, movetime, use_book, payload=None):
     """One iterative-deepening step for the analysis board.
 
     The client calls this repeatedly with an increasing `max_depth`; the C
@@ -156,6 +171,9 @@ def analysis_step(board, max_depth, movetime, use_book):
         "static_leaf": round(leaf.total, 1),
         "pv_plies": len(pv_san),
         "phase": round(_phase_of(board), 3),
+        "threads": _threads_from(payload or {}),
+        "threads_max": MAX_THREADS,
+        "threads_default": ANALYSIS_THREADS,
     }
 
 
@@ -212,7 +230,7 @@ class Handler(BaseHTTPRequestHandler):
                 board = build_board(payload)
                 movetime = float(payload.get("movetime", 1.0))
                 with _engine_lock:
-                    _core.set_threads(ANALYSIS_THREADS)   # full-strength opponent
+                    _core.set_threads(_threads_from(payload))   # full-strength opponent
                     try:
                         result, explanation = _engine.best_move_explained(
                             board, movetime=movetime)
@@ -240,14 +258,16 @@ class Handler(BaseHTTPRequestHandler):
                 movetime = float(payload.get("movetime", 20.0))
                 use_book = bool(payload.get("book", False))
                 with _engine_lock:
-                    _core.set_threads(ANALYSIS_THREADS)
+                    _core.set_threads(_threads_from(payload))
                     _core.set_multipv(True)   # real runner-up for the 2nd arrow
                     try:
-                        res = analysis_step(board, max_depth, movetime, use_book)
+                        res = analysis_step(board, max_depth, movetime, use_book, payload)
                     finally:
                         _core.set_threads(1)   # keep the coach path deterministic
                         _core.set_multipv(False)
-                res["threads"] = ANALYSIS_THREADS
+                # analysis_step already reports the count actually used;
+                # this line used to overwrite it with the default, so the
+                # UI showed 10 no matter what was requested.
                 self._json(res)
             elif self.path == "/api/candidates":
                 board = build_board(payload)
