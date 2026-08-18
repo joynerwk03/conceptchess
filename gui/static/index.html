@@ -38,9 +38,36 @@
   .sq.target.capture::before { width:58px; height:58px; background:none;
     border:4px solid rgba(20,22,27,.32); }
   .sq.check { background:radial-gradient(circle,#e05a4e 32%,transparent 75%); }
-  .piece { position:relative; z-index:2; }
-  .piece.w { color:#fbfbfb; text-shadow:0 0 2px #000,0 1px 2px rgba(0,0,0,.6); }
-  .piece.b { color:#1b1b1b; text-shadow:0 0 2px rgba(255,255,255,.3); }
+  .piece { position:relative; z-index:2; paint-order:stroke fill;
+    user-select:none; -webkit-user-select:none; touch-action:none; }
+  /* Only the WHITE pieces are outlined. They are the ones that vanish against a
+     light square, and a stroke is what gives them an edge there. Applying the
+     same black stroke to black pieces just fills them in -- black inside black
+     leaves no internal detail -- so those get a light halo instead, which is
+     what makes them read against a DARK square. */
+  .piece.w { color:#fdfdfd; -webkit-text-stroke:1.4px #000;
+    text-shadow:0 1px 2px rgba(0,0,0,.55); }
+  .piece.b { color:#1b1b1b; text-shadow:0 0 3px rgba(255,255,255,.45),
+    0 1px 2px rgba(0,0,0,.45); }
+  .piece.dragging { opacity:.28; }
+  /* floating piece that follows the cursor, and the sliding castling rook */
+  .floater { position:fixed; z-index:99; pointer-events:none; line-height:1;
+    paint-order:stroke fill; text-shadow:0 2px 6px rgba(0,0,0,.5); }
+  .floater.w, .slider.w { -webkit-text-stroke:1.4px #000; }
+  .floater.b, .slider.b { text-shadow:0 0 3px rgba(255,255,255,.45); }
+  .slider { position:absolute; z-index:60; pointer-events:none; line-height:64px;
+    text-align:center; width:64px; height:64px; paint-order:stroke fill;
+    transition:transform .22s cubic-bezier(.4,.1,.25,1); }
+  .sq.dragover { box-shadow:inset 0 0 0 3px var(--accent); }
+  /* phase + scope strip */
+  .phasewrap { display:flex; align-items:center; gap:8px; margin:2px 0 8px; }
+  .phasebar { flex:1; height:6px; border-radius:3px; background:#2a2f37;
+    overflow:hidden; }
+  .phasefill { height:100%; background:linear-gradient(90deg,#7aa2f7,#e0af68); }
+  .scopebtn { font-size:11px; padding:2px 7px; border-radius:5px; cursor:pointer;
+    border:1px solid #3a4150; background:#232833; color:var(--muted); }
+  .scopebtn.on { color:#fff; border-color:var(--accent); }
+  .gap { color:var(--muted); font-size:11.5px; margin:-2px 0 8px; }
   .ov { position:absolute; inset:3px; border-radius:8px; z-index:1; pointer-events:none; }
   .ov.hang_you { box-shadow:inset 0 0 0 4px var(--hang-you); }
   .ov.hang_them { box-shadow:inset 0 0 0 4px var(--hang-them); }
@@ -208,7 +235,9 @@
             <div class="pv" id="altpv">—</div>
           </div>
         </div>
-        <h3 class="sec">Evaluation breakdown — <span id="cScope" style="text-transform:none">current position</span></h3>
+        <h3 class="sec">Evaluation breakdown — <span id="cScope" style="text-transform:none">position on the board</span></h3>
+        <div class="phasewrap"><span class="meta" id="phaseTxt">phase —</span><span class="phasebar"><span class="phasefill" id="phaseFill" style="width:100%"></span></span><span class="scopebtn on" id="scopeNow">board</span><span class="scopebtn" id="scopeLeaf">end of line</span></div>
+        <div class="gap" id="scopeGap"></div>
         <div class="meta" style="margin:0 0 6px">Positive favors White. Click a row for detail; open Concepts to learn each one.</div>
         <div id="concepts"></div>
       </div>
@@ -247,8 +276,9 @@ const state={ startFen:null, moves:[], legal:[], fen:null, turn:"white", playerC
   mode:"analysis", analyzing:false, analyzeToken:0, arrows:true, useBook:false,
   bestArrow:null, secondArrow:null };
 const $=id=>document.getElementById(id);
-async function api(path,body){ const r=await fetch(path,{method:"POST",
-  headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); return r.json(); }
+async function api(path,body,signal){ const r=await fetch(path,{method:"POST",
+  headers:{"Content-Type":"application/json"},body:JSON.stringify(body),signal});
+  return r.json(); }
 const payload=()=>({start_fen:state.startFen,moves:state.moves});
 
 function fenBoard(fen){ const rows=fen.split(" ")[0].split("/"),g={};
@@ -282,9 +312,79 @@ function renderBoard(){
     if(f===7){const c=document.createElement("span");c.className="coords rank";c.textContent=rank;div.appendChild(c);}
     if(r===7){const c=document.createElement("span");c.className="coords file";c.textContent=String.fromCharCode(97+file);div.appendChild(c);}
     div.onclick=()=>onSquareClick(sqn,pc);
+    div.dataset.sq=sqn;
+    if(pc && !viewing) attachDrag(div, sqn, pc);
     board.appendChild(div);
   }
   drawArrows();
+}
+
+// ---- drag and drop -------------------------------------------------------
+// Kept ALONGSIDE click-to-move rather than replacing it: clicking is faster once
+// you know the move, dragging is better when you are still deciding. Pointer
+// events rather than HTML5 drag so it works with touch and the piece tracks the
+// cursor exactly.
+function attachDrag(square, sqn, pc){
+  const glyph=GLYPHS[pc.toLowerCase()], white=pc===pc.toUpperCase();
+  square.addEventListener("pointerdown", ev=>{
+    if(ev.button!==0) return;
+    const legalFrom=state.legal.filter(m=>m.startsWith(sqn)).map(m=>m.slice(2,4));
+    if(!legalFrom.length) return;          // not our piece, or nothing to play
+    ev.preventDefault();
+    const pieceEl=square.querySelector(".piece");
+    const float=document.createElement("div");
+    float.className="floater "+(white?"w":"b");
+    float.textContent=glyph;
+    const cs=getComputedStyle(pieceEl);
+    float.style.color=cs.color; float.style.fontSize=cs.fontSize;
+    document.body.appendChild(float);
+    if(pieceEl) pieceEl.classList.add("dragging");
+    const half=parseFloat(cs.fontSize)*0.5;
+    const move=e=>{ float.style.left=(e.clientX-half)+"px";
+                    float.style.top=(e.clientY-half*1.15)+"px";
+      const el=document.elementFromPoint(e.clientX,e.clientY);
+      const sq=el&&el.closest?el.closest(".sq"):null;
+      document.querySelectorAll(".sq.dragover").forEach(x=>x.classList.remove("dragover"));
+      if(sq&&legalFrom.includes(sq.dataset.sq)) sq.classList.add("dragover");
+    };
+    move(ev);
+    const up=e=>{
+      document.removeEventListener("pointermove",move);
+      document.removeEventListener("pointerup",up);
+      float.remove();
+      if(pieceEl) pieceEl.classList.remove("dragging");
+      document.querySelectorAll(".sq.dragover").forEach(x=>x.classList.remove("dragover"));
+      const el=document.elementFromPoint(e.clientX,e.clientY);
+      const sq=el&&el.closest?el.closest(".sq"):null;
+      const to=sq&&sq.dataset.sq;
+      if(to&&legalFrom.includes(to)){ state.selected=sqn; onSquareClick(to,null); }
+      else { state.selected=null; renderBoard(); }
+    };
+    document.addEventListener("pointermove",move);
+    document.addEventListener("pointerup",up);
+  });
+}
+
+// ---- castling: slide the rook instead of teleporting it -------------------
+const CASTLE_ROOK={e1g1:["h1","f1"], e1c1:["a1","d1"],
+                   e8g8:["h8","f8"], e8c8:["a8","d8"]};
+function animateCastleRook(uci, whiteRook){
+  const pair=CASTLE_ROOK[uci]; if(!pair) return;
+  const [from,to]=pair;
+  const board=$("board"); if(!board) return;
+  const a=sqCenter(from), b=sqCenter(to);
+  const el=document.createElement("div");
+  el.className="slider "+(whiteRook?"w":"b");
+  el.textContent=GLYPHS.r;
+  const probe=board.querySelector(".piece");
+  el.style.color=whiteRook?"#fdfdfd":"#141414";
+  if(probe) el.style.fontSize=getComputedStyle(probe).fontSize;
+  el.style.left=(a.x-32)+"px"; el.style.top=(a.y-32)+"px";
+  board.appendChild(el);
+  requestAnimationFrame(()=>{
+    el.style.transform=`translate(${(b.x-a.x).toFixed(1)}px,${(b.y-a.y).toFixed(1)}px)`;
+  });
+  setTimeout(()=>el.remove(), 260);
 }
 
 // ---- analysis-board arrows ----
@@ -360,7 +460,17 @@ function updateStatus(){
   el.innerHTML=`<b>${state.turn===state.playerColor?"Your move":"Engine's move"}</b>`+(state.inCheck?" — check!":"");
 }
 
+// True only when this really is a castle: e1g1 is a king castling when a KING
+// stands on e1, and an ordinary queen move when a queen does.
+function castleRookAnim(uci){
+  if(!CASTLE_ROOK[uci] || !state.fen) return;
+  const g=fenBoard(state.fen), pc=g[uci.slice(0,2)];
+  if(!pc || pc.toLowerCase()!=="k") return;
+  animateCastleRook(uci, pc===pc.toUpperCase());
+}
+
 async function playerMove(uci){
+  castleRookAnim(uci);
   const prev=[...state.moves];
   state.moves.push(uci); state.lastMove=uci; state.candMove=null;
   await refreshState();
@@ -406,6 +516,44 @@ function setEvalBar(cp){ const p=1/(1+Math.pow(10,-cp/400));
   if(p>0.5){l.style.top="auto";l.style.bottom="4px";l.style.color="#111";}
   else{l.style.top="4px";l.style.bottom="auto";l.style.color="#eee";} }
 
+// Which position the breakdown describes. The board is the default because it
+// is what the user is looking at and it does not move when the depth changes;
+// the line end explains the SCORE. Both are offered because they answer
+// different questions, and the gap between them is shown rather than hidden.
+state.scope = state.scope || "now";
+function setScope(v){ state.scope=v;
+  $("scopeNow").classList.toggle("on",v==="now");
+  $("scopeLeaf").classList.toggle("on",v==="leaf");
+  if(state.lastEx) renderScoped(state.lastEx); }
+function renderPhase(ph){
+  if(ph===undefined||ph===null) return;
+  const pct=Math.round(ph*100);
+  const name = ph>0.75?"opening / middlegame" : ph>0.35?"middlegame" :
+               ph>0.10?"late middlegame" : "endgame";
+  $("phaseTxt").textContent=`phase ${pct}% · ${name}`;
+  $("phaseFill").style.width=pct+"%";
+}
+function renderScoped(ex){
+  const useLeaf = state.scope==="leaf" && ex.breakdown_leaf;
+  const bd = useLeaf ? ex.breakdown_leaf : ex.breakdown_now;
+  if(!bd) return;
+  renderConcepts(bd, useLeaf?ex.concept_deltas:null,
+                 useLeaf?`end of the expected line (${ex.pv_plies||0} plies)`
+                       :"position on the board");
+  // Name both numbers. The static picture and the search verdict are different
+  // quantities -- one is this position, the other is what search sees plies
+  // later -- and the difference IS the tactical content the static eval cannot
+  // represent. Showing one unlabelled is what made the panel look wrong.
+  const sn=ex.static_now, sv=ex.score_white;
+  if(sn!==undefined&&sn!==null&&sv!==undefined&&sv!==null){
+    const gap=(sv-sn)/100;
+    $("scopeGap").textContent =
+      `static now ${(sn/100).toFixed(2)} · search ${(sv/100).toFixed(2)}`
+      + (ex.depth?` at depth ${ex.depth}`:"")
+      + `  →  ${gap>=0?"+":""}${gap.toFixed(2)} that search sees beyond the static picture`;
+  } else $("scopeGap").textContent="";
+}
+
 function showEngine(ex){
   if(!ex) return;
   $("score").textContent=ex.score_display;
@@ -417,7 +565,13 @@ function showEngine(ex){
     $("altpv").textContent=`${ex.alternative.move} (${ex.alternative.score_display})  —  ${ex.alternative.pv.join("  ")}`; }
   else $("altwrap").style.display="none";
   setEvalBar(ex.score_white);
-  renderConcepts(ex.breakdown_after,ex.concept_deltas,ex.book?"current position":"end of expected line");
+  state.lastEx = {breakdown_now: ex.breakdown_before,
+                  breakdown_leaf: ex.breakdown_after,
+                  concept_deltas: ex.concept_deltas,
+                  static_now: ex.static_now, score_white: ex.score_white,
+                  depth: ex.depth, pv_plies: ex.pv_plies};
+  renderPhase(ex.phase);
+  renderScoped(state.lastEx);
 }
 
 function renderConcepts(bd,deltas,scope){
@@ -530,7 +684,15 @@ function renderAnalysis(r){
   // at the END of the expected line, so breaking down the position on the board
   // explains something else entirely — it could read a calm +0.2 beside a
   // reported M1.
-  if(r.breakdown) renderConcepts(r.breakdown,null,r.breakdown_scope||"end of expected line");
+  if(r.breakdown||r.breakdown_now){
+    state.lastEx = {breakdown_now: r.breakdown_now||r.breakdown,
+                    breakdown_leaf: r.breakdown,
+                    concept_deltas: null,
+                    static_now: r.static_now, score_white: r.score_white,
+                    depth: r.depth, pv_plies: r.pv_plies};
+    renderPhase(r.phase);
+    renderScoped(state.lastEx);
+  }
   state.bestArrow=r.best; state.secondArrow=r.second; drawArrows();
 }
 
@@ -544,9 +706,13 @@ async function startAnalysis(){
   let depth=1; const HARD_CAP=45;
   while(state.analyzing&&token===state.analyzeToken&&depth<=HARD_CAP){
     let r;
+    // Tie the request's lifetime to the token that already governs this loop:
+    // the server cancels the stale SEARCH, and this drops the stale REQUEST so
+    // the browser is not holding a promise for a position we have left.
+    state.analyzeAbort=new AbortController();
     try{ r=await api("/api/think",{start_fen:state.startFen,moves:state.moves,
-      max_depth:depth,movetime:20,book:state.useBook}); }
-    catch(e){ break; }
+      max_depth:depth,movetime:20,book:state.useBook},state.analyzeAbort.signal); }
+    catch(e){ break; }                          // includes AbortError
     if(token!==state.analyzeToken) return;      // position changed under us
     if(r.error){ $("aMeta").textContent="Engine error: "+r.error; break; }
     if(r.best===null){ $("aMeta").textContent="No legal moves in this position."; break; }
@@ -557,10 +723,13 @@ async function startAnalysis(){
   if(token===state.analyzeToken){ state.analyzing=false; $("analyzeBtn").textContent="▶ Analyze"; }
 }
 function stopAnalysis(){ state.analyzing=false; state.analyzeToken++;
+  if(state.analyzeAbort){ try{ state.analyzeAbort.abort(); }catch(e){}
+    state.analyzeAbort=null; }
   $("analyzeBtn").textContent="▶ Analyze"; }
 function toggleAnalyze(){ if(state.analyzing) stopAnalysis(); else startAnalysis(); }
 
 async function analysisMove(uci){
+  castleRookAnim(uci);
   stopAnalysis();
   state.moves.push(uci); state.lastMove=uci; state.selected=null;
   state.bestArrow=null; state.secondArrow=null;
@@ -617,6 +786,8 @@ async function newGame(color){
   if(color==="black") engineMove();
 }
 $("newWhite").onclick=()=>newGame("white"); $("newBlack").onclick=()=>newGame("black");
+$("scopeNow").onclick=()=>setScope("now");
+$("scopeLeaf").onclick=()=>setScope("leaf");
 $("flipBtn").onclick=()=>{state.flipped=!state.flipped;renderBoard();};
 
 // analysis-mode controls

@@ -31,6 +31,12 @@ void c_set_threads(int n){ g_threads = n<1?1 : (n>MAX_THREADS?MAX_THREADS:n); }
  * move. Off in play so games pay zero extra cost. */
 static int g_want_second = 0;
 void c_set_multipv(int on){ g_want_second = on?1:0; }
+/* Ask any in-flight search to wind down. Every 2048th node of both the main
+ * search and quiescence already tests g_stop, so the abort is prompt; it simply
+ * had no switch reachable from outside this file. c_search() clears the flag at
+ * its own start, so a stop requested before the next search begins cannot leak
+ * into it. */
+void c_request_stop(void){ g_stop = 1; }
 
 #define S_MATE 100000
 #define S_MATE_TH 90000

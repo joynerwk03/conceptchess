@@ -7,6 +7,7 @@ I expect, here is how each concept changes."
 
 import chess
 
+from engine.context import EvalContext
 from engine.evaluation import evaluate_detailed
 from engine.search import MATE_THRESHOLD, MATE_SCORE
 
@@ -113,6 +114,10 @@ def explain_move(board, result, sub_search=None):
         "breakdown_before": before.as_dict(),
         "breakdown_after": after.as_dict(),
         "concept_deltas": deltas,
+        "static_now": round(before.total, 1),
+        "static_leaf": round(after.total, 1),
+        "pv_plies": len(pv_san),
+        "phase": round(EvalContext(board).phase, 3),
         "explanation": sentences,
     }
 

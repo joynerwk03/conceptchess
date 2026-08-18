@@ -76,6 +76,20 @@ def set_threads(n):
         _lib.c_set_threads(int(n))
 
 
+def request_stop():
+    """Ask a search running on another thread to stop as soon as it notices.
+
+    Used by the GUI so that leaving a position cancels its analysis instead of
+    making the next position queue behind it. Safe to call when nothing is
+    running: the flag is cleared at the start of every search.
+    """
+    # Reads the module-level _lib, like set_threads and every other entry point
+    # here. _load() populates that global and returns None, so binding its
+    # RESULT made this a silent no-op.
+    if _lib is not None and hasattr(_lib, "c_request_stop"):
+        _lib.c_request_stop()
+
+
 def set_multipv(on):
     """Enable/disable the true 2nd-best root move (an extra full-window pass that
     excludes the best move). OFF by default so play pays nothing; the analysis

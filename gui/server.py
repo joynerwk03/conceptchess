@@ -69,6 +69,17 @@ def state_dict(board):
     }
 
 
+def _phase_of(board):
+    """1.0 = opening/middlegame, 0.0 = bare endgame.
+
+    Every weight in the evaluation is interpolated between a middlegame and an
+    endgame value by this number, so it explains why the same material can score
+    differently at different points of a game. It was never surfaced.
+    """
+    from engine.context import EvalContext
+    return EvalContext(board).phase
+
+
 def analysis_step(board, max_depth, movetime, use_book):
     """One iterative-deepening step for the analysis board.
 
@@ -110,6 +121,10 @@ def analysis_step(board, max_depth, movetime, use_book):
     # +0.2 while the engine reports M1. Evaluate the PV leaf instead, which is
     # the position the search actually scored.
     leaf = Engine.static_eval_detailed(tmp)
+    # Also the position actually on the board. The leaf explains the SCORE; this
+    # explains the BOARD, and they are different questions -- the panel shows the
+    # board by default and names the gap rather than silently picking one.
+    now = Engine.static_eval_detailed(board)
     # Show the leaf's static total next to the scope. It will not always equal
     # the headline score, and that is honest rather than a defect: the search
     # value comes from the end of QUIESCENCE, which runs past where the
@@ -126,10 +141,21 @@ def analysis_step(board, max_depth, movetime, use_book):
         "score_display": score_string(white_cp),
         "pv": pv_san, "pv_uci": [m.uci() for m in pv],
         "mate": mate_distance(sc) is not None,
-        "done": mate_distance(sc) is not None,
+        # A mate is a reason to stop deepening only once it is proven SHORTEST.
+        # Mate in N plies is resolved when depth >= N, because a shorter one
+        # would have been found first. Stopping at the first mate seen is what
+        # made the panel freeze on M9 while an M5 sat one iteration away -- the
+        # same bug the search itself had.
+        "done": (mate_distance(sc) is not None
+                 and abs(mate_distance(sc)) <= depth),
         "breakdown": leaf.as_dict(),
         "breakdown_scope": scope,
         "breakdown_fen": tmp.fen(),
+        "breakdown_now": now.as_dict(),
+        "static_now": round(now.total, 1),
+        "static_leaf": round(leaf.total, 1),
+        "pv_plies": len(pv_san),
+        "phase": round(_phase_of(board), 3),
     }
 
 
@@ -176,8 +202,13 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({
                     "breakdown": breakdown.as_dict(),
                     "score_display": score_string(breakdown.total),
+                    "phase": round(_phase_of(board), 3),
                 })
             elif self.path == "/api/engine":
+                # Cancel whatever is still running for a position the user has
+                # left. Without this the lock below is held by a stale deep
+                # search and the panel stalls before it can start.
+                _core.request_stop()
                 board = build_board(payload)
                 movetime = float(payload.get("movetime", 1.0))
                 with _engine_lock:
@@ -200,6 +231,10 @@ class Handler(BaseHTTPRequestHandler):
                     "state": s,
                 })
             elif self.path == "/api/think":
+                # Cancel whatever is still running for a position the user has
+                # left. Without this the lock below is held by a stale deep
+                # search and the panel stalls before it can start.
+                _core.request_stop()
                 board = build_board(payload)
                 max_depth = int(payload.get("max_depth", 64))
                 movetime = float(payload.get("movetime", 20.0))
