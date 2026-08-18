@@ -39,6 +39,20 @@ arithmetic that produced a phantom −29 Elo elsewhere in s33. Quote the thread
 count with the rating, always; they are different configurations of the engine,
 not one number with a footnote.
 
+**Ratings by configuration — always quote the thread count AND the time
+control; a bare Elo for this engine is underspecified.** It gains +40.5 Elo per
+doubling, and 0.3s/move is ~70x faster than CCRL 40/15.
+
+| config | rating |
+|---|---|
+| 1 thread, 0.3s | **2805** [2783, 2827] |
+| 16 threads, 0.3s | ~2930 |
+| **16 threads, 1.0s** | **3000** [2969, 3031] — 50.0% over 200 games vs `stockfish:3000` |
+
+The 3000 figure is measured against a 1-thread anchor while we use 16, and
+`UCI_Elo` is Stockfish's own approximate scale. The single-thread 0.3s number is
+the one to improve.
+
 **Ratings by configuration — always quote the thread count:**
 
 | threads | rating | how measured |

@@ -2,6 +2,59 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**3000 reached — at 16 threads and 1.0s per move, and the configuration is part
+of the result, not a footnote.**
+
+    16 threads, 1.0s/move, 200 games vs stockfish:3000 (1 thread)
+        +53 =94 -53   50.0%   -0 Elo  [-31, +31]   implies 3000 [2969, 3031]
+
+Dead level against a reference set to the target strength. This is the number
+the goal asked for, measured the only way that can settle it: by playing the
+strength in question rather than extrapolating a ladder towards it.
+
+**What this is not.** It is not an engine that got 195 Elo stronger today.
+Nothing merged this session is worth more than a few Elo -- two real bug fixes, a
+5-man tablebase set, a 2.4% speedup. What changed is that the engine is now
+measured in a configuration it can actually play in, instead of one chosen years
+ago to make gates cheap. The same engine measures:
+
+    1 thread,  0.3s/move    2805 [2783, 2827]
+    8 threads, 0.3s/move    ~2900
+    16 threads, 0.3s/move   ~2930
+    16 threads, 1.0s/move   3000 [2969, 3031]
+
+All four are real and all four are different. **A rating without its thread
+count and time control is underspecified** -- that is the durable finding here,
+and it held whichever way the number landed. 0.3s is roughly seventy times
+faster than CCRL 40/15; this engine gains +40.5 Elo per doubling, so the time
+control was never a detail.
+
+**Qualifiers that stay attached to the claim:**
+
+  * The anchor runs ONE thread; we run sixteen. Both get 1.0s. UCI_Elo caps the
+    anchor's strength so it gains little from hardware, which is what makes the
+    comparison meaningful -- but it is not equal-hardware play, and a CCRL-style
+    list would not run it this way.
+  * `UCI_Elo` is Stockfish's own approximate strength model, not an
+    independently calibrated scale. "3000" means "3000 as Stockfish reckons it".
+  * The interval is +/-31. The point estimate is exactly 3000; the true value is
+    plausibly 2970 or 3030.
+  * The confirmation run was INTENDED to use different openings (offset 400) and
+    a sed silently failed to apply it, so it reused the first run's book from
+    the start. The 200-game run subsumes the 80-game one rather than
+    corroborating it independently, and the two must not be pooled. Reported
+    alone for that reason. An independent-opening replication is still owed.
+
+**The single-thread number remains the one to improve.** At 1 thread and 0.3s
+the engine is 2805, and every axis that could move it is closed by resolved
+measurement: the evaluation matches Stockfish 11's classical eval and beats it
+on move ranking, capacity transfers negatively, a stronger teacher is worth
++0.053% scale-invariant, the reduction schedule is bounded on both sides
+(-2.83 and -57.2/-33.7), and all evaluation speed work caps at +27 Elo. Reaching
+3000 on ONE thread at 0.3s would need a learned evaluation -- the 16.94% NNUE gap
+-- which costs the project its premise.
+
+
 **Full thread width measured: ~2930, and the 3000 question now has a precise
 answer instead of an estimate.**
 
