@@ -39,6 +39,11 @@ arithmetic that produced a phantom −29 Elo elsewhere in s33. Quote the thread
 count with the rating, always; they are different configurations of the engine,
 not one number with a footnote.
 
+**Anchored directly at 8 threads: vs stockfish:2900 49.2% (~2895), vs
+stockfish:3000 37.0% (~2908).** Two anchors agreeing to 13 points, so ~2900 is a
+measured rating rather than a fitted one. Use `--opponent stockfish:2900/3000`
+for anything near this strength.
+
 **The ladder cannot certify a rating above its top anchor.** At 8 threads the
 implied rating FALLS as the anchor strengthens — ~2941 vs 2600, ~2917 vs 2700,
 ~2858 vs 2800 (residual −6.2%) — because the engine now sits at or above the

@@ -2,6 +2,37 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Anchored at the target instead of extrapolated to it: ~2900 at 8 threads, and
+the two nearest anchors finally agree.**
+
+The 2600/2700/2800 ladder fit 2920 [2885, 2956] at 8 threads, but its implied
+rating fell monotonically as the opposition strengthened -- ~2941, ~2917, ~2858
+-- which is what extrapolation past the top anchor looks like. `UCI_Elo` runs to
+3190 and had never been used above 2800, so the question was asked directly:
+
+    8 threads vs stockfish:2900   49.2%   -5 Elo  [-42, +32]   implies ~2895
+    8 threads vs stockfish:3000   37.0%  -92 Elo [-129, -58]   implies ~2908
+
+**Thirteen points apart, against the eighty-three-point spread the low ladder
+produced.** That is the difference between measuring a rating and inferring one:
+anchor near the true strength and the estimates converge; anchor far below it
+and every anchor tells a different story, with the weakest telling the most
+flattering one.
+
+So the engine is **~2900 at 8 threads** (anchors on 1 thread, 0.3s, UHO book) and
+**2805 [2783, 2827] at 1 thread**. Both are real; neither means anything without
+its thread count.
+
+**Against the 3000 goal, stated plainly.** 37.0% against a 3000-rated reference
+is not 3000; it is about 92 Elo short, and the interval [-129, -58] excludes
+zero comfortably. No fit, ladder or time control changes that -- which is the
+point of playing the target strength rather than extrapolating towards it. The
+remaining configuration question is whether full thread width closes ~100 Elo;
+1 -> 8 threads was worth +188, but Lazy SMP scales sub-linearly and 8 -> 16
+should be worth far less. It is being measured rather than assumed, since
+"should" is exactly what the wrong +96 figure rested on.
+
+
 **SMP measured rather than added: +188 Elo at 8 threads, not the +96 on record
 for ten. And the anchor ladder cannot certify what it is being asked to.**
 
