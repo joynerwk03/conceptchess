@@ -260,12 +260,27 @@ Rules of thumb:
   worth strongly negative Elo here. Note this was only settled by moving a LONG
   way -- every +/-1 ply experiment measured neutral, which showed the surface is
   flat nearby, not that it is optimal.
-- **Compare engines at equal DEPTH, not just equal time** (`research/depth_match.py`).
-  Equal time conflates how big a tree an engine builds with what its nodes are
-  worth. At equal time this engine scores 2.0% against Stockfish 11; at equal
-  nominal depth 9 it scores **65.0% (+108 Elo)**. Our nodes are the better ones,
-  and our depth-9 tree is 5.3x denser -- the thoroughness IS the node quality, so
-  thinning the tree to SF11's density destroys what makes it work.
+- **Compare engines at equal DEPTH — and at MORE THAN ONE depth.** Equal time
+  conflates how big a tree an engine builds with what its nodes are worth
+  (`research/depth_match.py`). But the answer reverses with depth, so a single
+  reading is worse than none:
+
+  | equal nominal depth | score vs Stockfish 11 |
+  |---|---|
+  | 9 | **65.0%** (+108 Elo) |
+  | 14 | **28.7%** (−158 Elo) |
+
+  A 266-Elo swing. The depth-9 reading was recorded here as "our nodes are the
+  better ones"; that was an artefact of measuring where both engines are far
+  below strength. At realistic depth SF11 extracts far more from the same
+  nominal depth, and **the deficit grows with depth** — which is why it dominates
+  at the 1s/move the rating is quoted at. The remaining gap is in DEEP search
+  behaviour (extensions and how critical lines are lengthened), not in the
+  evaluation and not in move ordering.
+
+  It also gives a far better instrument than anchored games for deep-search work:
+  the depth-14 split is 71/29, so a real change moves it in 40–100 games, where a
+  1200-slot anchored gate resolves only ±23 Elo.
 - **Superseded (kept for the reasoning): the seam is the reduction schedule.** SF11 is only 1.26x faster and grows its
   tree at the same rate per ply (1.80 vs 1.82), yet reaches the same nominal depth
   in **5.3x fewer nodes** — a uniformly fatter tree, not a faster-growing one.

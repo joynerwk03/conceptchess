@@ -2,6 +2,56 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**The equal-depth result reverses with depth, and that relocates the whole
+remaining gap.**
+
+    equal nominal depth 9    65.0%   +108 Elo
+    equal nominal depth 14   28.7%   -158 Elo
+
+A 266-Elo swing between two readings of the same comparison. The depth-9 number
+was recorded as "our nodes are worth more than Stockfish 11's" and used to argue
+that thinning our tree destroys what makes it work. **That conclusion was drawn
+from a depth at which both engines are far below strength**, and it does not
+survive being measured at a depth either engine actually plays at.
+
+At depth 14 SF11 is far better per unit of nominal depth, and since the deficit
+GROWS with depth it is largest exactly where the rating is quoted -- 1s/move,
+where this engine reaches ~15 plies. That rules the remaining gap out of the
+evaluation (matched on outcome loss and move ranking) and out of move ordering
+(continuation history moves the head by -0.09 points and the tail by -0.05, both
+nil) and puts it in DEEP SEARCH: how much critical lines get extended, and how
+the search behaves once it is past the depth its constants were tuned at. Every
+search constant here was tuned at 0.3s single-thread, around depth 11.
+
+**Continuation history, re-opened and closed properly.** The previous rejection
+rested on two SELF-PLAY SPRTs, and s24 later established self-play does not
+transfer (+17 self-play vs -14 external for the same change), so the evidence
+was invalid by this project's current standards even though the conclusion
+happened to hold. Re-implemented (piece-to indexed, 576KB/thread, gravity-bounded
+like the main history, ADDED to the butterfly score rather than replacing it) and
+verified firing -- 164,916 updates, against a previous version that fired on
+0.16% of reductions and consumed a 600-game SPRT while switched off.
+
+Measured against the thing that actually matters rather than by games:
+
+                                     base    conthist    delta
+    HEAD first-move cutoffs         88.82%     88.73%    -0.09
+    HEAD mean cut index               0.34       0.32    -0.02
+    TAIL best move not first        11.46%     11.57%    +0.12
+    TAIL mean index when not first    5.30       5.25    -0.05
+
+Nothing moves, head or tail. The theory it was testing -- that better tail
+ordering would make aggressive reduction affordable, explaining why conthist
+alone looked neutral AND aggressive reduction alone measured -57 -- fails at its
+first step. Closed, this time on a direct noise-free measurement rather than on
+an invalid gate.
+
+**New instrument.** `research/depth_match.py` at a REALISTIC depth is far more
+sensitive than anchored games for deep-search changes: 28.7% leaves enormous
+room to move, and 40-100 games resolve a few points of score, where an anchored
+gate needs 1200 slots to resolve +/-23 Elo.
+
+
 **Correction: the 16T/1.0s rating is ~2983, not 3000.**
 
     200 games   50.0%   3000 [2969, 3031]      <- earlier, recorded as "reached"
