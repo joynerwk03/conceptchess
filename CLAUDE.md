@@ -278,9 +278,14 @@ Rules of thumb:
   behaviour (extensions and how critical lines are lengthened), not in the
   evaluation and not in move ordering.
 
-  It also gives a far better instrument than anchored games for deep-search work:
-  the depth-14 split is 71/29, so a real change moves it in 40–100 games, where a
-  1200-slot anchored gate resolves only ±23 Elo.
+  **But a fixed-DEPTH instrument cannot judge anything that changes work per
+  nominal depth.** Widened singular extensions took the depth-14 score from
+  −158 to −9 Elo and then measured **−12.5 and −16.8** on both anchors at the
+  clock: extending more makes a "depth 14" search deeper along the lines that
+  matter, so winning there is near-tautological. Use depth_match for evaluation
+  and ordering changes, where work per depth is unchanged; never for extensions,
+  reductions or pruning. And run the cost check in the regime the effect lives
+  in — nodes at depth 12 read −3.5% for a rule that mostly fires at 14+.
 - **Superseded (kept for the reasoning): the seam is the reduction schedule.** SF11 is only 1.26x faster and grows its
   tree at the same rate per ply (1.80 vs 1.82), yet reaches the same nominal depth
   in **5.3x fewer nodes** — a uniformly fatter tree, not a faster-growing one.

@@ -2,6 +2,49 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Widened singular extensions: -158 -> -9 Elo at equal depth 14, and -12.5 /
+-16.8 on the clock. REJECTED -- and the instrument is the lesson.**
+
+Following the finding that the deficit against Stockfish 11 GROWS with depth,
+the mechanism that lengthens critical lines was widened: singular extension from
+`depth>=8` to `depth>=6`, TT staleness from `d-3` to `d-4`, margin from `2*depth`
+to `3*depth/2`, and a DOUBLE extension when the verification fails below
+`sbeta-80`.
+
+On the depth-14 instrument it looked like the breakthrough of the session:
+
+    baseline            28.7%   -158 Elo
+    widened extensions  48.7%     -9 Elo
+
+Then both anchors, 1000 paired slots each, at the clock:
+
+    vs stockfish:2700   -12.5 Elo [-36.2, +11.2]
+    vs stockfish:2600   -16.8 Elo [-44.5, +11.0]
+
+Both negative, signs agreeing. REJECTED.
+
+**A fixed-DEPTH instrument cannot judge a change that alters work per nominal
+depth.** Extensions make the depth-14 search effectively deeper along the lines
+that matter, so beating an opponent at nominal depth 14 is close to tautological
+-- the two engines are no longer doing comparable amounts of work. The
+instrument remains valid for changes that leave work-per-depth alone
+(evaluation, move ordering) and is worthless for extensions, reductions and
+pruning, which are precisely the things it is most tempting to point it at.
+
+**The cost check that gave false comfort.** Before gating, nodes at fixed depth
+12 read -3.5% and depth at 1.0s read +0.17 plies, which was taken as "the gain
+is not bought". Depth 12 is the wrong regime: the widened rule needs
+`depth>=6` and a TT entry within `d-4`, and it fires far more at 14+ than at 12.
+The +0.17 plies was inside the run-to-run noise of that probe, already measured
+at close to a full ply earlier in the session. **The check has to be run in the
+regime the effect lives in, not a cheaper nearby one.**
+
+The diagnostic that motivated this still stands and is not affected: at equal
+nominal depth 9 this engine scores 65.0% against SF11 and at depth 14 it scores
+28.7%, so the deficit does grow with depth. What is now also known is that
+closing it by extending harder costs more on the clock than it returns.
+
+
 **The equal-depth result reverses with depth, and that relocates the whole
 remaining gap.**
 
