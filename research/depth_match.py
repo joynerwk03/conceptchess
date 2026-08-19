@@ -74,7 +74,13 @@ def main():
     ap.add_argument("--depth", type=int, default=10)
     ap.add_argument("--sf11", default="/home/joynerwk03/bin/stockfish11")
     ap.add_argument("--cc", default="/home/joynerwk03/mission-control/"
-                                    "projects/conceptchess")
+                                    "projects/conceptchess",
+                    help="tree to run our engine FROM (may be a worktree)")
+    # Worktrees have no .venv of their own, so the interpreter is located
+    # separately from the tree being tested -- otherwise every worktree
+    # comparison dies on a missing .venv/bin/python.
+    ap.add_argument("--python", default="/home/joynerwk03/mission-control/"
+                                        "projects/conceptchess/.venv/bin/python")
     ap.add_argument("--book", default="")
     a = ap.parse_args()
 
@@ -87,7 +93,7 @@ def main():
                     book.append(" ".join(line.split()[:4]) + " 0 1")
     random.Random(11).shuffle(book)
 
-    ours = Uci([f"{a.cc}/.venv/bin/python", "-m", "engine.uci"], cwd=a.cc)
+    ours = Uci([a.python, "-m", "engine.uci"], cwd=a.cc)
     theirs = Uci([a.sf11])
     w = d = l = 0
     try:
