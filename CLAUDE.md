@@ -47,7 +47,7 @@ doubling, and 0.3s/move is ~70x faster than CCRL 40/15.
 |---|---|
 | 1 thread, 0.3s | **2805** [2783, 2827] |
 | 16 threads, 0.3s | ~2930 |
-| **16 threads, 1.0s** | **~2983** [2962, 3003] — 47.5% over **500** games vs `stockfish:3000` |
+| **16 threads, 1.0s** | **~2983** [2962, 3003] — 47.5% over **500** games vs `stockfish:3000` (**stale, understates**: measured before the time-usage fix, when the engine spent 78% of its budget) |
 
 The 16T/1.0s figure was briefly recorded as 3000 from a 200-game run that scored 50.0%. A 500-game run at the identical configuration scores 47.5%. The runs are not independent (the larger subsumes the smaller's openings) so they are not pooled — the larger supersedes, and the engine sits just BELOW 3000.
 
@@ -203,6 +203,18 @@ Rules of thumb:
   position and cuts on the first move 90.24% of the time, so "precompute once
   per node, reuse across moves" is structurally dead here — it killed both
   legality schemes and lazy move selection. Make the per-move path cheaper.
+- **Check the engine actually spends the budget before hunting for Elo inside
+  it.** At `movetime=1.0` this engine returned in a mean of **0.775s**, and
+  0.533s on one position — a fifth of every rating it has ever been quoted was
+  thrown away. Two rules caused it: an interrupted iteration was DISCARDED
+  wholesale, so the loop refused to start one past half-time (`opt_time*0.5`),
+  which at EBF 1.8 is exactly where the next iteration still fits. Salvaging the
+  partial iteration — taking its move only when a later root move outscored the
+  standing one at the deeper depth — made the hedge unnecessary: 99% of budget,
+  **+23.4 [+4.3,+42.4] and +15.0 [−7.0,+36.9]** on the two anchors, against
+  +17 priced in advance from the 1.32x time ratio. Found by timing `best_move`
+  against its own movetime on eight positions. At a fixed movetime, unused time
+  is not banked — it is gone.
 - **A tree-identical speed change is self-validating.** If fixed-depth node
   counts match to the node, the change cannot have altered play, so NPS is
   sufficient evidence and no game gate is needed (nor could one resolve +7 Elo).

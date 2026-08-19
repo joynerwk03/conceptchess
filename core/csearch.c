@@ -646,7 +646,28 @@ static void run_id(ThreadCtx *tc){
             }
             break;   /* score inside the window: accept this iteration */
         }
-        if(SS.stopped) break;
+        if(SS.stopped){
+            /* Salvage. The hard stop cut this iteration short, but the root
+             * moves that DID finish were searched to `depth` -- one ply deeper
+             * than the move we would otherwise play. Root moves are ordered
+             * previous-best-first, so `bm != best` means a later move
+             * OUTSCORED the standing choice at that deeper depth. That is
+             * strictly better information, not a guess, and it is the case
+             * worth catching: the standing move has just been refuted.
+             *
+             * When bm == best nothing was learned that changes the move. A
+             * partial iteration's SCORE is not trustworthy either way (the
+             * fail-low re-search may be precisely what got cut), so `score`
+             * and the completed depth `cd` stay at the last FULL iteration --
+             * which also keeps every depth-based instrument comparable across
+             * this change. */
+            if(bm_found && bm!=best){
+                best=bm; second=sm;
+                tc->pvlen=iter_pvlen;
+                for(int k=0;k<iter_pvlen;k++) tc->pv[k]=iter_pv[k];
+            }
+            break;
+        }
         if(bm_found){ best=bm; score=bs; cd=depth; second=sm;
             tc->pvlen=iter_pvlen;                    /* publish this completed iter's PV */
             for(int k=0;k<iter_pvlen;k++) tc->pv[k]=iter_pv[k];
@@ -691,7 +712,15 @@ static void run_id(ThreadCtx *tc){
             soft = tc->opt_time * 0.5 * mult;
             if(soft > tc->max_time*0.5) soft = tc->max_time*0.5;
         } else {
-            soft = tc->opt_time*0.5;
+            /* Fixed movetime: leftover time is not banked for a later move, it
+             * is lost. The 0.5 factor was the right hedge only while an
+             * interrupted iteration was discarded -- starting one past
+             * half-time was then a pure gamble. Measured under that rule the
+             * engine spent 72% of a 1.0s budget and 53% on the worst
+             * position. With the partial iteration salvaged above, starting
+             * late costs nothing: worst case the standing move survives, best
+             * case its refutation is found one ply deeper. */
+            soft = tc->opt_time*0.90;
         }
         prev_best=best; prev_score=score;
         if(now_sec()-tc->start > soft) break;

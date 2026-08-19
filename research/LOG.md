@@ -2,6 +2,58 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**The engine was spending 78% of its clock. +23.4 / +15.0 Elo. MERGED.**
+
+Not a search idea -- an audit. At `movetime=1.0` the engine returned a move in a
+mean of 0.775s, and on one position in 0.533s. At a fixed movetime the leftover
+is not banked for a later move; it is never used at all. Every rating this
+project has ever quoted was measured with roughly a fifth of the budget thrown
+away.
+
+Two rules made each other necessary:
+
+  1. `if(SS.stopped) break;` after the aspiration loop DISCARDED an interrupted
+     iteration entirely -- including a new best move found a ply deeper than the
+     move about to be played.
+  2. Because of (1), the loop refused to START an iteration once half the budget
+     was gone (`soft = opt_time*0.5`). With an EBF near 1.8 that is precisely
+     the threshold at which the next iteration still fits, so the rule was
+     correct given (1), and (1) was the actual defect.
+
+Fixing (1) makes (2) unnecessary caution. The salvage is deliberately narrow:
+the interrupted iteration's move is taken ONLY when `bm != best`, i.e. when a
+later root move outscored the standing choice at the deeper depth. Root moves
+are ordered previous-best-first, so that condition means the move we were about
+to play has just been refuted a ply deeper -- strictly better information, not a
+guess. The partial iteration's SCORE and its depth `cd` are not adopted, which
+also keeps every depth-based instrument comparable across the change.
+
+    budget used   0.3s      1.0s     depth@1.0s
+    before        76%       78%      15.62
+    after        101%       99%      15.50
+
+**The effect was priced before the gate and the gate agreed.** 0.775 -> 0.990s
+is 1.28x, and 0.228 -> 0.302s at the gate's 0.3s is 1.32x = 0.40 doublings =
++17 Elo at the measured +40.5 per doubling. Then:
+
+    vs stockfish:2700   +23.4 Elo  95% [+4.3, +42.4]   (1600 paired slots)
+    vs stockfish:2600   +15.0 Elo  95% [-7.0, +36.9]   (1600 paired slots)
+
+Both positive, signs agreeing, bracketing the prediction. MERGED.
+
+**This is the one case where +40.5 per doubling is the right instrument.** The
+rule in CLAUDE.md says that curve prices SPEED and never a tree reduction --
+nodes saved by not looking are not nodes saved by looking faster. Here nothing
+is pruned, reduced or discarded: it is the identical tree handed the part of its
+budget that was previously being thrown away. That is what the curve was
+measured on.
+
+The general lesson is cheaper than the specific one. Before hunting for Elo in
+the search, check that the engine is actually using the resources it is being
+credited with. This was found by timing `best_move` against its own movetime --
+eight positions, one script, no games.
+
+
 **Widened singular extensions: -158 -> -9 Elo at equal depth 14, and -12.5 /
 -16.8 on the clock. REJECTED -- and the instrument is the lesson.**
 
