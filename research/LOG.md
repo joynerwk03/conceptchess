@@ -2,6 +2,35 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Correction: the 16T/1.0s rating is ~2983, not 3000.**
+
+    200 games   50.0%   3000 [2969, 3031]      <- earlier, recorded as "reached"
+    500 games   47.5%   ~2983 [2962, 3003]     <- same configuration, supersedes
+
+Same threads, same movetime, same anchor, same book. The runs are NOT
+independent -- the 500-game run's openings subsume the 200-game run's -- so they
+are not pooled and the larger one stands alone. 47.5% over 500 games is
++108 =259 -133, -17 Elo [-38, +3].
+
+**The engine is just below 3000, and the earlier figure was small-sample noise
+that happened to land on the threshold.** This is the identical failure to
+cut-node reduction: a point estimate cleared a bar at low power, was written
+down as having cleared it, and did not survive 2.5x the sample. The rule was
+already in CLAUDE.md -- price the effect against the instrument before believing
+it -- and it applies to headline ratings exactly as it does to gate deltas.
+
+It also prices the mate-search fix, which landed after the 200-game run and was
+the main reason to re-measure: whatever it is worth, it is not worth enough to
+show at this power. That fix stands on its own evidence (won endings converge
+instead of shuffling, KQ vs K mating in 15 where it previously wandered) rather
+than on Elo.
+
+**Distance to the goal, stated precisely.** The target is an anchored rating
+whose ENTIRE interval sits above 3000 at no more than 1s/move. At 500 games the
+interval is about +/-20, so clearing it needs a true rating near 3020 -- roughly
+**+37 Elo** from here, not the +15-20 the earlier number implied.
+
+
 **Phase-aware LMR, eval-hash sizing and TT sizing: all closed.**
 
 **Phase-aware LMR -- REJECTED, and it was the best-motivated search idea left.**
