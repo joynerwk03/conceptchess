@@ -325,6 +325,27 @@ Rules of thumb:
   and ordering changes, where work per depth is unchanged; never for extensions,
   reductions or pruning. And run the cost check in the regime the effect lives
   in — nodes at depth 12 read −3.5% for a rule that mostly fires at 14+.
+- **The EBF curve is a games-free instrument for tree shape — and use
+  `~/bin/stockfish11`, not `shutil.which("stockfish")`, which is Stockfish 18.**
+  Cold node counts at fixed depth (fresh process per engine per depth,
+  `ucinewgame` per position) give:
+
+  | EBF | 8→10 | 10→12 | nodes vs SF11 |
+  |---|---|---|---|
+  | ours | 1.80 | **2.11** rising | 3.8× @d10, 7.4× @d12 |
+  | SF11 | 1.98 | **1.51** falling | — |
+
+  Ours accelerates where SF11's decelerates, which is why the ratio widens with
+  depth and why the strength deficit does too. That is the signature of pruning
+  that doesn't scale with depth (LMR capped at 3 plies, RFP ≤6, LMP ≤5, futility
+  ≤2) — past remaining-depth 6 this is close to plain alpha-beta. Unlike
+  `depth_match`, this instrument is NOT invalidated by changes that alter work
+  per nominal depth, because it measures that work. Ruled out by it already:
+  check extensions (removing them entirely moved nodes −3%/+9%, tactics still
+  30/30) and widening futility (made the tree *bigger*; with SF-shaped margins
+  the deeper rule never fires — depth-12 counts identical at limits 4/6/8).
+  Measuring against SF18 instead read a bogus 40× — an NNUE search is not the
+  reference for a hand-crafted classical eval.
 - **Superseded (kept for the reasoning): the seam is the reduction schedule.** SF11 is only 1.26x faster and grows its
   tree at the same rate per ply (1.80 vs 1.82), yet reaches the same nominal depth
   in **5.3x fewer nodes** — a uniformly fatter tree, not a faster-growing one.

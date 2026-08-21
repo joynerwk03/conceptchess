@@ -2,6 +2,67 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**The tree grows too fast, and that is measurable without games. Also: I
+measured against the wrong Stockfish and have corrected it.**
+
+*The error first.* Chasing "the tree needs to be thinner", I compared node
+counts at equal nominal depth using `shutil.which("stockfish")`. On this box
+that is **Stockfish 18** -- fifteen years of extra search work and an NNUE
+evaluation -- not the Stockfish 11 that CLAUDE.md's 5.3x figure refers to and
+that `research/depth_match.py` already points at via `--sf11`
+(`~/bin/stockfish11`). It read 10.9x / 17.8x / 40.6x at depths 8 / 10 / 12 and
+I was about to call a 40x gap a defect. Against the correct engine:
+
+    depth        ours       SF11   ratio        SF18   ratio
+        8     283,049     61,861    4.6x      25,941   10.9x
+       10     917,256    243,489    3.8x      51,482   17.8x
+       12   4,096,669    554,559    7.4x     100,781   40.6x
+
+The recorded 5.3x was right. Comparing a hand-crafted classical engine to an
+NNUE search and calling the difference a bug is not a diagnosis.
+
+*What survives the correction, and matters more than the ratio.* The GROWTH
+RATES diverge:
+
+    effective branching factor    8->10    10->12
+    ours                           1.80      2.11     rising
+    SF11                           1.98      1.51     falling
+
+Ours accelerates, SF11's decelerates, which is why the ratio widens from 3.8x at
+depth 10 to 7.4x at depth 12 and why the strength deficit grows with depth
+(65.0% at equal depth 9, 28.7% at 14). A rising EBF is precisely what pruning
+that does not scale with depth produces: LMR capped at 3 plies regardless of
+depth, RFP at depth<=6, LMP at depth<=5, futility at depth<=2. Past
+remaining-depth 6 this search is close to plain alpha-beta, and that is the part
+of the tree a 1.0s search spends its nodes in.
+
+**This is a games-free instrument for the thinness question.** Node counts at
+fixed depth from cold tables are deterministic and cheap, and the target is a
+SHAPE (flatten the growth curve), not a level. Unlike depth_match it is not
+invalidated by changes that alter work per nominal depth, because it measures
+that work directly.
+
+*Two candidate causes ruled out by measurement, not argument.*
+
+  * **Check extensions.** `if(!done && checked) depth++;` is unconditional and
+    uncapped, which looked like the classic tree-exploder. Removing it entirely
+    changed depth-10 nodes by -3% and depth-12 by +9%, and tactics stayed 30/30.
+    Not the cause.
+  * **Widening futility** from depth<=2 to depth<=6/8 with an SF-shaped
+    `100+120*depth` margin made the tree BIGGER, and depth-12 counts were
+    identical at limits 4, 6 and 8 (2,517,875 / 2,518,075 / 2,518,862) -- with
+    margins that size the deeper rule never fires at all. The increase came
+    entirely from restricting the rule to non-PV nodes, which the original was
+    not. Pruning MORE needs a SMALLER margin, not a larger reach.
+
+*Protocol note, learned the hard way.* The same baseline read 7,499,112 and
+10,566,002 for depth 14 in two scripts on the same commit. The transposition
+table is never cleared, so running d10 then d12 then d14 in one process leaves
+each depth warmed by the last. Every count above uses a FRESH PROCESS per
+(engine, depth), and Stockfish gets `ucinewgame` per position. Earlier node
+numbers in this session that did not are indicative only.
+
+
 **Schedule bundle REJECTED (-3.3 / -28.3). PGO measured and declined (+2.3%
 NPS). And A-B-B-A is not enough: it cancels linear drift, not a mid-run dip.**
 
