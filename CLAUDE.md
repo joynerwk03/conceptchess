@@ -238,6 +238,16 @@ Rules of thumb:
   Note also: 1600 games is 800 opening PAIRS (`(offset+g//2) % 1000`), so
   reported CIs are somewhat too narrow; and a worktree carries its own copy of
   the harness, so commit harness fixes and recreate worktrees before gating.
+  **A-B-B-A cancels LINEAR drift, not a mid-run dip** — B holds both middle
+  slots, so a central slump lands on it. Seen at once: `A1 78.7 B1 75.0 B2 72.2
+  A2 74.7` read −28.3 Elo while the same change on a stable anchor (block splits
+  under a point) read −3.3. **Read the per-block line before the delta.** The
+  real fix is interleaving both arms in one concurrency pool (arm = `(g//2)%2`,
+  opening = `g//4`) so they meet every disturbance together.
+- **PGO is not worth it here: +2.3% NPS** (node counts bit-identical, so
+  self-validating) ≈ +1.3 Elo, inside the ~5% benchmark swing, for a two-stage
+  build. The core is already `-O3 -march=native` over one translation unit, so
+  neither PGO nor LTO has much to work with.
 - **One external gate is not an external gate — require TWO ANCHORS before
   merging.** Cut-node reduction measured **+28.5 Elo [+5.6, +51.4]** against
   stockfish:2700 over 1200 paired slots and was merged. Against stockfish:2600 it

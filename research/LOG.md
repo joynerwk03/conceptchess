@@ -2,6 +2,61 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Schedule bundle REJECTED (-3.3 / -28.3). PGO measured and declined (+2.3%
+NPS). And A-B-B-A is not enough: it cancels linear drift, not a mid-run dip.**
+
+*The bundle.* Three mechanisms every strong engine has and this one lacked,
+gated together as one hypothesis because the goal needs +25 to +40 Elo while the
+instrument resolves about +/-22 -- testing +10-sized parts one at a time cannot
+converge:
+
+  1. depth-scaled LMR, max(flat tiers, 1+ln(d)*ln(m)/2.75)
+  2. a PV-node decrement (there was no `!pvnode` guard on quiet reduction at all)
+  3. SEE pruning of losing captures in the main move loop (it existed only in
+     qsearch and probcut, so a capture losing a piece outright still got a full
+     depth subtree)
+
+    vs stockfish:2700   -3.3 Elo  95% [-27.0, +20.4]
+    vs stockfish:2600  -28.3 Elo  95% [-54.1,  -2.5]
+
+Neither positive. REJECTED. Attribution between the three is not recoverable
+and was accepted as the price of a resolvable effect size; nothing is owed since
+nothing landed.
+
+*A-B-B-A has a blind spot, and the per-block line found it.* The 2600 run:
+
+    A1 78.7%   B1 75.0%   B2 72.2%   A2 74.7%
+
+In time order that is 78.7, 75.0, 72.2, 74.7 -- a DIP IN THE MIDDLE, not a
+trend. Counterbalancing equalises the two arms' mean position in time, which
+cancels drift that is LINEAR over the run. It does not cancel a central
+disturbance, because B holds both middle slots by construction. So part of the
+-28.3 is machine, not change. The 2700 run had block splits under a point and
+read -3.3, which is the trustworthy number of the two.
+
+The fix that would actually work is interleaving A and B games in the SAME
+concurrency pool, so both arms meet every disturbance simultaneously: index
+games so that arm = (g//2)%2 and opening = g//4, giving A-white, A-black,
+B-white, B-black adjacent in time for each opening. Recorded as the next
+instrument change; the block diagnostic stays either way, because it is what
+made this visible.
+
+*PGO.* Two-stage profile-guided build, profiled on a realistic middlegame and
+endgame workload at 1.0s:
+
+    base  nodes@d12 4,096,669   1.72 / 1.71 Mnps
+    pgo   nodes@d12 4,096,669   1.77 / 1.74 Mnps
+
+Node counts identical to the node, so the tree is provably unchanged and the
+repo's self-validation rule applies -- no game gate needed or possible at this
+size. **+2.3% NPS, about +1.3 Elo**, inside the ~5% swing this repo records for
+benchmark readings. Declined: it costs a two-stage build and would complicate
+the clone-and-build path in CLAUDE.md, which is worth more than a gain that
+cannot be resolved. The build is already `-O3 -march=native` over a single
+translation unit, so the compiler had little left to learn. LTO not tried for
+the same reason -- there is nothing to link across.
+
+
 **Correction: the time-usage fix is +10.0 Elo, not +23.4/+15.0.**
 
 Those two figures were produced by the sequential A-then-B gate, before the
