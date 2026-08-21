@@ -239,7 +239,8 @@ class MatchResult:
 def run_match(*, games, opponent, movetime=0.5, opp_movetime=None,
               opponent_cwd=None, ours_cwd=None, concurrency=1, openings=None,
               opening_offset=0, clock=None, inc=0.1, sprt=None,
-              collect_pgn=False, progress=True):
+              collect_pgn=False, progress=True,
+              ours_cwd_fn=None, opening_fn=None):
     """Play `games` games and return a MatchResult.
 
     Split out of main() so other tools (research.calibrate) drive the same
@@ -249,19 +250,25 @@ def run_match(*, games, opponent, movetime=0.5, opp_movetime=None,
     openings = openings or OPENINGS
 
     def play_one(g):
-        """Play game #g start-to-finish with its own engine pair (thread-safe)."""
-        opening = openings[(opening_offset + g // 2) % len(openings)]
+        """Play game #g start-to-finish with its own engine pair (thread-safe).
+
+        `ours_cwd_fn` and `opening_fn` let a caller drive TWO builds through one
+        pool, which is what `abgate` uses to put both arms in flight at the same
+        moment. Without them the behaviour is exactly as before."""
+        oi = opening_fn(g) if opening_fn else (opening_offset + g // 2)
+        opening = openings[oi % len(openings)]
         we_are_white = g % 2 == 0
+        our_cwd = ours_cwd_fn(g) if ours_cwd_fn else ours_cwd
         # Alternate which side is spawned first. Otherwise "ours" is always the
         # first process created, and if the OS were to favour first-spawned
         # processes for the fast (performance) cores, that would be a systematic
         # bias in our favour on a big.LITTLE machine. Alternating launders it.
         if g % 2 == 0:
-            ours = open_ours(ours_cwd)
+            ours = open_ours(our_cwd)
             opp = open_opponent(opponent, opponent_cwd)
         else:
             opp = open_opponent(opponent, opponent_cwd)
-            ours = open_ours(ours_cwd)
+            ours = open_ours(our_cwd)
         try:
             white, black = (ours, opp) if we_are_white else (opp, ours)
             if clock is not None:
