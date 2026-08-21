@@ -2,6 +2,40 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Correction: the time-usage fix is +10.0 Elo, not +23.4/+15.0.**
+
+Those two figures were produced by the sequential A-then-B gate, before the
+drift defect above was known. Re-run on the counterbalanced instrument, arm A at
+e02f8a1 and arm B at HEAD, 1200 paired slots vs stockfish:2700:
+
+    A1 62.8%   B1 64.3%   B2 64.8%   A2 63.7%
+    PAIRED delta +10.0 Elo  95% [-12.1, +32.2]
+
+The per-block splits are under a point on both arms, so the machine was stable
+for this run and the reading is trustworthy in a way the +70.7 was not.
+
+**The change stays merged, and the reasons are worth separating from the
+number.** Its mechanism does not depend on any game: the engine demonstrably
+searches 1.28x longer at 1.0s and 1.32x at 0.3s, measured by timing `best_move`
+against its own movetime. Every reading of it has been positive (+23.4, +15.0,
++10.0). Nothing suggests harm. What was wrong was the SIZE, and the size was
+inflated by an instrument that has since been shown to manufacture +70 out of
+nothing.
+
+**The a-priori prediction was also optimistic.** 1.32x is 0.40 doublings, which
+at +40.5 Elo per doubling prices at +16.2; the measurement is +10.0. The
+prediction sits inside the interval, so this is not a refutation of the doubling
+curve -- but it is a reminder that the curve was fitted against a pinned anchor
+and is an estimate, not an identity. Predicting an effect before gating remains
+the right discipline; treating the prediction as the answer is not.
+
+**Consequence for the goal.** The standing 16T/1.0s rating of ~2983 was measured
+before this fix, so it understates by roughly +9 at that time control (the
+budget ratio there is 1.28, slightly less than the gate's 1.32). That puts the
+engine near **~2992**, not the ~2998 the larger figure implied. The gap to a
+confidence interval entirely above 3000 is therefore about +20 to +30, not +15.
+
+
 **The A/B gate was measuring the machine, not the change. Counterbalanced.**
 
 Depth-scaled late-move reduction was screened, piloted and then failed to

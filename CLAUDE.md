@@ -47,7 +47,7 @@ doubling, and 0.3s/move is ~70x faster than CCRL 40/15.
 |---|---|
 | 1 thread, 0.3s | **2805** [2783, 2827] |
 | 16 threads, 0.3s | ~2930 |
-| **16 threads, 1.0s** | **~2983** [2962, 3003] — 47.5% over **500** games vs `stockfish:3000` (**stale, understates**: measured before the time-usage fix, when the engine spent 78% of its budget) |
+| **16 threads, 1.0s** | **~2992** (est.) — measured 2983 [2962, 3003] at 47.5% over **500** games vs `stockfish:3000`, plus ~+9 for the time-usage fix merged afterwards. Re-measure before quoting. |
 
 The 16T/1.0s figure was briefly recorded as 3000 from a 200-game run that scored 50.0%. A 500-game run at the identical configuration scores 47.5%. The runs are not independent (the larger subsumes the smaller's openings) so they are not pooled — the larger supersedes, and the engine sits just BELOW 3000.
 
@@ -210,11 +210,14 @@ Rules of thumb:
   wholesale, so the loop refused to start one past half-time (`opt_time*0.5`),
   which at EBF 1.8 is exactly where the next iteration still fits. Salvaging the
   partial iteration — taking its move only when a later root move outscored the
-  standing one at the deeper depth — made the hedge unnecessary: 99% of budget,
-  **+23.4 [+4.3,+42.4] and +15.0 [−7.0,+36.9]** on the two anchors, against
-  +17 priced in advance from the 1.32x time ratio. Found by timing `best_move`
-  against its own movetime on eight positions. At a fixed movetime, unused time
-  is not banked — it is gone.
+  standing one at the deeper depth — made the hedge unnecessary: 99% of budget
+  and **+10.0 Elo [−12.1, +32.2]** on the counterbalanced gate. (It first read
+  +23.4 and +15.0 on the sequential gate, before that instrument's drift defect
+  was known; +10.0 is the trustworthy figure and the earlier pair is not. The
+  +16.2 priced in advance from the 1.32x ratio was likewise optimistic, though
+  it sits inside the interval.) Found by timing `best_move` against its own
+  movetime on eight positions. At a fixed movetime, unused time is not banked —
+  it is gone.
 - **A tree-identical speed change is self-validating.** If fixed-depth node
   counts match to the node, the change cannot have altered play, so NPS is
   sufficient evidence and no game gate is needed (nor could one resolve +7 Elo).
