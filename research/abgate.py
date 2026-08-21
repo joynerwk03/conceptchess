@@ -82,28 +82,69 @@ def main():
     openings = None if args.book == "none" else load_book(args.book)
     base_cmd = f"cmd:{sys.executable} -m engine.uci"
 
-    common = dict(games=args.games, movetime=args.movetime,
+    common = dict(movetime=args.movetime,
                   concurrency=args.concurrency, openings=openings,
-                  opening_offset=args.opening_offset, progress=False)
+                  progress=False)
 
-    # Both runs use identical openings, colours and slot indices; only the build
-    # on our side changes. That is what makes the per-slot difference meaningful.
-    print(f"=== A: baseline ({args.baseline_cwd}) vs {args.opponent} ===", flush=True)
-    res_a = run_match(opponent=args.opponent, ours_cwd=args.baseline_cwd, **common)
-    print(f"  A: +{res_a.wins} ={res_a.draws} -{res_a.losses}  "
-          f"({100 * res_a.score / max(res_a.n, 1):.1f}%)", flush=True)
+    # COUNTERBALANCED ORDER: A1 B1 B2 A2.
+    #
+    # Both arms use identical openings, colours and slot indices, which removes
+    # opening difficulty from the per-slot difference. What that does NOT remove
+    # is machine drift, because the arms play at different TIMES. This engine is
+    # wall-clock limited at a fixed movetime, so anything else running on the box
+    # changes how deep it gets -- an earlier version of this file claimed the
+    # engine "is deterministic at CC_THREADS=1", which is true only at a fixed
+    # DEPTH. research/noise_floor.sh states the opposite and is the correct one.
+    #
+    # Running A entirely and then B entirely puts every drift that happens
+    # between the phases straight into the reported delta. Splitting each arm in
+    # half and playing A B B A gives both arms the same mean position in time, so
+    # drift that is linear over the run cancels. The halves use different
+    # openings, so no material is repeated.
+    half = args.games // 2
+    off1 = args.opening_offset
+    off2 = args.opening_offset + (half // 2)   # openings are indexed by g//2
 
-    print(f"\n=== B: current tree vs {args.opponent} ===", flush=True)
-    res_b = run_match(opponent=args.opponent, **common)
-    print(f"  B: +{res_b.wins} ={res_b.draws} -{res_b.losses}  "
-          f"({100 * res_b.score / max(res_b.n, 1):.1f}%)", flush=True)
+    def block(label, cwd, games, offset):
+        kw = dict(common, games=games, opening_offset=offset)
+        if cwd is not None:
+            kw["ours_cwd"] = cwd
+        r = run_match(opponent=args.opponent, **kw)
+        print(f"  {label}: +{r.wins} ={r.draws} -{r.losses}  "
+              f"({100 * r.score / max(r.n, 1):.1f}%)", flush=True)
+        return r
+
+    BASE = args.baseline_cwd
+    print(f"=== counterbalanced A B B A vs {args.opponent} "
+          f"({half} games per block) ===", flush=True)
+    a1 = block("A1 baseline", BASE, half, off1)
+    b1 = block("B1 current ", None, half, off1)
+    b2 = block("B2 current ", None, half, off2)
+    a2 = block("A2 baseline", BASE, half, off2)
+
+    def merge(first, second):
+        """Second block's slot indices are shifted so they do not collide."""
+        out = dict(first.scores)
+        out.update({k + half: v for k, v in second.scores.items()})
+        return out
+
+    scores_a, scores_b = merge(a1, a2), merge(b1, b2)
+    n_a = max(len(scores_a), 1)
+    n_b = max(len(scores_b), 1)
+    p_a_all = sum(scores_a.values()) / n_a
+    p_b_all = sum(scores_b.values()) / n_b
 
     print("\n" + "=" * 70)
-    for name, res in (("A baseline", res_a), ("B current ", res_b)):
-        elo, ci = res.elo()
-        print(f"{name}  vs {args.opponent}: {100 * res.score / max(res.n, 1):5.1f}%  "
-              f"(elo vs anchor {elo:+.0f} [{ci[0]:+.0f},{ci[1]:+.0f}])")
-    pd = paired_delta(res_a.scores, res_b.scores)
+    print(f"A baseline  vs {args.opponent}: {100 * p_a_all:5.1f}%  "
+          f"({a1.wins + a2.wins}W {a1.draws + a2.draws}D {a1.losses + a2.losses}L)")
+    print(f"B current   vs {args.opponent}: {100 * p_b_all:5.1f}%  "
+          f"({b1.wins + b2.wins}W {b1.draws + b2.draws}D {b1.losses + b2.losses}L)")
+    print(f"  per-block A {100 * a1.score / max(a1.n, 1):.1f}% / "
+          f"{100 * a2.score / max(a2.n, 1):.1f}%   "
+          f"B {100 * b1.score / max(b1.n, 1):.1f}% / "
+          f"{100 * b2.score / max(b2.n, 1):.1f}%"
+          "   (a large A1-A2 or B1-B2 split is machine drift, not the change)")
+    pd = paired_delta(scores_a, scores_b)
     if not pd:
         print("not enough paired slots")
         return

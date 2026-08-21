@@ -221,6 +221,20 @@ Rules of thumb:
 - **Probe before refactoring.** Making a structure *worse* costs minutes and
   tells you the ceiling: padding the Board and doubling the `pat` stride both
   measured ~0, which killed two planned rewrites before they were written.
+- **The gate must be COUNTERBALANCED, because it measures the machine
+  otherwise.** `abgate` used to play all of A's games and then all of B's,
+  justified by "our engine is deterministic at CC_THREADS=1" — false at a fixed
+  MOVETIME, where the search is wall-clock limited and its depth depends on what
+  else the box is doing (`research/noise_floor.sh` says so outright). Any drift
+  between the phases lands entirely in the delta. Depth-scaled LMR read
+  **+70.7 [+36.3,+105.1]** on 500 slots and **−7.9 [−27.2,+11.4]** on 1600
+  against the SAME anchor — non-overlapping intervals — because the baseline arm
+  scored 55.5% in the pilot where identical code scores 65.3–69.2%. Blocks now
+  run **A1 B1 B2 A2** so both arms share the same mean position in time. A large
+  A1−A2 split in the printed per-block line is the machine, not the change.
+  Note also: 1600 games is 800 opening PAIRS (`(offset+g//2) % 1000`), so
+  reported CIs are somewhat too narrow; and a worktree carries its own copy of
+  the harness, so commit harness fixes and recreate worktrees before gating.
 - **One external gate is not an external gate — require TWO ANCHORS before
   merging.** Cut-node reduction measured **+28.5 Elo [+5.6, +51.4]** against
   stockfish:2700 over 1200 paired slots and was merged. Against stockfish:2600 it

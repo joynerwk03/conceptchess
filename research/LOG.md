@@ -2,6 +2,77 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**The A/B gate was measuring the machine, not the change. Counterbalanced.**
+
+Depth-scaled late-move reduction was screened, piloted and then failed to
+reproduce -- and chasing why exposed a defect in the gate that affects every
+number it has ever produced.
+
+*The change.* LMR here is flat in depth: `if(i>=12)red=3; else if(i>=3)red=2`,
+so a late quiet is reduced three plies whether the search is at depth 4 or depth
+20. That is a real gap -- every strong engine reduces on a ln(d)*ln(m) schedule
+-- and it lines up with three separate measurements: SF11 reaching the same
+nominal depth in 5.3x fewer nodes, the deficit GROWING with depth (65.0% at
+equal depth 9, 28.7% at 14), and the note that every +/-1 ply experiment measured
+neutral (a uniform +/-1 cannot find a missing DEPTH TERM). The log-LMR rejection
+on record used divisor 0.80, ~2.4x more aggressive than Stockfish's 1.95, so it
+ruled out gross over-reduction and nothing else. The patch took
+`max(current_tiers, LMRT[depth][move])`, so shallow behaviour stays
+bit-identical and only the never-tuned deep regime moves.
+
+*The readings.* Divisor 2.75 reproduces SF11's magnitudes and thins the tree
+9.7% at depth 12 -- about 0.15 doublings, worth ~+6 Elo at the very most, and
+CLAUDE.md's rule is that a tree reduction does not even earn that.
+
+    500-slot pilot   vs stockfish:2700   +70.7 Elo  [+36.3, +105.1]
+    1600-slot rerun  vs stockfish:2700    -7.9 Elo  [-27.2,  +11.4]
+
+Same change, same anchor, NON-OVERLAPPING intervals. The pilot's lower bound sits
+far above the rerun's upper bound.
+
+*The cause.* `abgate` plays ALL of A's games, then ALL of B's:
+
+    res_a = run_match(..., ours_cwd=args.baseline_cwd, **common)
+    res_b = run_match(..., **common)
+
+justified in its own docstring by "our engine is deterministic at
+CC_THREADS=1". At a fixed MOVETIME it is not -- the search stops on wall clock,
+so its depth depends on what else the box is doing. `research/noise_floor.sh`
+says exactly this ("At a fixed TIME the search is not deterministic even
+single-threaded"). The two statements cannot both be true and the gate was
+built on the wrong one. Anything that loads the machine during one arm's phase
+and not the other's is indistinguishable from Elo.
+
+The evidence is in the baseline arm. Identical post-merge code, same anchor,
+same settings, five runs:
+
+    69.2%   66.0%   65.5%   65.3%   55.5%
+
+A 13.7-point spread, and the 55.5% is the pilot -- whose B arm scored a
+perfectly ordinary 65.2%. The entire +70.7 was A being measured on a degraded
+machine. A-vs-identical-A returned +1.5 [-34.7,+37.7] on 500 games and -25.8
+[-81.2,+29.6] on 200: it only ever samples drift during its OWN run, so a quiet
+box there proves nothing about a noisy one elsewhere.
+
+*The fix.* Blocks now run counterbalanced, A1 B1 B2 A2, so both arms have the
+same mean position in time and drift that is linear over the run cancels instead
+of landing on one arm. The halves use different openings, so nothing is
+repeated. The per-block scores are printed: a large A1-A2 or B1-B2 split is the
+machine, not the change.
+
+*Two things this does not fix.* The book holds 1000 openings and slots are
+indexed `(offset + g//2) % 1000`, so a 1600-game run is 800 opening PAIRS, each
+opening played both colours -- correlated observations counted as independent,
+which makes every reported CI somewhat too narrow. And a worktree created before
+a harness change carries the stale harness: the B arm imports `research.abgate`
+from its own tree, so harness fixes must be committed and worktrees recreated.
+
+*Verdict on LMR.* Not supported at divisor 2.75 (-7.9 on the one anchor that
+ran on enough slots to matter, against a prior of at most +6). Parked, not
+disproved -- it was never measured on a sound instrument, and it is designed for
+depth 16+ while the gate runs at 0.3s where it barely fires.
+
+
 **The engine was spending 78% of its clock. +23.4 / +15.0 Elo. MERGED.**
 
 Not a search idea -- an audit. At `movetime=1.0` the engine returned a move in a
