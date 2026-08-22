@@ -2,6 +2,82 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Fidelity screening: the idea is sound, binary agreement is not, and it
+nearly merged a 33-Elo regression. RFP_MARGIN 25 REJECTED.**
+
+The premise (William's): a pruning change should be judged by whether the pruned
+search keeps the answer the unpruned search of the same depth would have given.
+If the tree gets thinner and the answer survives, the right branches were cut.
+That is deterministic, needs no opponent, and can see things a gate resolving
++/-25 Elo cannot -- which is exactly the bottleneck, since no single pruning
+change is worth more than the gate's noise floor.
+
+*What it found.* Reverse futility's margin is 90cp per ply and had never really
+been tuned -- it was set to a value that failed to measure as harmful. Against a
+neutral Stockfish 11 reference at depth 16 over 300 book positions:
+
+    margin   nodes@d11   vs base   agreement with SF11
+       90   94,559,263     1.00x         56%
+       45   70,632,873     0.75x         58%
+       35   59,608,799     0.63x         57%
+       25   49,851,417     0.53x         57%
+       15   34,867,942     0.37x         54%
+
+Flat fidelity while the tree halves. Margin 25 also bought **+1.5 plies** at
+1.0s (13.25 -> 14.75), kept tactics_v2 at 30/30, and left eval_check at
+0.000000 by construction (reverse futility is a search rule and touches no
+evaluation code, so interpretability is structurally untouched).
+
+*What the games said.* Two anchors, interleaved, 1000 slots each, at 1.0s:
+
+    vs stockfish:2700   -35.5 Elo  95% [-62.5, -8.4]
+    vs stockfish:2600   -32.2 Elo  95% [-64.3, -0.1]
+
+Both clear zero, signs agree, and the half-splits were flat (A 73.1/73.1,
+B 69.2/68.6), so the machine was stable and this is not drift. REJECTED.
+
+*Why the screen was wrong, which is the part worth keeping.*
+
+  1. **Reverse futility does not just prune, it RETURNS THE STATIC EVAL** as the
+     node's value: `if(st - RFP_MARGIN*depth >= beta) return st;`. Lowering the
+     margin makes that substitution fire far more often, so the values
+     propagating up the tree get noisier even when the root move survives. A
+     ROOT-MOVE statistic is blind to precisely the damage this change does.
+
+  2. **Binary agreement saturates.** The baseline already disagrees with SF11 on
+     44% of positions, so the usable range was 52-58% and a 33-Elo difference
+     never cleared it. Agreement also throws away magnitude: a 5cp disagreement
+     and a 300cp blunder score identically.
+
+*The fix, calibrated against known Elo.* Centipawn loss of the played move,
+judged by Stockfish 11 at depth 14 over 200 positions, on three configurations
+whose game results are already known:
+
+    config      nodes   vs base   mean cp   median   >50cp    known Elo
+    baseline   60.9M     1.00x      16.2      3.0      4%       0
+    lmr1.75    49.1M     0.81x      17.8      5.5      9%      -4.1
+    rfp25      31.0M     0.51x      18.0      9.0      8%     -33
+
+Correct ranking on both mean and median, where agreement had ranked rfp25 BEST.
+**Median is the statistic** -- 3.0 / 5.5 / 9.0 is roughly proportionate, while
+the mean barely separates a -4 from a -33.
+
+*How much to trust it.* This is a three-point calibration and its resolution for
+SMALL differences is unproven. Use it to REJECT configurations cheaply; never to
+claim one is better without a gate. That is the lesson the agreement version
+paid for.
+
+*And its verdict on the thinness question.* The baseline has the lowest move
+loss of every configuration built this session. Every mechanism that thinned the
+tree -- depth-scaled LMR, SEE capture pruning, a smaller RFP margin -- raised
+it. Combined with the game results (-3.3, -9.3, -4.1, -35.5, -32.2), the
+conclusion is that **the pruning schedule is at a local optimum for THIS
+evaluation**. The tree is 3.8-7.4x fatter than SF11's at equal depth because
+pruning accuracy is bounded by eval accuracy: SF11 can afford a thinner tree
+because its evaluation correctly identifies which branches do not matter. Making
+this tree thinner and making the evaluation better are the same problem.
+
+
 **The tree grows too fast, and that is measurable without games. Also: I
 measured against the wrong Stockfish and have corrected it.**
 

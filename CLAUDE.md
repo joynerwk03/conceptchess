@@ -325,6 +325,27 @@ Rules of thumb:
   and ordering changes, where work per depth is unchanged; never for extensions,
   reductions or pruning. And run the cost check in the regime the effect lives
   in — nodes at depth 12 read −3.5% for a rule that mostly fires at 14+.
+- **Judge a pruning change by CENTIPAWN LOSS, never by move agreement.** A
+  deterministic screen — does the pruned search keep the answer? — can see what a
+  ±25 Elo gate cannot, and it is the only affordable way to compare pruning
+  schemes. But the statistic decides whether it works. Binary root-move
+  agreement ranked `RFP_MARGIN 25` as the BEST configuration tested (57% vs the
+  baseline's 56%, tree halved, +1.5 plies, tactics 30/30) and it then measured
+  **−35.5 and −32.2 Elo** on two anchors. It fails twice over: agreement
+  saturates (the baseline already disagrees with SF11 on 44% of positions, so the
+  whole range is 52–58%) and it is a ROOT statistic, blind to the fact that
+  reverse futility *returns the static eval as the node's value* — lowering its
+  margin corrupts scores flowing up the tree while the root move survives.
+  Centipawn loss against a neutral referee ranks correctly: baseline 3.0 median,
+  lmr1.75 5.5 (−4 Elo), rfp25 9.0 (−33 Elo). Use it to REJECT cheaply; never to
+  merge without a gate.
+- **The pruning schedule is at a local optimum FOR THIS EVAL, and thinning is
+  not free.** Measured five ways: depth-scaled LMR −3.3/−9.3/−4.1, SEE capture
+  pruning, a halved tree via RFP −35.5/−32.2, and cp-loss rising for every one of
+  them. The tree is 3.8–7.4× fatter than SF11's at equal depth because *pruning
+  accuracy is bounded by eval accuracy* — SF11 affords a thin tree because its
+  eval knows which branches don't matter. Thinning the tree and improving the
+  eval are the same problem; do not attack the first in isolation again.
 - **The EBF curve is a games-free instrument for tree shape — and use
   `~/bin/stockfish11`, not `shutil.which("stockfish")`, which is Stockfish 18.**
   Cold node counts at fixed depth (fresh process per engine per depth,
