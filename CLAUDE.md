@@ -325,6 +325,20 @@ Rules of thumb:
   and ordering changes, where work per depth is unchanged; never for extensions,
   reductions or pruning. And run the cost check in the regime the effect lives
   in — nodes at depth 12 read −3.5% for a rule that mostly fires at 14+.
+- **Tapering the flat terms was TRIED and screens the wrong way.** The Texel
+  tuner, restricted to the 28 untapered prefixes with everything else frozen,
+  converged at **+0.134%** loss (W_EG 31 → 51 of 64 keys, eval_check 0.000000)
+  — and the independent paired referee screen read **d_mean +0.445 ± 0.628
+  (t = +0.71)**, i.e. slightly WORSE. Not gated. A Texel gain that does not
+  transfer is this repo's recorded pattern; the ±25% chess-prior bounds mean the
+  fit converges after one pass, so more passes do not help.
+- **History-modulated LMR points the opposite way to every pruning experiment.**
+  Reducing LESS on quiets with good history improves slightly while searching 1%
+  FEWER nodes (divisor 8192: d_mean −0.177, t = −1.64, only 42 of 4706 positions
+  changed); pushing the divisor down to make it fire harder just grows the tree
+  (1.11× at 128) with no fidelity gain. Under |t|=2 so not gated, but the
+  direction — spend the search's own knowledge of which moves matter, rather
+  than pruning harder — is the one thing that did not measure negative.
 - **The remaining interpretable eval capacity is TAPERING.** `weights.py` says
   it outright: every weight is conceptually a middlegame value, strong classical
   engines carry a (MG, EG) pair for every term, and this engine "has roughly half

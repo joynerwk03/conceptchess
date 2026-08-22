@@ -2,6 +2,65 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Tapering the flat terms and history-modulated LMR: both screen neutral.
+Neither earns a gate.**
+
+*Endgame counterparts for the 28 flat terms.* `weights.py` names this as the
+ceiling -- "roughly half the descriptive capacity it could have" -- so the Texel
+tuner was run restricted to the untapered prefixes (kattack, imbalance, space,
+minor, ocb, scale, mate_drive, tempo, pawn.path/backward/connected) with
+everything else frozen, which is the guard against buying an improvement with a
+global rescale of material. It converged after one pass inside the +/-25%
+chess-prior bounds:
+
+    baseline loss 0.08781806 -> 0.08770033   (+0.134%)
+    W_EG grew from 31 to 51 of 64 keys (20 new endgame counterparts)
+
+eval_check 0.000000, so interpretability holds -- each concept keeps its name
+and gains a phase-dependent value.
+
+Then the independent check, the paired referee screen, which uses no Texel
+labels at all:
+
+    egfit    1.01x nodes    d_mean +0.445 +- 0.628    t = +0.71
+
+Positive d_mean is WORSE. Not significant, but the sign is wrong, and a Texel
+gain that does not transfer is the outcome this repo has recorded before. NOT
+GATED: the screen exists to reject cheaply, and a four-hour two-anchor gate is
+not owed to a candidate that screens the wrong way.
+
+*History-modulated LMR.* History is currently spent only on move ORDER; the
+reduction ignores it, so a quiet with a long record of causing cutoffs is
+reduced as hard as one that has never worked. Reducing less on good history is
+the standard way engines spend that knowledge, and given the session's
+conclusion -- pruning accuracy is bounded by how well the search knows which
+moves matter -- it is the right shape. Clamped to +/-2 plies, applied only where
+LMR already applies:
+
+    divisor    nodes    d_mean      se       t    positions differing
+      128      1.11x    +0.125    0.523    0.24        758
+      384      1.06x    -0.064    0.405   -0.16        477
+     1024      1.02x    -0.040    0.314   -0.13        206
+     2048      1.01x    -0.106    0.204   -0.52         96
+     8192      0.99x    -0.177    0.108   -1.64         42
+    32768      1.00x     0.000    0.000    0.00          0  (inert)
+
+The conservative end is the good end: 8192 improves slightly while searching 1%
+FEWER nodes, at t=-1.64. Pushing the divisor down makes history swing the
+reduction harder and simply grows the tree (1.11x at 128) without buying
+fidelity. Nothing reaches |t|=2, so nothing is gated -- but note the shape,
+because it is the opposite of every pruning experiment this session: here the
+gain is in reducing LESS on moves the search already knows are good, not in
+reducing more.
+
+*Where this leaves the search for Elo.* Exhausted on properly calibrated
+instruments: singular extensions, LMR in many forms, pruning margins, pruning
+reach, check extensions, futility, TT replacement policy, PGO, history-LMR, and
+now eval tapering. Every one null or negative. The engine sits at roughly 2992
+at 16 threads and 1.0s and the goal needs a confidence interval entirely above
+3000, about +27 Elo away.
+
+
 **Retraction, and where the remaining interpretable capacity is.**
 
 *Retraction first.* While setting up a weight sweep I reported that 31 of 63
