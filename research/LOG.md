@@ -2,6 +2,60 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**A screen that finally calibrates: blunder RATE against a cached referee
+table. `research/reftable.py` + `research/screen_ref.py`.**
+
+Third attempt at William's idea, and the first that survives contact with known
+results. The two failures are as instructive as the success:
+
+    binary move agreement   ranked a -33 Elo regression as the BEST config
+    mean centipawn loss     14.1 / 13.9 / 14.2 for configs spanning 33 Elo
+
+Three things had to be fixed at once.
+
+*Cache the expensive half.* The referee's opinion of a position is a property of
+the POSITION, not of the engine under test. `reftable.py` computes it once --
+one MultiPV search per position, so every move sits on ONE scale -- and every
+later candidate costs a fixed-depth search plus a dictionary lookup. Building
+12k positions at SF11 depth 13, MultiPV 12, runs at 2.5 pos/s, about 80 minutes,
+once, ever. Positions are drawn from texel6.jsonl with a STRIDE rather than as a
+block, because that data is self-play sampled every few plies and neighbouring
+lines are the same game -- the repo already learned what correlated positions do
+to a screen.
+
+*Use a proportion, not a mean.* The mean is dominated by mate scores: the first
+run reported mean 194 with a standard error of 89.6, the same tail
+contamination that once put a mate score in a p95. Even clamped, a heavy-tailed
+mean over 200 positions could not separate 33 Elo. The SHARE of moves losing
+more than a threshold is well behaved and does separate.
+
+*Calibrate against known Elo before believing anything.* 1991 positions, our
+depth 10, losses clamped at 300cp:
+
+    config      nodes   vs base     >20cp      >50cp     >100cp   known Elo
+    baseline   302.6M    1.00x   27.0+-1.0  15.0+-0.8   7.6+-0.6      0
+    lmr1.75    264.4M    0.87x   27.7+-1.0  16.2+-0.8   7.9+-0.6     -4.1
+    rfp25      160.1M    0.53x   30.5+-1.0  18.5+-0.9  10.1+-0.7    -33
+
+Correct order on every threshold. It separates the -33 configuration at about
+2.5 sigma AND correctly FAILS to separate the -4 one, which is the property that
+matters -- an instrument that "detected" a 4-Elo difference at this sample size
+would be lying.
+
+*Resolution.* Roughly 1 Elo per 0.1% of blunder rate. At 2k positions the
+difference of two rates carries a standard error near 1.4%, so it resolves about
+25-30 Elo; the full 12k table takes that to ~0.6%, resolving perhaps 15 Elo at
+two sigma. That is comparable to a 1200-slot two-anchor gate and costs minutes
+instead of four hours.
+
+*What it is for, and what it is not.* Use it to ORDER candidates and to reject
+cheaply. It is not a merge criterion: it measures agreement with one referee at
+one depth, not strength, and its own resolution floor is ~15 Elo. Everything it
+likes still has to pass two anchors. What it changes is the search cost -- the
+bottleneck all session has been that no single search change is worth more than
+the gate's noise floor, so candidates could not be triaged at all.
+
+
 **Correction: the cp-loss calibration was wrong too. Fidelity screening does
 not work at 200 positions, by either statistic.**
 

@@ -325,6 +325,20 @@ Rules of thumb:
   and ordering changes, where work per depth is unchanged; never for extensions,
   reductions or pruning. And run the cost check in the regime the effect lives
   in — nodes at depth 12 read −3.5% for a rule that mostly fires at 14+.
+- **Triage search changes with `research/screen_ref.py` before gating them.**
+  A cached referee table (`research/reftable.py`: one MultiPV search per
+  position, SF11 depth 13, ~2.5 pos/s, built once) turns "does this change keep
+  the answer" into a minutes-long deterministic measurement. The statistic is
+  the **share of moves losing more than 20/50/100cp**, never the mean — mate
+  scores put the mean's standard error at 89.6, and even clamped it could not
+  separate configs spanning 33 Elo. Calibrated against known Elo at 1991
+  positions: baseline 27.0±1.0 >20cp, lmr1.75 (−4 Elo) 27.7±1.0, rfp25
+  (−33 Elo) 30.5±1.0 — correct order, separates the −33 at 2.5σ, and correctly
+  FAILS to separate the −4. Resolution ≈ 1 Elo per 0.1% blunder rate, so ~15 Elo
+  at 12k positions. **Use it to order and reject candidates; it is not a merge
+  criterion** — two anchors still are. Draw positions with a STRIDE across
+  texel6.jsonl, never a block: that data is self-play sampled every few plies,
+  so adjacent lines are the same game.
 - **Judge a pruning change by CENTIPAWN LOSS, never by move agreement.** A
   deterministic screen — does the pruned search keep the answer? — can see what a
   ±25 Elo gate cannot, and it is the only affordable way to compare pruning
