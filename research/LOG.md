@@ -2,6 +2,43 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**History PRUNING does not thin the tree at all -- and that locates where the
+cost is not.**
+
+Following the one positive-signed result of the session (history-modulated LMR),
+the same learned signal was used to PRUNE rather than to reduce: skip a late
+quiet whose history is far enough below zero, at shallow depth, in non-PV nodes.
+The motivation was sound -- every thinning that failed pruned on the STATIC
+EVAL, and eval accuracy is the measured constraint, so pruning on what the
+search LEARNED should have been the better instrument.
+
+The first sweep fired ZERO times at thresholds of 500 / 2000 / 8000 per ply,
+which is itself a finding. The history update is asymmetric: a winner collects
+a depth-squared bonus repeatedly, while gravity spreads the penalty across every
+quiet that failed, so no single move accumulates a deep negative. Positive
+history reaches into the thousands -- an LMR divisor of 8192 still changed 42
+positions -- but the negative tail is shallow.
+
+Re-swept at 20 / 60 / 200 per ply:
+
+    threshold   nodes    d_mean      se       t   positions differing
+        20      1.01x    +0.140   0.346    0.41       432
+        60      1.00x    +0.404   0.218    1.85       166
+       200      1.00x    -0.005   0.069   -0.08        43
+
+**Node counts do not move.** 1.00-1.01x at every threshold, and where the rule
+fires it is mildly harmful (t = +1.85 at 60, in the wrong direction).
+
+The reason is structural and outlasts the result: the rule prunes moves that LMR
+has ALREADY reduced to almost nothing, so skipping them saves nothing. The
+tree's cost is not in the tail. That is why "prune the tail harder" came back
+empty in every form tried -- history pruning, LMP reach, RFP reach, all inert or
+harmful -- and why the only changes that actually moved node counts
+(depth-scaled LMR, smaller RFP margins) had to reach into moves the search
+cannot afford to be wrong about. Which is exactly where an evaluation 2.96%
+behind Stockfish 11's classical cannot pay.
+
+
 **Tapering the flat terms and history-modulated LMR: both screen neutral.
 Neither earns a gate.**
 
