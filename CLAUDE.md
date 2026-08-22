@@ -336,9 +336,17 @@ Rules of thumb:
   whole range is 52–58%) and it is a ROOT statistic, blind to the fact that
   reverse futility *returns the static eval as the node's value* — lowering its
   margin corrupts scores flowing up the tree while the root move survives.
-  Centipawn loss against a neutral referee ranks correctly: baseline 3.0 median,
-  lmr1.75 5.5 (−4 Elo), rfp25 9.0 (−33 Elo). Use it to REJECT cheaply; never to
-  merge without a gate.
+  Centipawn loss appeared to rank correctly (median 3.0 / 5.5 / 9.0) — but that
+  was scored by comparing an unrestricted `analyse` against
+  `analyse(root_moves=[m])`, two different searches, and a position where both
+  engines played THE SAME MOVE scored 68cp of loss. Rescored on one MultiPV
+  search: **14.1 / 13.9 / 14.2 for configs spanning 33 Elo — no discrimination
+  at all.** 33 Elo is under 1cp of mean move quality against a per-position SD
+  of ~40, so 200 positions is ~50× too few; ~10k would be needed. The referee
+  table depends only on the positions, so it could be computed once and cached,
+  making every later candidate nearly free — that is the design, and it is not
+  built. **Calibrate any screen against changes whose Elo is already known, and
+  treat an uncalibrated screen as an opinion.**
 - **The pruning schedule is at a local optimum FOR THIS EVAL, and thinning is
   not free.** Measured five ways: depth-scaled LMR −3.3/−9.3/−4.1, SEE capture
   pruning, a halved tree via RFP −35.5/−32.2, and cp-loss rising for every one of

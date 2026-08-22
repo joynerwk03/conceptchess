@@ -2,6 +2,55 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Correction: the cp-loss calibration was wrong too. Fidelity screening does
+not work at 200 positions, by either statistic.**
+
+The entry below reports that centipawn loss ranked the three known cases
+correctly (median 3.0 / 5.5 / 9.0 against 0 / -4.1 / -33 Elo) where binary
+agreement had ranked the regression best. That ranking was an artefact of how
+the loss was scored.
+
+The referee's best score came from an unrestricted `analyse`, and our move's
+score from `analyse(root_moves=[m])`. Restricting the root changes the search,
+so the two numbers are not on one scale. The error announced itself in the
+blunder listing: a position where our move and the referee's move were **the
+same move** was scored as a 68cp loss.
+
+Rescored properly -- one MultiPV search per position, so every move sits on a
+single scale:
+
+    config      nodes   vs base   mean   median   p90   >50cp    known Elo
+    baseline   60.9M     1.00x    14.1     0.0     42     8%        0
+    lmr1.75    49.1M     0.81x    13.9     1.0     40     6%       -4.1
+    rfp25      31.0M     0.51x    14.2     1.0     42     8%      -33
+
+**No discrimination at all.** 14.1 / 13.9 / 14.2 for configurations spanning 33
+Elo. The correct instrument ranks them in the wrong order as readily as the
+right one, which means the earlier "calibration passed" was luck.
+
+*Why, in numbers.* 33 Elo is about 4.7% of score. Spread over ~40 moves of a
+game that is well under 1cp of mean move quality, while the per-position
+standard deviation of cp loss is ~40 and the standard error of the mean over 200
+positions is ~2.8cp. The instrument is roughly 50x short of the sample it needs;
+resolving 1cp wants on the order of 10,000 positions.
+
+*What would actually make it work.* The referee table -- best move and MultiPV
+scores per position -- depends only on the positions, not on our configuration.
+Compute it ONCE over ~10k positions (hours) and cache it, and every subsequent
+configuration costs only its own fixed-depth search plus a lookup. That would be
+a genuinely cheap screen with roughly +/-0.4cp on the mean, enough to resolve
+perhaps 10-15 Elo, which is better than the +/-25 the game gate manages and far
+cheaper per candidate. Not built here; recorded as the design.
+
+*The standing lesson.* Two statistics were tried on this idea and both failed
+before the flaw was found -- agreement actively misleading, cp-loss right by
+accident. **Calibrate any proposed instrument against changes whose Elo is
+already known, and treat a screen that has not been calibrated as an opinion.**
+The one thing that caught both failures was a result that could not be true:
+rfp110 searching more nodes and scoring worse, and a position scoring 68cp of
+loss for playing the referee's own move.
+
+
 **Fidelity screening: the idea is sound, binary agreement is not, and it
 nearly merged a 33-Elo regression. RFP_MARGIN 25 REJECTED.**
 
