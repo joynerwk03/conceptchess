@@ -325,6 +325,25 @@ Rules of thumb:
   and ordering changes, where work per depth is unchanged; never for extensions,
   reductions or pruning. And run the cost check in the regime the effect lives
   in — nodes at depth 12 read −3.5% for a rule that mostly fires at 14+.
+- **The remaining interpretable eval capacity is TAPERING.** `weights.py` says
+  it outright: every weight is conceptually a middlegame value, strong classical
+  engines carry a (MG, EG) pair for every term, and this engine "has roughly half
+  the descriptive capacity it could have". `W_EG` holds 31 tapered terms;
+  **28 remain untapered**, including the entire `kattack.*` group (king attack is
+  a middlegame phenomenon), `space.scale`, `minor.outpost_knight`, the passer
+  path terms and `tempo`. `material.*` is excluded by design — SEE reads those
+  values. This preserves interpretability exactly: each concept keeps its name
+  and gains a phase-dependent value. It is also the only axis the search-side
+  work did not close, and the search work's own conclusion was that pruning
+  accuracy is bounded by eval accuracy.
+- **`W` and `W_EG` are two dicts, not duplicates.** A regex across both reads 31
+  keys as "duplicated" and it is a design feature — `pawn.rook_behind_passer` is
+  0.1867 in the middlegame and 13.55 in the endgame on purpose. A dedupe of the
+  "duplicates" was written, guarded by "W must compare equal and eval_data.h must
+  be byte-identical", and the guard failed instantly and reverted it. **Put the
+  invariant that would catch you inside the experiment**; this session that guard
+  caught a wrong-engine comparison, a self-referential metric, a calibration that
+  passed by luck, and this.
 - **Triage search changes with `research/screen_ref.py` before gating them.**
   A cached referee table (`research/reftable.py`: one MultiPV search per
   position, SF11 depth 13, ~2.5 pos/s, built once) turns "does this change keep

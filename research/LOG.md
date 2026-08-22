@@ -2,6 +2,66 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Retraction, and where the remaining interpretable capacity is.**
+
+*Retraction first.* While setting up a weight sweep I reported that 31 of 63
+evaluation weights were DUPLICATED in `engine/weights.py`, with the documented
+first definition dead and a second one silently winning -- and called it an
+interpretability defect. That was wrong. The second block is `W_EG`, the
+ENDGAME counterpart dict, and the pairs are deliberate:
+
+    kattack.scale                 MG 2.25     EG 3.3688
+    pawn.rook_behind_passer       MG 0.1867   EG 13.5526
+    king.shield_gap               MG 12.9306  EG 36.2299
+
+A rook behind a passer really is worth two orders of magnitude more in a pawn
+ending than with queens on. There is no bug; a regex was matched across two
+dicts and a design feature was read as a defect.
+
+The dedupe was written with a guard -- `W` must compare exactly equal and
+`core/eval_data.h` must come out BYTE-IDENTICAL -- and the guard failed
+immediately, so the change was reverted before anything was built or gated.
+`eval_data.h` is confirmed byte-identical to its pre-experiment copy,
+eval_check is 0.000000, perft passes, 88 tests green, working tree clean.
+**Write the invariant that would catch you into the experiment itself; it is
+the only thing that has reliably caught these.** This session it caught a
+wrong-engine comparison, a self-referential fidelity metric, a cp-loss
+calibration that passed by accident, and now this.
+
+*What the file already says about the ceiling.* `weights.py` states it plainly:
+
+    "Every weight above is conceptually a MIDDLEGAME value. In every strong
+     classical engine each term is really a (middlegame, endgame) PAIR ... This
+     engine tapers only the pawn and king piece-square tables, so the evaluation
+     has roughly half the descriptive capacity it could have, and the Texel
+     tuner has been converging against that limit for three sessions."
+
+`W_EG` now holds 31 tapered terms. **28 remain untapered** (material.* excluded
+by design, because SEE reads those values and a phase-dependent piece value
+would change what winning a trade means inside the search):
+
+    the whole kattack.* group   proximity, check_knight/bishop/rook/queen,
+                                queenless_discount, weak_zone -- king attack is
+                                a middlegame phenomenon and a single value
+                                forces a compromise across both phases
+    space.scale                 space is a middlegame asset
+    minor.outpost_knight        outposts matter most with pieces on
+    pawn.connected, path_*      passer machinery, worth far more in an ending
+    tempo, imbalance.*, minor.* the rest
+
+This is the direction that is BOTH open and interpretable: each concept keeps
+its name and its meaning and gains a phase-dependent value, so the GUI
+breakdown still explains exactly the number search maximises. It is also the one
+axis the measurements this session did not close -- everything closed was in the
+SEARCH (five ways of thinning the tree, all null or negative, culminating in a
+halved tree costing 33 Elo), and the conclusion there was that pruning accuracy
+is bounded by EVAL accuracy. Tapering is eval accuracy.
+
+Tooling for it now exists: `research/screen_ref.py` for blunder rate and the
+paired variant for differences, which resolve ~7-15 Elo in minutes against a
+cached referee table, versus ~+/-25 Elo and four hours for a two-anchor gate.
+
+
 **A screen that finally calibrates: blunder RATE against a cached referee
 table. `research/reftable.py` + `research/screen_ref.py`.**
 
