@@ -2,6 +2,63 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Cost-end thinning REJECTED (-25.0 / -3.0). Six mechanisms now; thinning does
+not convert for this engine, and my projection model was wrong in a way the
+repo had already written down.**
+
+History pruning had located where the cost is NOT (the tail -- LMR already
+reduces late quiets to nothing), which pointed at two untouched places at the
+expensive end:
+
+    lmr2   reduction starts at move 2 instead of 3. Moves 1-2 were searched at
+           FULL depth, and at an all-node they are among the costliest subtrees.
+    qs     no first-ply quiet checks in quiescence. Qsearch is 44.4% of nodes
+           and at qd==0 paid a full gen_legal plus make_light + in_check per
+           quiet at EVERY leaf entering quiescence.
+
+The paired screen liked them, and lmr2 was the first free thinning found all
+session:
+
+    lmr2    0.89x nodes   d_mean +0.169   t 0.24
+    qs      0.71x nodes   d_mean +0.850   t 1.21
+    qspv    0.73x nodes   d_mean +0.387   t 0.54
+    both    0.65x nodes   d_mean +0.925   t 1.21
+
+Then two anchors at 1.0s, interleaved, 1000 slots each:
+
+    vs stockfish:2700   -25.0 Elo  95% [-52.0, +2.0]
+    vs stockfish:2600    -3.0 Elo  95% [-35.4, +29.4]
+
+Both negative. REJECTED.
+
+**Lesson 1: I priced a tree reduction with the speed curve, which CLAUDE.md
+explicitly forbids.** The projection was built by fitting `Elo = 40.5*doublings
+- b*cp` to the one calibrated point (rfp25: 0.55x nodes, +4.34cp, -33 Elo),
+which gave b ~ 15.6 and projected `both` at +11. The rule it ignored is already
+in the file: "+40.5 Elo per doubling prices SPEED, never a tree reduction ...
+nodes saved by not looking are not nodes saved by looking faster." A model
+fitted on a single point does not overturn a rule derived from several; it just
+launders the same mistake through arithmetic.
+
+**Lesson 2: the referee screen is a FIXED-DEPTH instrument, so it cannot judge
+a change that alters work per nominal depth.** It sees the fidelity cost and is
+structurally blind to the depth benefit -- exactly the flaw recorded earlier
+this session for `depth_match`, and I walked into it again with a different
+tool. The screen remains valid for what it was calibrated on (rejecting
+configurations that damage move quality at equal depth) and must not be used to
+predict the Elo of anything that changes tree SIZE.
+
+**The tally on thinning is now decisive.** Six mechanisms, every one null or
+negative on two anchors: singular extensions, depth-scaled LMR, the schedule
+bundle, RFP margin (a halved tree at -33 Elo), history pruning (which thinned
+nothing at all), and now reduction-from-move-2 plus quiescence quiet checks.
+The measured explanation has not changed and has survived every test: pruning
+accuracy is bounded by EVAL accuracy, this eval is 2.96% behind SF11's
+classical with the deficit spread evenly across every bucket, and a tree cannot
+be thinned past what its evaluation can justify. Thinning this tree and
+improving this evaluation are one problem, and the search half is closed.
+
+
 **History PRUNING does not thin the tree at all -- and that locates where the
 cost is not.**
 

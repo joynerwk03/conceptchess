@@ -358,6 +358,24 @@ Rules of thumb:
   invariant that would catch you inside the experiment**; this session that guard
   caught a wrong-engine comparison, a self-referential metric, a calibration that
   passed by luck, and this.
+- **The referee screen is FIXED-DEPTH: never use it to predict the Elo of a
+  change that alters tree SIZE.** It measures move quality at equal depth, so
+  for a thinning change it sees the fidelity cost and is blind to the depth
+  benefit — the same flaw as `depth_match`, walked into twice in one session.
+  `lmr2`+`qs` screened at 0.65× nodes for only +0.925cp and then measured
+  **−25.0 and −3.0** on two anchors. Use the screen to reject configurations
+  that damage move quality at equal depth, which is what it was calibrated on.
+- **Do not re-price a tree reduction with the speed curve, however tempting the
+  arithmetic.** Fitting `Elo = 40.5*doublings − b*cp` to one calibrated point
+  (rfp25) projected +11 for a change that measured −25/−3. A model fitted on a
+  single point does not overturn the standing rule; it launders the same mistake.
+- **THINNING IS CLOSED — six mechanisms, all null or negative on two anchors:**
+  singular extensions, depth-scaled LMR, the schedule bundle, RFP margin (halved
+  the tree, −33 Elo), history pruning (thinned nothing — the cost is not in the
+  tail, LMR already reduces late quiets to nothing), and reduction-from-move-2 +
+  quiescence quiet checks (−25.0/−3.0). The explanation has survived every test:
+  pruning accuracy is bounded by eval accuracy. Thinning this tree and improving
+  this eval are one problem, and the search half is done.
 - **Triage search changes with `research/screen_ref.py` before gating them.**
   A cached referee table (`research/reftable.py`: one MultiPV search per
   position, SF11 depth 13, ~2.5 pos/s, built once) turns "does this change keep
