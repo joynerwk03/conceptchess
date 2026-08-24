@@ -2,6 +2,57 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**CRASH FIX: neither negamax nor qsearch had a ply cap. The engine segfaulted
+at 16 threads -- the exact configuration the rating is quoted in.**
+
+A 600-game rating run at 16 threads and 1.0s died with SIGSEGV (exit -11).
+Reproduced deliberately: 60 games at 16 threads died with SIGBUS (exit -7),
+while the IDENTICAL 60 games at 1 thread completed cleanly.
+
+*Cause.* `if(ply<MAXPLY)` appears throughout negamax, but it only guards ARRAY
+ACCESSES -- nothing ever stopped the recursion. Check extensions do `depth++`,
+so a forcing line does not shorten, and each frame carries `Move pl[256]` plus a
+Board copy, roughly 2KB. A default 8MB thread stack overflows near 4000 plies,
+which is also where the 4096-entry `path` array overflows. `qsearch` recurses on
+check evasions and was equally uncapped.
+
+The `path` array had already caused this once. Its own declaration comment says
+so: *"the old MAXPLY+256 (=384) overflowed on long endgame grinds and segfaulted
+mid-match"*. The response then was to enlarge it to 4096 -- which lowered the
+probability without removing the fault, because `PATH_CAP` was only ever applied
+when loading GAME history, never to the recursive push. **A bigger buffer is not
+a bounds check.**
+
+*Fix.* Hard ply cap at MAXPLY-1 in both negamax and qsearch, returning the
+static eval; plus a real bounds guard on the path write and on the `is_rep`
+read. The cap is placed before the path push so the `SS.path_len--` on every
+return path stays balanced.
+
+*Verification.* Node counts at fixed depth 12 are **3,762,928 before and
+3,762,928 after -- identical to the node**, which proves the cap never fires in
+real search and the change is pure safety with no behavioural effect.
+eval_check 0.000000, perft pass, 88 tests green. The 60-game 16-thread
+reproduction that died now completes 60/60.
+
+*Why this was invisible: a hole in the process, not bad luck.* **Every gate in
+this project runs at CC_THREADS=1.** `research.abgate` defaults `--threads 1`
+and all six thinning gates, the stack gate, and every screen ran single-
+threaded. The rating run is the ONLY thing that exercises 16 threads, so a
+width-dependent fault could never be caught by gating however many games were
+played. Anything merged this session was validated exclusively at one thread.
+
+*What it does not change.* `play_game` (fixed movetime, used by the rating run
+and every gate) has no try/except around `engine.play`, so a crashed game
+propagates to the runner and is DROPPED with a "game failed" line rather than
+scored as a loss -- only `play_game_clock` scores a crash as a loss, and nothing
+here uses clock mode. So historical ratings were not biased downward by this;
+their samples were simply smaller than requested.
+
+Incidental measurement from the reproduction, 0.4s vs stockfish:3000:
+**16 threads 40.8%** (-64 Elo) against **1 thread 29.2%** (-154), which is the
+cleanest same-session read of what width is worth at a short time control.
+
+
 **Stack MERGED on weak evidence: +4.4 Elo combined, CI [-10.5, +19.3].
 Three anchors, two positive. Labelled weak on purpose.**
 

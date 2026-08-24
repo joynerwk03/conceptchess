@@ -223,7 +223,8 @@ static int is_rep(U64 h, int hm){
      * opposite-side entries: repetition detection had been dead since the
      * C port. Found via the KBN mate-conversion test.) */
     int lo = SS.path_len-1-hm; if(lo<0) lo=0;
-    for(int i=SS.path_len-2;i>=lo;i--) if(SS.path[i]==h) return 1;
+    int hi = SS.path_len-2; if(hi > PATH_CAP-1) hi = PATH_CAP-1;
+    for(int i=hi;i>=lo;i--) if(SS.path[i]==h) return 1;
     return 0;
 }
 
@@ -278,6 +279,9 @@ static int eval_stm(Board *b){
 
 static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
     SS.nodes++;
+    /* Same cap: qsearch recurses on check evasions, which is not bounded by
+     * material the way a capture chain is. */
+    if(ply >= MAXPLY-1) return eval_stm(b);
     if(!(SS.nodes&2047) && (g_stop || now_sec()>SS.stop_time)){ SS.stopped=1; return 0; }
     int checked=in_check(b,b->side);
     if(checked){
@@ -355,11 +359,26 @@ static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
 static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev){
     SS.nodes++;
     if(!(SS.nodes&2047) && (g_stop || now_sec()>SS.stop_time)){ SS.stopped=1; return 0; }
+    /* Hard ply cap. `if(ply<MAXPLY)` below guards array ACCESSES but nothing
+     * stopped the recursion: check extensions do depth++, so a forcing line
+     * never shortens, and each frame is ~2KB (Move pl[256] plus a Board copy).
+     * A default 8MB thread stack overflows near 4000 plies -- which is what
+     * killed a 16-thread rating run with SIGSEGV and a 16-thread 60-game match
+     * with SIGBUS, while the same games at 1 thread ran clean. Returning the
+     * static eval here is the standard terminal: it is what the node would be
+     * worth if the search stopped, and it happens far beyond any real line. */
+    if(ply >= MAXPLY-1) return eval_stm(b);
     int pvnode = beta > alpha+1;          /* wide window == PV node (for PV recording) */
     Move excl = (ply<MAXPLY)? SS.excluded[ply] : 0;  /* singular verification skips this move */
     if(ply<MAXPLY) SS.pvlen[ply]=0;       /* leaf/cutoff nodes leave an empty PV here */
     U64 h=b->hash;
-    SS.path[SS.path_len++]=h;
+    /* Bounds-guarded. The counter must stay symmetric with the SS.path_len--
+     * on every return path, so it always increments; only the WRITE is
+     * conditional. PATH_CAP already existed but was applied only when loading
+     * game history, never here -- enlarging the array from 384 to 4096 lowered
+     * the probability of the overflow without removing it. */
+    if(SS.path_len < PATH_CAP) SS.path[SS.path_len] = h;
+    SS.path_len++;
     int ret, done=0;
     /* The fifty-move rule is a DRAW the search has to be able to see. Without
      * it the engine cannot tell that a won ending is running out of clock, and

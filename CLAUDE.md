@@ -165,6 +165,16 @@ mining, calibration and matches only — never inside the engine.
   the binary on `PATH`. Verify with `echo uci | stockfish | grep uciok`;
   `UCI_Elo` spans 1320–3190, which covers the 2600/2700/2800 calibration anchors.
 
+**Every gate runs at CC_THREADS=1 — so 16-thread faults are invisible to
+gating.** `research.abgate` defaults to `--threads 1`, and the rating run is the
+only thing that exercises full width. A missing ply cap in `negamax`/`qsearch`
+therefore survived every gate and killed a 600-game rating run with SIGSEGV, and
+a 60-game reproduction with SIGBUS, while the same games at 1 thread ran clean.
+**Before quoting a rating, run at least one long match at the width it is quoted
+at.** Related: a bigger buffer is not a bounds check — `path` was enlarged
+384→4096 after an identical segfault and still had no guard on the recursive
+push.
+
 ## Research loop protocol
 
 Each session:
