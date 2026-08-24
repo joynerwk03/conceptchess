@@ -369,6 +369,19 @@ Rules of thumb:
   arithmetic.** Fitting `Elo = 40.5*doublings − b*cp` to one calibrated point
   (rfp25) projected +11 for a change that measured −25/−3. A model fitted on a
   single point does not overturn the standing rule; it launders the same mistake.
+- **Changes that SPEND information behave differently from ones that discard
+  it.** Every thinning mechanism (six, all null or negative) threw information
+  away. The merged stack — history-modulated LMR (reduce *less* on proven-good
+  quiets), a king-attack endgame taper, and a wider aspiration window — spends
+  or adds information instead, and screened at **0.92× nodes with d_mean
+  −0.776**: fewer nodes AND better moves, which no thinner achieved. Gated
+  −12.1 / +30.2 / +3.8 on three anchors, **combined +4.4 [−10.5, +19.3]**.
+  Merged on a pre-registered two-of-three rule; **the interval includes zero, so
+  do not quote it as established.**
+- **When two anchors disagree in sign, run a THIRD — and fix the decision rule
+  before it starts.** Pick the anchor nearest this engine's strength: score
+  closest to 50% carries the most information per game (se 10.6 at
+  stockfish:3000 versus 14.1 and 17.1 at 2700/2600 for the same slot count).
 - **THINNING IS CLOSED — six mechanisms, all null or negative on two anchors:**
   singular extensions, depth-scaled LMR, the schedule bundle, RFP margin (halved
   the tree, −33 Elo), history pruning (thinned nothing — the cost is not in the

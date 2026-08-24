@@ -161,6 +161,13 @@ W_EG: dict[str, float] = {
     "threat.minor": 0.0959,
     "threat.pawn": 0.0346,
     "threat.rook": 0.0144,
+    "kattack.proximity": 1.79346,   # endgame counterpart (x0.6: king attack is a middlegame phenomenon)
+    "kattack.check_knight": 41.92266,   # endgame counterpart (x0.6: king attack is a middlegame phenomenon)
+    "kattack.check_bishop": 34.49802,   # endgame counterpart (x0.6: king attack is a middlegame phenomenon)
+    "kattack.check_rook": 25.16586,   # endgame counterpart (x0.6: king attack is a middlegame phenomenon)
+    "kattack.check_queen": 5.01078,   # endgame counterpart (x0.6: king attack is a middlegame phenomenon)
+    "kattack.queenless_discount": 0.48408,   # endgame counterpart (x0.6: king attack is a middlegame phenomenon)
+    "kattack.weak_zone": 0.0,   # endgame counterpart (x0.6: king attack is a middlegame phenomenon)
 }
 
 

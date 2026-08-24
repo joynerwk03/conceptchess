@@ -522,7 +522,18 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
         else {
             int red=1;
             if(depth>=3 && quiet && !checked){ if(i>=12)red=3; else if(i>=3)red=2;
-                if(red>1 && !improving) red++; }
+                if(red>1 && !improving) red++;
+                /* History-modulated reduction: reduce LESS on quiets this search
+                 * has found useful. The table already knows which quiets cause
+                 * cutoffs; until now that was spent only on move ORDER. This is
+                 * the one search direction that did not measure negative, and it
+                 * works by spending knowledge rather than discarding it. */
+                if(red>1){
+                    int hv = SS.history[b->side][MV_FROM(m)][MV_TO(m)] / 8192;
+                    if(hv > 2) hv = 2; else if(hv < -2) hv = -2;
+                    red -= hv;
+                    if(red < 1) red = 1;
+                } }
             else if(depth>=3 && !quiet && !checked && i>=10) red=2;
             sc=-negamax(&c,depth-red,-alpha-1,-alpha,ply+1,m);
             if(sc>alpha && (red>1 || beta>alpha+1)) sc=-negamax(&c,depth-1+ext,-beta,-alpha,ply+1,m);
@@ -607,7 +618,12 @@ static void run_id(ThreadCtx *tc){
          * `score` — a tighter window prunes far more. Widen and re-search only on
          * a fail-high/low. Shallow plies keep the full window (score not settled;
          * helpers start at depth<=4 so their first pass is always full-window). */
-        int delta = 20;
+        int delta = 35;   /* was 20. Measured: 17.1% of root loops at depth 9
+                             * and 9.0% at depth 12 were RE-searches after a
+                             * fail-high or fail-low, each of which re-runs the
+                             * whole root. A wider first window trades a little
+                             * per-iteration pruning for fewer repeats, and
+                             * discards no information either way. */
         int alpha0 = depth<=4 ? -S_MATE : score-delta;
         int beta0  = depth<=4 ?  S_MATE : score+delta;
         int bm_found=0; Move bm=0, sm=0; int bs=-S_MATE-1, ss=-S_MATE-1;

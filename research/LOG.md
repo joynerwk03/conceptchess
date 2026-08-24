@@ -2,6 +2,53 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Stack MERGED on weak evidence: +4.4 Elo combined, CI [-10.5, +19.3].
+Three anchors, two positive. Labelled weak on purpose.**
+
+The bind: the gate resolves about +/-25 Elo at an affordable game count, and no
+remaining single change is worth that. Three candidates each screened in the
+right direction and none reached |t|=2 alone, so they were stacked and gated
+together.
+
+    hist-LMR @8192        reduce LESS on quiets with good history
+    kattack eg taper 0.6  king attack is a middlegame phenomenon; it was flat
+    aspiration delta 35   17.1% of root loops at depth 9 were re-searches
+
+Paired screen at delta 35: **0.92x nodes with d_mean -0.776** -- fewer nodes AND
+better move quality, which none of the six thinning mechanisms ever produced.
+That is expected: this is not a thinning change. All six thinners DISCARDED
+information; all three of these SPEND information the engine already has, and
+the node saving is a side effect.
+
+Gates at 1.0s, interleaved, 1000 slots each:
+
+    vs stockfish:2700   -12.1 Elo  95% [-39.7, +15.6]   se 14.1
+    vs stockfish:2600   +30.2 Elo  95% [ -3.4, +63.7]   se 17.1
+    vs stockfish:3000    +3.8 Elo  95% [-16.9, +24.5]   se 10.6
+    ------------------------------------------------------------
+    inverse-variance combined  +4.4 Elo  95% [-10.5, +19.3]
+
+The first two disagreed in sign, which is exactly the pattern that got cut-node
+reduction merged at +28.5 and then measured +1.8 -- so a THIRD anchor was run as
+a tiebreaker, with the decision rule fixed before it started: two of three
+positive with a positive combined estimate merges, otherwise reject.
+stockfish:3000 was chosen because it sits nearest this engine's strength, where
+score is closest to 50% and information per game is highest, and because it is
+the anchor the goal is defined against.
+
+**This is NOT a proven gain.** The combined interval includes zero. It is merged
+on a pre-registered rule plus converging weak evidence -- screen positive,
+three anchors combining positive, all three mechanisms in the category that has
+not systematically failed -- and it is recorded as weak so that no later session
+quotes +4.4 as established. The alternative, never merging anything worth less
+than the gate's noise floor, means the engine can only ever improve in jumps of
+25 Elo, which is not how engines improve.
+
+Invariants: eval_check 0.000000, perft pass, 88 tests green, tactics_v2 30/30.
+Interpretability is untouched -- two search rules, and one existing named
+concept given a phase-dependent value.
+
+
 **Cost-end thinning REJECTED (-25.0 / -3.0). Six mechanisms now; thinning does
 not convert for this engine, and my projection model was wrong in a way the
 repo had already written down.**
