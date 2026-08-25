@@ -332,7 +332,16 @@ def run_match(*, games, opponent, movetime=0.5, opp_movetime=None,
         for g in range(games):
             if stop.is_set():
                 break
-            record(play_one(g))
+            # Same guard as the concurrent path below: one bad game must not
+            # kill the match. This branch is the one the RATING run takes --
+            # 16 threads need the whole box, so concurrency is 1 -- and without
+            # this a single rare engine crash discards an 18-hour measurement
+            # instead of one game. The failure is printed, so dropped games stay
+            # visible and countable.
+            try:
+                record(play_one(g))
+            except Exception as e:
+                print(f"  game failed: {type(e).__name__}: {e}", flush=True)
     else:
         # Games are fully independent processes, so they parallelise cleanly.
         # Keep concurrency <= the performance-core count: at fixed MOVETIME an
