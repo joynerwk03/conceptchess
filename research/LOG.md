@@ -2,6 +2,54 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Continuation history, resized to fit the cache: the depth loss goes away and
+the knowledge still measures nothing. And a screen harness that silently
+compared against the WRONG ENGINE.**
+
+*The re-test.* The LOG rejects continuation history, but the reason given is
+cache, not knowledge: "+0.44 points, 95% [-1.58, +2.47] -- unresolved, and mean
+depth fell 11.2 -> 11.1, consistent with the 590KB table costing cache". That is
+worth revisiting in an engine whose single most repeated finding is that it is
+memory-bound. Rebuilt as `[side][prev_to][to]` -- **32KB instead of 590KB**,
+L1/L2 resident -- keeping the generalisation that matters (what answers a move
+arriving on this square) and dropping the piece dimension that cost the memory.
+
+    baseline    depth@1.0s 13.29   1.74 Mnps
+    conthist    depth@1.0s 13.33   1.71 Mnps   0.98x nodes
+    paired screen: d_mean +0.332 +- 0.640, t 0.52
+
+**The cache diagnosis was right and it did not matter.** The depth loss is gone
+-- 13.29 to 13.33, where the 590KB version fell 11.2 to 11.1 -- so the resize
+worked exactly as intended. The knowledge is still worth nothing: d_mean is
+POSITIVE (slightly worse) and unresolved. Ordering here is already saturated at
+88.82% first-move cutoffs and a mean cut index of 1.347, so there is simply no
+room for a better quiet-move ordering signal to pay.
+
+*The harness trap, which is the more valuable half.* The first attempt at this
+screen ran for 80 minutes and would have produced a plausible table built on the
+wrong engine. The build had failed -- a fourth `order()` call site in
+`root_second()` that the patch missed -- and **a missing `core/libcengine.so`
+does not raise**. `engine/core.py` sets `HAS_CORE=False`, `Engine` computes
+`use_core and core.HAS_CORE`, and the search silently falls back to the
+pure-Python reference implementation in `engine/search.py`. The screen then
+compares the compiled baseline against a DIFFERENT ENGINE and labels the result
+with the candidate's name.
+
+It was caught only because the Python search is ~50x slower and an 80-minute
+probe looked wrong. A fallback that was merely different, rather than slow,
+would have passed unnoticed and been believed. All four screen probes now assert
+`HAS_CORE` and refuse to run without a compiled core, and the build step checks
+for the `.so` rather than grepping compiler output for the word "error".
+
+*What this closes.* Move ordering. Combined with the profile already on record
+-- eval_core 31.9%, eval_stm 13.8%, negamax 12.5%, order 12.2% -- and the
+material stub-out (**everything beyond material is 28.4% of runtime**, spread
+thin at king attack 2.3% and threats 1.8% with no hot spot), the search side has
+no remaining cheap lever: thinning is closed on six mechanisms, ordering is
+saturated, the eval hash is at its measured optimum, the TT has been sized twice,
+move generation runs at 86-124 Mn/s, and PGO is worth +2.3%.
+
+
 **CRASH FIX: neither negamax nor qsearch had a ply cap. The engine segfaulted
 at 16 threads -- the exact configuration the rating is quoted in.**
 

@@ -399,6 +399,18 @@ Rules of thumb:
   quiescence quiet checks (−25.0/−3.0). The explanation has survived every test:
   pruning accuracy is bounded by eval accuracy. Thinning this tree and improving
   this eval are one problem, and the search half is done.
+- **A missing `libcengine.so` does NOT raise — it silently becomes the Python
+  engine.** `core.HAS_CORE` goes false and `Engine` falls back to
+  `engine/search.py`, so a failed build in a candidate worktree yields a screen
+  that compares the compiled baseline against a DIFFERENT ENGINE under the
+  candidate's name. Caught once only because the fallback is ~50× slower. Every
+  probe now asserts `HAS_CORE`; check for the `.so` after building, never grep
+  compiler output for "error".
+- **Ordering is closed.** Continuation history resized to 32KB
+  (`[side][prev_to][to]`) removes the depth loss that killed the 590KB version
+  (13.29→13.33 vs 11.2→11.1) and still measures **d_mean +0.332, t 0.52** — no
+  value. With 88.82% first-move cutoffs there is no room left for a better quiet
+  ordering signal.
 - **Triage search changes with `research/screen_ref.py` before gating them.**
   A cached referee table (`research/reftable.py`: one MultiPV search per
   position, SF11 depth 13, ~2.5 pos/s, built once) turns "does this change keep
