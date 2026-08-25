@@ -2,6 +2,42 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**One static-eval probe per node instead of four: tree provably identical, NPS
+unchanged. The redundancy was already free.**
+
+The profile says `eval_stm` costs 13.8% of runtime in SELF time over 11.50M
+calls against only 6.35M `eval_core` calls -- the probe paid far more often than
+the evaluation behind it. The reason is that one node probes it up to four
+times: reverse futility, the null move, futility, and the improving heuristic
+each ask for the same number, and nothing modifies the board between them. The
+`improving` probe fires at essentially every node, plus one or two others
+depending on depth and node type.
+
+Hoisting it to a single local is exactly value-preserving, so this fell in the
+self-validating category and needed no game gate -- only proof that the tree did
+not move:
+
+    run 1   base 50,267,185 nodes @ 2.428 Mnps    cand 50,267,185 @ 2.423
+    run 2   base 50,267,185 nodes @ 2.421 Mnps    cand 50,267,185 @ 2.423
+
+**Node counts identical to the node, and NPS flat.** The hoist is correct and
+worthless.
+
+The explanation is the cache, and it is worth keeping: the FIRST probe at a node
+pulls the entry into L1, so the second and third are L1 hits at roughly a
+nanosecond. The 13.8% self time is dominated by that first probe's L2/L3 miss,
+which every node pays whether the value is asked for once or four times.
+**Counting calls is not counting cost** -- 11.50M calls against 6.35M evaluations
+looked like 5M of waste and was nothing of the kind.
+
+Two details were required to keep the tree identical, and both would have been
+silent bugs: `SS.seval[ply]` must still be STORED where it was, because RFP can
+return before that point and storing earlier would set the sentinel on nodes
+that currently never set it, changing `improving` two plies deeper; and the
+hoist must sit after the `if(done)` early return so TT hits and draws do not pay
+a probe they previously skipped.
+
+
 **Continuation history, resized to fit the cache: the depth loss goes away and
 the knowledge still measures nothing. And a screen harness that silently
 compared against the WRONG ENGINE.**

@@ -205,6 +205,12 @@ Rules of thumb:
   and **-14** across two external gates (run in both orders, to rule out
   harness drift). Self-play pits a change against an opponent sharing its exact
   blind spots. Gate against Stockfish, or don't claim Elo.
+- **Counting calls is not counting cost.** `eval_stm` shows 13.8% self time over
+  11.50M calls against 6.35M `eval_core` calls, and a node probes it up to four
+  times (RFP, null move, futility, improving). Hoisting to ONE probe per node is
+  provably tree-neutral (nodes identical to the node: 50,267,185) and measured
+  **zero** NPS. The first probe pulls the entry into L1; the rest are L1 hits at
+  ~1ns, so the self time is that first L2/L3 miss, which every node pays anyway.
 - **The engine is memory-bound.** Arithmetic micro-optimisations measure ~0
   (distance table +0.10%, ring popcounts +0.08%); memory layout is where the
   speed is (pawn hash +4.0%, prefetch +5.3%, 16-byte TT entry +1.6%, PEXT
