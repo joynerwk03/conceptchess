@@ -205,6 +205,13 @@ Rules of thumb:
   and **-14** across two external gates (run in both orders, to rule out
   harness drift). Self-play pits a change against an opponent sharing its exact
   blind spots. Gate against Stockfish, or don't claim Elo.
+- **The depth-at-fixed-time probe swings ~0.35 plies; do not read differences
+  smaller than that.** A single pass read T=10 at 15.58 against T=16 at 15.38 and
+  that was reported as a ~7 Elo handicap in the goal configuration. Three
+  interleaved passes give **T=10 15.46, T=16 15.46** with a within-config spread
+  of 15.25–15.62. There is no strength difference between 10 and 16 threads here.
+  SF-style Lazy SMP skip diversification (SKIP_SIZE/SKIP_PHASE) also measured
+  neutral, 15.48 vs 15.46 — SMP diversification is closed.
 - **Lazy evaluation is dead here: the non-material terms are too big.** A safe
   margin must exceed the largest possible contribution of everything beyond
   material+PST, measured at **max 563.9cp** even after gating out the three

@@ -2,6 +2,50 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Lazy SMP skip diversification: neutral. And a retraction -- 10 threads is NOT
+better than 16; that was this probe's noise being read as a finding.**
+
+*Why it was worth trying.* The blunder classifier on record says **75.3% of real
+mistakes are SEARCH-limited**, and the LOG's own conclusion is that seventeen
+prior search experiments were all TECHNIQUE variants: "None of them made the
+engine deeper, and depth is what the mistakes are made of." Better SMP is one of
+the few things that buys REAL depth rather than nominal depth -- unlike thinning,
+which was closed on six mechanisms and cost 33 Elo at its sharpest, because it
+buys depth by discarding information. Skipping iterations discards nothing: a
+helper simply spends its time at a depth another thread is not already covering,
+and the main thread still searches every depth in order.
+
+The old diversification gave fifteen helpers three distinct start depths
+(`d0 = 2 + (id % 3)`) and then let them advance in lockstep. Replaced with
+Stockfish's skip pattern (SKIP_SIZE/SKIP_PHASE on the helper index mod 20, game
+ply mixed in).
+
+    depth @1.0s, three interleaved passes
+                 pass 1   pass 2   pass 3    mean
+    base T=16     15.50    15.25    15.62    15.46
+    skip T=16     15.56    15.56    15.31    15.48
+    base T=10     15.50    15.44    15.44    15.46
+
+**Neutral.** eval_check 0.000000, perft pass. Not merged.
+
+*The retraction, which matters more.* Earlier in this session a single pass of
+this probe read T=10 at 15.58 and T=16 at 15.38, and that was reported -- twice
+-- as the goal configuration carrying a self-inflicted ~7 Elo handicap, with a
+recommendation attached. Measured properly, interleaved and repeated, **T=10 and
+T=16 are identical at 15.46**, and the spread WITHIN a single configuration
+(15.25 to 15.62) is larger than any difference between them.
+
+The probe's noise was already documented in this LOG as close to a full ply, and
+it was used anyway to support a conclusion it cannot carry. **There is no 7 Elo
+sitting in the thread count.** `play_threads()` capping at physical cores remains
+sensible engineering, but it is not a measurable strength difference here.
+
+The general rule, restated because this session has now broken it twice: a probe
+whose run-to-run spread exceeds the effect being claimed cannot support the
+claim, however convenient the reading. Interleave and repeat before believing a
+depth number.
+
+
 **Lazy evaluation: priced dead before building it. The non-material terms are
 too large for a safe margin ever to fire.**
 
