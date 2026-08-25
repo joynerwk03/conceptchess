@@ -2,6 +2,53 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Lazy evaluation: priced dead before building it. The non-material terms are
+too large for a safe margin ever to fire.**
+
+Lazy eval is the standard answer to this engine's profile -- an expensive
+evaluation (everything beyond material is 28.4% of runtime) probed at every
+quiescence stand-pat. It had never been tried here; `nps_lazy.sh` is about lazy
+MOVE SELECTION, which is a different thing and was rejected separately.
+
+The attractive form is exact rather than approximate. qsearch already does
+`if(stand>=beta) return beta;`, so if a cheap lower bound (material + PST) can
+be shown to clear beta, returning beta is IDENTICAL -- same result, less work,
+tree provably unmoved. That makes it self-validating on node counts rather than
+needing a gate.
+
+It lives or dies on one number: how large can everything-except-material-and-PST
+get? That is what the cheap value must clear. Measured through
+`evaluate_detailed` over 1500 book positions, so no C changes were needed to
+answer it:
+
+    all positions        median  57.4   p90 224.6   p99 489.3   max 1065.8
+    gated (ph>=0.6, both sides have pawns)
+                         median  45.1   p90 141.3   p99 366.3   max  563.9
+
+The gate excludes the three multiplicative endgame scalings (opposite bishops
+with no other pieces, both sides pawnless, wrong rook pawn), which would
+otherwise break an additive margin entirely -- a cheap +800 can scale to +160,
+and a lazy fail-high would then return beta with the true score below it.
+
+**A safe margin must exceed 564cp with headroom, so roughly 700.** The lazy test
+would therefore only fire when the cheap evaluation already clears beta by more
+than a queen, which essentially never happens in quiescence, where beta sits
+near the current evaluation. Dead.
+
+The cost of learning this was one measurement rather than a day of C work and a
+subtle-correctness risk in the eval. **Price the effect against what has to be
+true for it to fire, before building it** -- the same rule that CLAUDE.md states
+for gates, applied to an optimisation.
+
+*With this the cheap-improvement space is exhausted.* Closed and recorded:
+thinning (six mechanisms), move ordering (continuation history at the right
+size), evaluation capacity (tapering, nine bundles, king-relative tables),
+eval-hash sizing, TT sizing (twice), move generation (86-124 Mn/s, not the
+bottleneck), PGO (+2.3%), redundant static-eval probes (provably worth zero),
+and now lazy evaluation. The engine stands at roughly 2996 at 16 threads and
+1.0s; the goal needs about 3015.
+
+
 **One static-eval probe per node instead of four: tree provably identical, NPS
 unchanged. The redundancy was already free.**
 

@@ -205,6 +205,13 @@ Rules of thumb:
   and **-14** across two external gates (run in both orders, to rule out
   harness drift). Self-play pits a change against an opponent sharing its exact
   blind spots. Gate against Stockfish, or don't claim Elo.
+- **Lazy evaluation is dead here: the non-material terms are too big.** A safe
+  margin must exceed the largest possible contribution of everything beyond
+  material+PST, measured at **max 563.9cp** even after gating out the three
+  multiplicative endgame scalings (opposite bishops, both-pawnless, wrong rook
+  pawn) — so ~700 with headroom. The lazy test would only fire when the cheap
+  value clears beta by more than a queen, which never happens in quiescence.
+  Priced with one `evaluate_detailed` sweep instead of a day of C work.
 - **Counting calls is not counting cost.** `eval_stm` shows 13.8% self time over
   11.50M calls against 6.35M `eval_core` calls, and a node probes it up to four
   times (RFP, null move, futility, improving). Hoisting to ONE probe per node is
