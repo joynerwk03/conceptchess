@@ -47,7 +47,7 @@ doubling, and 0.3s/move is ~70x faster than CCRL 40/15.
 |---|---|
 | 1 thread, 0.3s | **2805** [2783, 2827] |
 | 16 threads, 0.3s | ~2930 |
-| **16 threads, 1.0s** | **~2992** (est.) — measured 2983 [2962, 3003] at 47.5% over **500** games vs `stockfish:3000`, plus ~+9 for the time-usage fix merged afterwards. Re-measure before quoting. |
+| **16 threads, 1.0s** | **3003** [2985, 3021] — 50.4% (+151 =303 -146) over **600** games vs `stockfish:3000`, measured 2026-08-26 at `7272c85`. Point estimate clears 3000; the interval does not. |
 
 The 16T/1.0s figure was briefly recorded as 3000 from a 200-game run that scored 50.0%. A 500-game run at the identical configuration scores 47.5%. The runs are not independent (the larger subsumes the smaller's openings) so they are not pooled — the larger supersedes, and the engine sits just BELOW 3000.
 

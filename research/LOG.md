@@ -2,6 +2,43 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**MEASURED: 3003, 95% [2985, 3021]. 600 games at 16 threads and 1.0s vs
+stockfish:3000, and the point estimate clears 3000 for the first time.**
+
+    result vs stockfish:3000 [1.0s]: +151 =303 -146   (50.4%)
+    elo diff +3  95% [-15, +21]   paired, 300 pairs
+    -> 3003 [2985, 3021]
+
+All 600 games completed; no "game failed" lines, so the rare crash did not fire
+this run. Engine at 7272c85: eval_check 0.000000, perft pass, 88 tests green.
+
+**This is ~7 Elo above the arithmetic estimate of ~2996**, which was 2983
+(measured pre-fix) plus credits for the time-usage fix and the stack. The gap is
+evidence for something flagged when the ply cap was written and could not be
+measured then: before it, a forcing line could recurse THOUSANDS of plies deep,
+burning nodes in ordinary games that never crashed. Fixed-depth probes cannot
+see that -- they were bit-identical, which is why the fix was called pure safety
+-- because those probes never reach such lines. Full-length games do.
+
+**The lesson is about what a "pure safety" fix can be worth.** Node counts
+identical at fixed depth proved the cap never fires in a normal search, and that
+was true and beside the point: the cost was in the rare pathological line during
+real play, which no fixed-depth instrument in this project measures.
+
+*Where the goal stands.* The condition is a confidence interval entirely above
+3000, and the interval is [2985, 3021]. What that now requires is a joint
+constraint on Elo and games:
+
+    600 games   +/-18   needs a true value near +21 Elo (3021)
+   1800 games   +/-10   needs ~+13
+   3000 games   +/- 8   needs ~+11
+
+So more games ALONE cannot do it from a true +3, but the remaining gap is about
+**+10 Elo, not the +20-25 the stale estimate implied**. The two figures that
+matter for planning are the point estimate (+3) and the fact that the interval
+already reaches +21.
+
+
 **Lazy SMP skip diversification: neutral. And a retraction -- 10 threads is NOT
 better than 16; that was this probe's noise being read as a finding.**
 
