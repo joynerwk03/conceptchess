@@ -175,6 +175,18 @@ at.** Related: a bigger buffer is not a bounds check — `path` was enlarged
 384→4096 after an identical segfault and still had no guard on the recursive
 push.
 
+**A bug can be LOAD-BEARING — `see()` is.** Its cheapest-attacker loop starts
+`bestval` at exactly `SEE_KING_LAST`, so a king that is the sole attacker is
+never selected, `bestsq` stays −1 and it shifts by −1 (UBSan:
+"shift exponent -1 is negative"). The king-legality block below it has never
+run. Correcting it to match `engine/search.py::_see` gated at **−22.5 Elo
+[−42.5,−2.4] vs stockfish:3000 and −21.0 vs 2700** — the search's margins, LMP
+counts and capture ordering were all tuned with the quirk in place. What is
+merged instead writes `63` explicitly: same behaviour to the node
+(50,267,185 both), no undefined behaviour. **Do not "fix" it without re-tuning
+the search around it.** Run UBSan with tablebases ON and 16 threads; the ASan
+pass with tablebases off found nothing.
+
 ## Research loop protocol
 
 Each session:

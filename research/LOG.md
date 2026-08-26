@@ -2,6 +2,67 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**see() had real undefined behaviour, the CORRECT fix costs 21 Elo, and the
+right answer was to remove the UB without changing the behaviour.**
+
+Found by running UBSan in the configuration that actually crashes -- 16 threads,
+tablebases ON, full games -- which the earlier ASan pass had skipped
+(`use_tablebase=False`):
+
+    csearch.c:168:15: runtime error: shift exponent -1 is negative
+        #0 piece_on   #1 see   #2 qsearch
+
+*The defect.* `see()` selects the cheapest attacker with
+
+    int bestsq=-1, bestval=1000000;              /* SEE_KING_LAST is ALSO 1000000 */
+    int v=(pt_==KING)?SEE_KING_LAST:SEEV[pt_];
+    if(v<bestval){bestval=v;bestsq=sq;}
+
+When the king is the SOLE attacker, `v == bestval` and the strict `<` never
+fires, so bestsq stays -1 and the next line does `piece_on(b,-1)`, i.e.
+`1ULL << -1`. x86 masks the count to 6 bits, so it silently becomes
+`1ULL << 63`: piece_on reports whatever sits on h8, and `occ &= ~(1ULL<<bestsq)`
+clears h8 from the occupancy. The king-legality block right below -- added
+deliberately in an earlier session, its comment reading "Reached only when the
+king is the sole remaining attacker" -- has therefore NEVER been able to run.
+
+*The correct fix, and its price.* Initialising bestval above SEE_KING_LAST makes
+the C match `engine/search.py::_see` exactly: Python starts `best_val = 10**9`
+against `KING_LAST = 10**6`, selects the king, and likewise assigns
+`attacker_value = best_val`, which is harmless in both because rule two
+guarantees no recapture. UBSan clean, eval_check 0.000000, perft pass, 88 tests
+green. Then two anchors at 1.0s:
+
+    vs stockfish:3000   -22.5 Elo  95% [-42.5, -2.4]    <- clears zero
+    vs stockfish:2700   -21.0 Elo  95% [-47.8,  +5.8]
+
+**Being right cost 21 Elo.** The only consistent reading is that the search is
+TUNED AROUND THE QUIRK: RFP margins, LMP counts, capture ordering and ProbCut
+thresholds were all fitted with this SEE behaviour in place, and correcting one
+input to a fitted system perturbs everything fitted against it. The correctness
+does not pay for the disturbance -- not without re-tuning the search around it,
+which is a project rather than a fix.
+
+*What was merged instead.* Keep the behaviour, delete the undefined behaviour.
+`63` is now written out explicitly, so the engine computes exactly what it
+always computed without depending on the compiler continuing to emit a masked
+shift:
+
+    nodes@d10 over 400 positions:  base 50,267,185   defined 50,267,185
+    UBSan over 25 full 16-thread games with tablebases: clean
+
+Identical to the node, so nothing changed except that the program is no longer
+relying on undefined behaviour. The source now carries a DO NOT "FIX" THIS
+comment with the gate numbers, because the obvious correction is a 21-Elo
+regression and the next person to notice the oddity will reach for it.
+
+*The general point.* A bug can be load-bearing. Three sessions of parameter
+tuning happened on top of this one, so the tuned values encode it. When a
+correctness fix and a measurement disagree, the measurement is about the SYSTEM
+and the fix is about one component; shipping the fix alone ships the disturbance
+without the re-tuning that would justify it.
+
+
 **MEASURED: 3003, 95% [2985, 3021]. 600 games at 16 threads and 1.0s vs
 stockfish:3000, and the point estimate clears 3000 for the first time.**
 

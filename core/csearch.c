@@ -194,13 +194,31 @@ static int see(const Board *b, Move m){
          * otherwise the exchange ends here. qsearch PRUNES on see()<0, so
          * getting this wrong makes winning captures unsearchable.
          * Mirrors engine/search.py::_see. */
-        if(piece_on(b,bestsq)==KING){
-            U64 rest = occ & ~(1ULL<<bestsq);
+        /* bestsq can still be -1 here, and that is LOAD-BEARING. bestval starts
+         * at SEE_KING_LAST, so a king that is the sole attacker never satisfies
+         * the strict `<` above and is never selected. This used to shift by -1
+         * (UBSan: "shift exponent -1 is negative"), which x86 masks to 63.
+         *
+         * DO NOT "fix" this by letting the king be selected. That version
+         * matches engine/search.py::_see exactly -- Python starts best_val at
+         * 10**9, above KING_LAST -- and it GATED AT -22.5 Elo [-42.5,-2.4] vs
+         * stockfish:3000 and -21.0 vs stockfish:2700. The search's margins,
+         * late-move counts and capture ordering were all tuned with this
+         * behaviour in place; correcting it perturbs a fitted system and the
+         * correctness does not pay for the disturbance.
+         *
+         * What IS fixed here is the undefined behaviour: 63 is written out, so
+         * the engine computes exactly what it always computed without relying
+         * on the compiler continuing to emit a masked shift. Node counts are
+         * identical. */
+        int ksq_ = bestsq < 0 ? 63 : bestsq;
+        if(piece_on(b,ksq_)==KING){
+            U64 rest = occ & ~(1ULL<<ksq_);
             U64 opp = (side==WHITE)?b->occ[BLACK]:b->occ[WHITE];
             if(attackers_to(b,to,rest) & rest & opp) break;
         }
         gain[n]=aval-gain[n-1]; n++;
-        aval=bestval; occ&=~(1ULL<<bestsq); side=!side;
+        aval=bestval; occ&=~(1ULL<<ksq_); side=!side;   /* ksq_: see above */
         if(n>=31) break;
     }
     while(n>1){ n--; if(-gain[n] < gain[n-1]) gain[n-1]=-gain[n]; }
