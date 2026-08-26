@@ -223,3 +223,100 @@ Closed, with the measurement that closed it:
 - [ ] Show top alternative moves + why they were rejected (root move scores are nearly free)
 - [ ] Per-move "surprise" indicator (eval swing vs previous expectation)
 - [ ] Human-tunable personality (slider scales concept weights live in GUI)
+
+## Next phase: where the remaining ~450 Elo actually lives
+
+Stockfish 11 is ~3450 in the same model class this project is restricted to --
+hand-crafted, fully interpretable, no neural network. This engine measures
+**3003 [2985, 3021]**. That gap is not a mystery and it is not closed; what is
+closed is the class of change session 33 attempted (parameter nudges, reduction
+schedules, ordering heuristics, redundant-work elimination), every one of which
+was worth single-digit Elo at best and most of which measured zero.
+
+Three structural differences explain most of the gap, in dependency order.
+
+### A. Eval CAPACITY: scalars where Stockfish has tables
+
+This engine has **64 scalar weights** plus piece-square tables. SF11's classical
+evaluation carries on the order of a thousand tuned values, and the difference is
+mostly SHAPE, not count:
+
+    ours                              SF11
+    mobility = w_piece * count        Mobility[piece][count]  -- a table per piece
+    pawn.passed_scale (one multiplier) PassedRank[rank] x blocked/supported/path
+    threat.minor / threat.rook        Threat[attacker][victim] pairs
+    king danger: already a table       (this one we already do properly)
+
+A linear term cannot express "a knight's 4th move is worth more than its 8th",
+which is the actual shape of mobility. Every one of these stays fully
+interpretable as a table -- "a bishop with 7 moves scores +18" is a sentence the
+GUI can print, exactly like the fitted king-danger curve already is.
+
+This is the largest single lever and the one most aligned with the project's
+constraint. It also has a precedent inside this repo: replacing the forced
+`scale * units^2 / 10` king-danger formula with a FITTED CURVE was one of the
+few eval changes that paid.
+
+Prerequisite: far more tuning data (see C), because tables have more parameters
+than scalars and will overfit 283K positions.
+
+### B. Eval SPEED: incremental and integer
+
+Evaluation is ~46% of runtime (eval_core 31.9%, eval_stm 13.8%), and everything
+beyond material is 28.4%. SF11 does MORE eval work per node and is not slower,
+because of two structural choices this engine does not make:
+
+  * **material and PST maintained incrementally** in make/unmake, instead of
+    recomputed from bitboards every call
+  * **packed Score** -- middlegame and endgame in one 32-bit int, so one add does
+    both phases -- against this engine's `double` arithmetic throughout
+
+Note the caveat already on record: a probe replacing `TAP` with a single multiply
+measured **-2.58%**, because `(MG)==(EG)` is a COMPILE-TIME test that folds half
+the terms to constants. So packed Score only pays as part of the incremental
+rewrite, not as a drop-in.
+
+Why this matters beyond its own Elo: the blunder classifier puts **75.3% of real
+mistakes at search-limited**, i.e. fixed by depth, and depth comes from NPS. And
+speed is the BUDGET that direction A has to be paid for -- every new table costs
+eval time, and bundle E was already killed by -4.62% NPS against +3.8 Elo of
+knowledge.
+
+### C. Tuning DATA and scale
+
+`texel6.jsonl` holds 283K positions. Classical engines of this strength were
+tuned on orders of magnitude more, and the fits here have been converging
+against that limit for several sessions -- the last one moved the loss +0.134%
+and screened WORSE on move quality.
+
+Needed before A can work:
+  * generate millions of self-play positions, from an independent run (the LOG
+    already records that position-level splits leave the same game on both sides
+    and turned -0.9% into +1.2%)
+  * a proper train/validation split by GAME, not by position
+  * refit K per candidate; the LOG records a boundary-solution K that overstated
+    every bundle before it by ~25%
+
+### D. Search parameters, tuned at scale
+
+Every search constant here was set by hand and checked against a gate resolving
++/-25 Elo, which cannot see what a single margin is worth. SPSA over the whole
+parameter vector with thousands of games is how engines of this strength tune
+them. This is compute-hungry rather than clever, and it is the standard way the
+last 30-50 Elo gets found.
+
+### Sequencing
+
+B first (it is self-validating on node counts and buys the budget for A), then C
+(A cannot be fitted without it), then A, with D running continuously in the
+background once the gate is cheap enough to support it.
+
+### What NOT to retry
+
+Recorded in CLAUDE.md with numbers: tree thinning (six mechanisms, the sharpest
+halved the tree and cost 33 Elo), move ordering (continuation history at the
+right size, t=0.52), lazy evaluation (safe margin needs >564cp), eval-hash and TT
+sizing, SMP diversification, PGO (+2.3%), redundant static-eval probes (provably
+zero). And do NOT "fix" the `see()` king selection -- correcting it to match the
+Python reference gated at **-22.5 Elo**, because the search is tuned around it.
+
