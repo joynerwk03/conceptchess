@@ -2,6 +2,54 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**The TT hits constantly and almost never cuts. That is the mechanism behind
+the rising EBF.**
+
+Our effective branching factor RISES with depth (1.80 from 8->10, 2.11 from
+10->12) where Stockfish 11 FALLS (1.98 -> 1.51). A converging search is one
+whose deeper iterations cut early on what the previous iteration proved, and the
+transposition table carries that. TT size was tested (64MB vs 512MB, no effect)
+and bucketed replacement was tested (node counts inconsistent), but the hit rate
+was never measured -- and never broken down by depth.
+
+Probes bucketed by REMAINING depth, single thread, 24 positions:
+
+    search depth 8      probes    hit%   cut%
+      rem 0-2          220,611   16.7%   4.3%
+      rem 3-5           32,187   66.3%   2.6%
+      rem 6-8            2,597   90.8%   1.6%
+
+    search depth 12     probes    hit%   cut%
+      rem 0-2        3,317,368   15.3%   5.1%
+      rem 3-5          636,186   51.0%   3.6%
+      rem 6-8           75,869   70.1%   3.1%
+      rem 9-11           5,837   90.6%   0.7%
+
+Two findings:
+
+  1. **The hit rate at the SAME remaining depth collapses as the search
+     deepens** -- 66.3% to 51.0% at rem 3-5, 90.8% to 70.1% at rem 6-8. The
+     table is being churned. A depth-12 search touches roughly as many nodes as
+     the table has entries.
+
+  2. **The cut rate is 0.7-5% everywhere, even where hits are 90%.** Entries are
+     found constantly and almost never usable, because they fail
+     . They serve only move ordering.
+
+That is exactly what a non-converging search looks like, and it points at the
+REPLACEMENT POLICY rather than at size:  is unconditional,
+so a depth-1 store evicts a depth-20 entry whenever they collide, and the deep
+entries that would do the cutting do not survive to the next iteration.
+
+**This reframes a change already tested and dismissed.** Bucketed
+depth-preferred replacement was judged on node counts alone (-13.8% at depth 12,
++11.5% at depth 10, inconsistent) and rejected. It was never measured on the
+quantity it exists to move -- the cut rate. Re-testing it against this
+instrument is the concrete next step, and unlike everything else tried late in
+this session it rests on a measured mechanism rather than an analogy to
+Stockfish.
+
+
 **Null-move reduction swept for the first time: no gain.**
 
  is a staircase capped at 5, and null move
