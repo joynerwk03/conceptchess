@@ -25,29 +25,49 @@ Probes bucketed by REMAINING depth, single thread, 24 positions:
       rem 6-8           75,869   70.1%   3.1%
       rem 9-11           5,837   90.6%   0.7%
 
-Two findings:
+Two patterns are visible, and BOTH have innocent explanations. Recorded in the
+order they were read, because reading them wrong first is the instructive part.
 
-  1. **The hit rate at the SAME remaining depth collapses as the search
-     deepens** -- 66.3% to 51.0% at rem 3-5, 90.8% to 70.1% at rem 6-8. The
-     table is being churned. A depth-12 search touches roughly as many nodes as
-     the table has entries.
+  1. **The hit rate at the SAME remaining depth falls as the search deepens** --
+     66.3% to 51.0% at rem 3-5, 90.8% to 70.1% at rem 6-8. This was first read
+     as the table being churned.
 
-  2. **The cut rate is 0.7-5% everywhere, even where hits are 90%.** Entries are
-     found constantly and almost never usable, because they fail
-     . They serve only move ordering.
+  2. **The cut rate is 0.7-5% everywhere, even where hits are 90%.** This was
+     first read as deep entries failing to survive to the next iteration.
 
-That is exactly what a non-converging search looks like, and it points at the
-REPLACEMENT POLICY rather than at size:  is unconditional,
-so a depth-1 store evicts a depth-20 entry whenever they collide, and the deep
-entries that would do the cutting do not survive to the next iteration.
+**Pattern 2 is not a fault at all: it is iterative deepening working.** A node
+revisited from the previous iteration carries exactly `depth-1`, which can never
+satisfy `tt_depth >= depth`. A high hit rate with a near-zero cut rate at large
+remaining depth is what a healthy TT looks like near the root; those entries pay
+for themselves through move ordering, which is where they are supposed to pay.
 
-**This reframes a change already tested and dismissed.** Bucketed
-depth-preferred replacement was judged on node counts alone (-13.8% at depth 12,
-+11.5% at depth 10, inconsistent) and rejected. It was never measured on the
-quantity it exists to move -- the cut rate. Re-testing it against this
-instrument is the concrete next step, and unlike everything else tried late in
-this session it rests on a measured mechanism rather than an analogy to
-Stockfish.
+**Pattern 1 is novelty, not eviction, and that was settled by measurement rather
+than argument.** Eviction and novelty predict opposite things under a bigger
+table, so run it at 8x (TT_BITS 22 -> 25, 64MB -> 512MB), with a fresh Engine per
+position because the table is allocated once and never cleared:
+
+    rem depth      64MB    512MB
+    3-5           51.0%    53.0%
+    6-8           70.1%    72.3%
+    9-11          90.6%    91.1%
+
+Two points for eight times the memory. A depth-12 search visits ~15x the nodes
+of a depth-8 one, so it meets far more positions it has never seen; the load
+factor within a single search is only a few percent of 4M entries, and there is
+no churn to fix. This confirms the earlier "TT size: no effect" result on the
+one quantity size directly controls, rather than on Elo where it was invisible.
+
+**Verdict: the TT is healthy and the rising EBF is NOT a transposition-table
+failure.** Bucketed depth-preferred replacement was briefly reframed as
+under-tested (it had been judged on node counts alone, never on the cut rate);
+that reframing is withdrawn -- there is no churn for it to fix, and its
+inconsistent node counts were the whole story after all.
+
+The rising EBF therefore remains **unexplained**, and it is still the sharpest
+open discrepancy in the project: ours 1.80 -> 2.11 against SF11's 1.98 -> 1.51.
+Now ruled out as the cause: TT size, TT replacement, TT hit rate, check
+extensions, futility width, move ordering (88.82% first-move cutoffs), and the
+null-move reduction schedule.
 
 
 **Null-move reduction swept for the first time: no gain.**
