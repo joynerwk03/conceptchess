@@ -366,3 +366,40 @@ honest independently.
 **Until the tuner can consume the data, direction A cannot be tested, only
 badly fitted.** That is the single most valuable piece of infrastructure work
 outstanding, and it gates the largest remaining source of Elo.
+
+### What the shape tests found: capacity is not the missing thing
+
+Direction A assumed the gap to Stockfish is largely SHAPE -- scalars where SF11
+has tables. Two tests now say otherwise for this evaluation.
+
+**Mobility.** Converted to a per-count curve, 66 free parameters, fitted with a
+held-out split and L2 toward the linear seed. It fits back to a straight line
+(knight: -15.7, -11.9, -7.6, -4.2, -0.2, 4.2, 8.1, 11.6, 15.6 -- steps of ~3.9)
+and the holdout gain is **+0.008%**. Linear was already right.
+
+**Passed pawns.** Inspected before implementing:
+
+    PASSED_BONUS = [0, 8, 12, 19, 38, 67, 120, 0]
+
+The rank shape is ALREADY strongly non-linear, roughly doubling per rank, and
+only its magnitude (`pawn.passed_scale`) is fitted. The curve a table would have
+to discover is already there, hand-crafted and sensible.
+
+**The pattern.** Where this evaluation uses a fixed table times a fitted scalar,
+the table is usually a reasonable shape and the scalar is the part that was
+tuned. King danger is the same -- already a fitted curve, and one of the few eval
+changes that ever paid. So the "scalars where SF has tables" framing overstates
+the opportunity: the shapes are mostly present, just not individually fitted.
+
+That reprioritises direction A. The remaining capacity is not in re-shaping
+terms that already have shapes; it is in TERMS THAT DO NOT EXIST -- SF11 carries
+evaluation concepts this engine has no counterpart for at all. Identifying those
+is an eval-room question (`research/eval_room.py` measured -2.96% against SF11's
+classical eval with the deficit spread EVENLY across every bucket, which is the
+signature of a model-class gap rather than a missing term) and it is the honest
+open question.
+
+The fitting machinery built for these tests (`research/fastfit.py`,
+`research/fitcurve.py`) stands regardless: any term linear in its weights can now
+be extracted once and fitted in seconds against a holdout. That is what makes
+the next capacity question cheap to ask, whatever it turns out to be.
