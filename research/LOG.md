@@ -2,6 +2,31 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Correct see() with a re-tuned RFP margin: still no. And the correct SEE
+changes only 1.6% of positions at depth 9 while costing 21 Elo in games.**
+
+The hypothesis was that correct-SEE had never had a fair test -- it gated at
+-22.5 and -21.0 measured with margins tuned for the BROKEN version, so the
+margin most directly downstream of SEE values was re-swept with the correct one.
+
+    config                nodes   d_mean     se      t   positions changed
+    seeOK + RFP 60        0.87x   +1.566  0.653   2.40      1203
+    seeOK + RFP 90        1.00x   +0.121  0.158   0.77        77
+    seeOK + RFP 130       1.15x   -0.173  0.726  -0.24      1195
+
+Nothing is better; RFP 60 is significantly worse. The hypothesis is not
+supported and the load-bearing bug stays as it is.
+
+**The 77 is the interesting number.** Correct-SEE at the unchanged margin alters
+the move in only 77 of 4706 positions at depth 9 -- 1.6% -- and that same change
+measured -22.5 Elo [-42.5,-2.4] and -21.0 [-47.8,+5.8] on two anchors. Either
+the effect lives at depths the fixed-depth screen cannot see, or those few
+changed positions are unusually costly. Both readings are worth holding, because
+they bear on how much any fixed-depth screen can be trusted for a change whose
+consequences compound with depth -- and this session already recorded that
+lesson twice, for depth_match and for the referee screen.
+
+
 **Mobility is genuinely LINEAR: with 66 free parameters and a held-out split,
 the curve fits back to a straight line. The +1.566% was overfitting.**
 
