@@ -2,6 +2,31 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Null-move reduction swept for the first time: no gain.**
+
+ is a staircase capped at 5, and null move
+is one of the largest pruning mechanisms in the search. Stockfish scales R
+continuously (~4 + depth/6), reducing about 7 at depth 20. No entry in this LOG
+sweeps it -- every search experiment here has been LMR, forward-pruning margins
+or ordering.
+
+    config                     nodes   d_mean     se      t   changed
+    r = 4 + depth/6 [3,7]      0.93x   +0.545  0.613   0.89     1080
+    r = 3 + depth/5 [3,7]      0.97x   +0.249  0.565   0.44      973
+    staircase + step at 18     1.00x    0.000  0.000   0.00        0
+
+Both continuous forms thin the tree slightly and score slightly worse; neither
+is significant. eval_check 0.000000 on all three.
+
+**The third row is a methodological note worth more than the result.** Adding a
+step at depth>=18 changes NOTHING on a depth-9 screen, because that step cannot
+fire there -- the variant is untestable on this instrument by construction, not
+merely unresolved. The same shape of error produced the widened-singular-
+extension fiasco earlier (a rule that mostly fires at 14+, cost-checked at depth
+12). **Before screening a depth-gated change, check that the gate can fire at
+the screen depth.**
+
+
 **Correct see() with a re-tuned RFP margin: still no. And the correct SEE
 changes only 1.6% of positions at depth 9 while costing 21 Elo in games.**
 
