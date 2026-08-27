@@ -2,6 +2,60 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Mobility is genuinely LINEAR: with 66 free parameters and a held-out split,
+the curve fits back to a straight line. The +1.566% was overfitting.**
+
+Given the capacity to bend anywhere, the fitted knight curve comes out
+
+    [-15.7, -11.9, -7.6, -4.2, -0.2, 4.2, 8.1, 11.6, 15.6]
+
+which is the linear seed to within rounding -- steps of ~3.9 throughout. Bishop,
+rook and queen the same. **Held-out loss improves by +0.008%**, i.e. nothing.
+
+That refutes the hypothesis this was built on. Stockfish carries
+`Mobility[piece][count]` tables, so the shape looked like obvious missing
+capacity; for THIS evaluation, on THIS data, the linear form was already right.
+
+*Why the first fit disagreed so violently.* It reported **+1.566%** -- ten times
+any other result this session -- and screened WORSE (d_mean +1.242, t 1.79). It
+was fitting 66 parameters to ~10K in-sample positions with no holdout. The
+in-sample number was real and meaningless. **An in-sample loss cannot detect
+overfitting, and it is the number that has been reported for every eval fit in
+this project.**
+
+*What was built to settle it, and is worth keeping.* The tuner could not answer
+this: it re-evaluates every position for every candidate, costing ~2*N*passes
+sweeps, so 66 parameters on the full dataset is days. But mobility enters the
+evaluation LINEARLY --
+
+    eval = scale * ( R + SUM_k w_k * f_k )
+
+with f_k a pure count of pieces having k safe squares. Extracting (R, scale, f,
+phase) ONCE per position turns every later candidate into a dot product.
+`fastfit.py` does the extraction (recovering `scale` and `R` exactly from two
+evaluations per position, since the endgame scale factor multiplies the mobility
+contribution too) and `fitcurve.py` does the fit: closed-form gradient,
+backtracking line search, **20% held out**, and **L2 toward the linear seed** so
+the curve must pay to bend.
+
+That is now the template for every capacity question in ROADMAP direction A --
+passed pawns by rank, threats by attacker/victim, piece-square tables. Each is
+linear in its weights, so each can be extracted once and fitted in seconds
+against a holdout instead of hours against itself.
+
+*Two implementation notes, both my own errors, both caught by guards.* The first
+optimiser used a fixed step scaled by a hand-picked 1e4 and diverged to NaN
+within a thousand iterations -- replaced with a backtracking line search, because
+the right step size for a near-linear loss is not guessable. And the "did it
+improve" guard was `new >= base`, which NaN passes silently, so the diverged fit
+wrote its results; it now checks `math.isfinite` explicitly.
+
+*Status of the machinery.* The curve tables stay merged: they are a proven no-op
+(nodes 36,118,663 identical, eval_check 0.000000), they cost 0.5% of runtime,
+and they are the mechanism any future fit would use. Only the hypothesis that
+the curve bends is rejected.
+
+
 **Mobility becomes a fitted CURVE instead of a linear weight -- machinery
 landed as a proven no-op. And the tuner has been fitting on a dataset 38x
 smaller than the one available.**

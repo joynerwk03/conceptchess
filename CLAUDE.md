@@ -514,6 +514,18 @@ Rules of thumb:
   98.46% within four, mean cut index 1.347, and quiescence is a normal 44.4% of
   nodes. With cutoffs that early, LMR barely runs at cut nodes; the tree's cost is
   set at ALL-nodes, where the reduction schedule alone decides it.
+- **NEVER report an eval fit without a HELD-OUT split.** Mobility curves fitted
+  to 10K in-sample positions gained **+1.566%** loss — 10× anything else — and
+  screened WORSE (t 1.79). Refitted with 20% held out and L2 toward the linear
+  seed, the holdout gain is **+0.008%** and the curve returns to a straight line:
+  mobility is genuinely linear here, and the big number was overfitting. Every
+  eval fit in this project's history reports in-sample loss.
+- **Fit linear-in-the-weights terms by CACHING FEATURES, not by re-evaluating.**
+  `eval = scale*(R + Σ wₖ·fₖ)` for mobility, passed pawns, threats, PSTs — so
+  extract `(R, scale, f, phase)` once per position (`research/fastfit.py`) and
+  every candidate becomes a dot product (`research/fitcurve.py`): seconds against
+  a holdout instead of hours against itself. `scale` must be carried — the
+  endgame factor multiplies the term too.
 - **`research/texel.py` DEFAULTS TO THE SMALLEST DATASET.** `--data` defaults to
   `research/data/texel.jsonl` — **744KB, ~10K positions** — while
   `texel_all.jsonl` (28MB, ~382K) and `texel6.jsonl` (20MB, ~283K) sit beside it.
