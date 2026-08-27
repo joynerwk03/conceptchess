@@ -19,6 +19,25 @@ MOBILITY_PARAMS = {
 }
 
 
+_NAME = {chess.KNIGHT: "knight", chess.BISHOP: "bishop",
+         chess.ROOK: "rook", chess.QUEEN: "queen"}
+_MAXN = {chess.KNIGHT: 8, chess.BISHOP: 13, chess.ROOK: 14, chess.QUEEN: 27}
+
+
+def _curve(pt, n, phase):
+    """Score for `n` safe squares, from the fitted per-count table.
+
+    A linear weight cannot express the real shape of mobility -- the 4th square
+    a knight gains is worth more than its 8th -- so each count carries its own
+    value, as Stockfish's Mobility[piece][count] does. Counts above the table
+    clamp to the top entry; a queen with 28 safe squares is not a distinct
+    concept from one with 27.
+    """
+    if n > _MAXN[pt]:
+        n = _MAXN[pt]
+    return wt(f"mob.{_NAME[pt]}.{n}", phase)
+
+
 class Mobility:
     name = "mobility"
     display_name = "Mobility"
@@ -34,7 +53,7 @@ class Mobility:
                 w = wt(key, ctx.phase)
                 for sq in ctx.pieces[color][pt]:
                     n = chess.popcount(attacks[sq] & ~own & ~unsafe)
-                    s += sign * w * (n - typical)
+                    s += sign * _curve(pt, n, ctx.phase)
         return s
 
     def details(self, ctx):
@@ -47,7 +66,7 @@ class Mobility:
                 w = wt(key, ctx.phase)
                 for sq in ctx.pieces[color][pt]:
                     n = chess.popcount(ctx.attacks[sq] & ~own & ~unsafe)
-                    v = sign * w * (n - typical)
+                    v = sign * _curve(pt, n, ctx.phase)
                     if v:
                         label = (f"{cname} {chess.piece_name(pt)} on "
                                  f"{chess.square_name(sq)} ({n} squares)")

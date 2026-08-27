@@ -106,6 +106,8 @@ def gen(games, movetime, out):
 # the current value. Material stays FIXED (it anchors the scale); tempo and
 # mate_drive stay fixed (special-purpose). Everything else gets ±25% unless
 # chess sense says tighter.
+ADD_FLOOR = 25.0   # cp of additive room for table entries whose base is ~0
+
 TUNABLE = {
     "pst.pawn": (0.75, 1.25), "pst.knight": (0.75, 1.25), "pst.bishop": (0.75, 1.25),
     "pst.rook": (0.75, 1.25), "pst.queen": (0.75, 1.25), "pst.king": (0.75, 1.25),
@@ -145,6 +147,15 @@ TUNABLE = {
     # so the loss cannot constrain them and a free fit inverts the gradient.
     "ocb.draw_scale": (0.4, 1.15),
     "mate_drive.corner": (0.6, 1.4), "mate_drive.king_prox": (0.6, 1.4),
+
+    # Mobility CURVES: one entry per safe-square count, so the SHAPE of
+    # mobility is fitted instead of assumed linear. They pass through zero
+    # at the typical count and therefore rely on the additive floor below;
+    # a multiplicative envelope around 0.0 can never move.
+    "mob.knight.0": (0.75, 1.25), "mob.knight.1": (0.75, 1.25), "mob.knight.2": (0.75, 1.25), "mob.knight.3": (0.75, 1.25), "mob.knight.4": (0.75, 1.25), "mob.knight.5": (0.75, 1.25), "mob.knight.6": (0.75, 1.25), "mob.knight.7": (0.75, 1.25), "mob.knight.8": (0.75, 1.25),
+    "mob.bishop.0": (0.75, 1.25), "mob.bishop.1": (0.75, 1.25), "mob.bishop.2": (0.75, 1.25), "mob.bishop.3": (0.75, 1.25), "mob.bishop.4": (0.75, 1.25), "mob.bishop.5": (0.75, 1.25), "mob.bishop.6": (0.75, 1.25), "mob.bishop.7": (0.75, 1.25), "mob.bishop.8": (0.75, 1.25), "mob.bishop.9": (0.75, 1.25), "mob.bishop.10": (0.75, 1.25), "mob.bishop.11": (0.75, 1.25), "mob.bishop.12": (0.75, 1.25), "mob.bishop.13": (0.75, 1.25),
+    "mob.rook.0": (0.75, 1.25), "mob.rook.1": (0.75, 1.25), "mob.rook.2": (0.75, 1.25), "mob.rook.3": (0.75, 1.25), "mob.rook.4": (0.75, 1.25), "mob.rook.5": (0.75, 1.25), "mob.rook.6": (0.75, 1.25), "mob.rook.7": (0.75, 1.25), "mob.rook.8": (0.75, 1.25), "mob.rook.9": (0.75, 1.25), "mob.rook.10": (0.75, 1.25), "mob.rook.11": (0.75, 1.25), "mob.rook.12": (0.75, 1.25), "mob.rook.13": (0.75, 1.25), "mob.rook.14": (0.75, 1.25),
+    "mob.queen.0": (0.75, 1.25), "mob.queen.1": (0.75, 1.25), "mob.queen.2": (0.75, 1.25), "mob.queen.3": (0.75, 1.25), "mob.queen.4": (0.75, 1.25), "mob.queen.5": (0.75, 1.25), "mob.queen.6": (0.75, 1.25), "mob.queen.7": (0.75, 1.25), "mob.queen.8": (0.75, 1.25), "mob.queen.9": (0.75, 1.25), "mob.queen.10": (0.75, 1.25), "mob.queen.11": (0.75, 1.25), "mob.queen.12": (0.75, 1.25), "mob.queen.13": (0.75, 1.25), "mob.queen.14": (0.75, 1.25), "mob.queen.15": (0.75, 1.25), "mob.queen.16": (0.75, 1.25), "mob.queen.17": (0.75, 1.25), "mob.queen.18": (0.75, 1.25), "mob.queen.19": (0.75, 1.25), "mob.queen.20": (0.75, 1.25), "mob.queen.21": (0.75, 1.25), "mob.queen.22": (0.75, 1.25), "mob.queen.23": (0.75, 1.25), "mob.queen.24": (0.75, 1.25), "mob.queen.25": (0.75, 1.25), "mob.queen.26": (0.75, 1.25), "mob.queen.27": (0.75, 1.25),
 }
 
 
@@ -245,15 +256,25 @@ def tune(data_path, passes, sample=0, seed=11, tune_eg=True, only=None):
             if kind == "mg":
                 lo = base[key] * TUNABLE[key][0]
                 hi = base[key] * TUNABLE[key][1]
+                # A multiplicative envelope collapses to a point when the base is
+                # ~0, which is exactly where a curve entry sits at its typical
+                # count. Widen only in that case; large-base keys are untouched.
+                if hi - lo < 2 * ADD_FLOOR:
+                    lo, hi = min(lo, base[key] - ADD_FLOOR), max(hi, base[key] + ADD_FLOOR)
                 if key in ORIGINAL_PRIORS:   # hard envelope vs the hand priors
                     lo = max(lo, ORIGINAL_PRIORS[key] * PRIOR_ENVELOPE[0])
                     hi = min(hi, ORIGINAL_PRIORS[key] * PRIOR_ENVELOPE[1])
             else:
                 lo = base[key] * EG_ENVELOPE[0]
                 hi = base[key] * EG_ENVELOPE[1]
+                if hi - lo < 2 * ADD_FLOOR:
+                    lo, hi = min(lo, base[key] - ADD_FLOOR), max(hi, base[key] + ADD_FLOOR)
             if lo > hi:
                 lo, hi = hi, lo
-            step = max(abs(base[key]) * 0.05, 0.05)
+            # The old step was 0.05cp for a zero-seeded entry -- four passes
+            # would move it a fifth of a centipawn. Scaling to the RANGE fixes
+            # that and is dominated by the old term wherever the base is large.
+            step = max(abs(base[key]) * 0.05, (hi - lo) * 0.05, 0.05)
             for cand in (cur + step, cur - step):
                 cand = min(max(cand, lo), hi)
                 if cand == cur:

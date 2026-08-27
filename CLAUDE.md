@@ -514,6 +514,19 @@ Rules of thumb:
   98.46% within four, mean cut index 1.347, and quiescence is a normal 44.4% of
   nodes. With cutoffs that early, LMR barely runs at cut nodes; the tree's cost is
   set at ALL-nodes, where the reduction schedule alone decides it.
+- **`research/texel.py` DEFAULTS TO THE SMALLEST DATASET.** `--data` defaults to
+  `research/data/texel.jsonl` — **744KB, ~10K positions** — while
+  `texel_all.jsonl` (28MB, ~382K) and `texel6.jsonl` (20MB, ~283K) sit beside it.
+  Every fit run without an explicit `--data` used a thirty-eighth of the
+  available data, which is the leading suspect for why Texel gains have not
+  transferred. A 66-parameter mobility fit on it gained **+1.566%** loss — 10×
+  anything else — and screened **worse** (d_mean +1.242, t 1.79). **Always pass
+  `--data` explicitly, and hold out by GAME.**
+- **The tuner assumes every weight is a SCALE FACTOR.** `TUNABLE` is an
+  allowlist (new keys are silently skipped), bounds are multiplicative (a value
+  seeded at 0.0 can never move), and the step is `abs(base)*0.05`. Table entries
+  that pass through zero need the additive floor and range-scaled step added for
+  the mobility curves.
 - **Any tuning number must be scale-invariant.** The Texel loss is
   `sigmoid(eval/(K*400))`. With K held fixed, multiplying the whole evaluation by
   a constant lowers the loss while changing no move — at K=0.6, x1.2 "gains"

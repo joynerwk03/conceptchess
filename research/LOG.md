@@ -2,6 +2,69 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Mobility becomes a fitted CURVE instead of a linear weight -- machinery
+landed as a proven no-op. And the tuner has been fitting on a dataset 38x
+smaller than the one available.**
+
+*Why mobility.* The section profile prices it at **0.5% of runtime**, the
+cheapest meaningful term in the evaluation, and it was purely linear:
+`s += sign * w_piece * (n - typical)`. A linear term cannot express the real
+shape of mobility -- the 4th safe square a knight gains is worth more than its
+8th -- which is why Stockfish carries `Mobility[piece][count]`. Converting adds
+~66 parameters of capacity for essentially no speed cost, which matters because
+bundle E was killed by -4.62% NPS against +3.8 Elo of knowledge.
+
+Interpretability is preserved by construction: each entry is a printable
+sentence ("a bishop with 7 safe squares scores +18"), exactly like the fitted
+king-danger curve already in this engine.
+
+*Landed as a no-op.* Entries are seeded from the linear form `w*(n-typical)`,
+so:
+
+    eval_check   0.000000
+    nodes@d10    36,118,663 -> 36,118,663   IDENTICAL over 300 positions
+    perft, 88 tests   pass
+
+Keys are named `mob.<piece>.<n>`, which makes them ordinary W entries, so
+`gen_eval_data` emits them automatically, `W_EG` gives them endgame counterparts,
+and the Texel tuner can address them with `--only mob.`. The LOG's warning
+applies -- a no-op proof only exercises the no-op -- so this proves the plumbing
+and nothing about the curve path until values move.
+
+*Three fixes the tuner needed*, all from one assumption: that every tunable is a
+SCALE FACTOR with a comfortably non-zero base.
+
+  * `TUNABLE` is an allowlist and `base = {k: W[k] for k in TUNABLE}`, so the 66
+    new keys were silently skipped -- the first fit tuned the four OLD scalars,
+    which the concept no longer reads, and moved the loss exactly 0.000%.
+  * Bounds are MULTIPLICATIVE (`base * 0.75 .. base * 1.25`). A curve entry at
+    its typical count is seeded to 0.0, so its bounds were 0..0 and it could
+    never move. An additive floor (ADD_FLOOR = 25cp) now widens only ranges that
+    have collapsed; large-base keys are untouched.
+  * The step was `max(abs(base)*0.05, 0.05)`, i.e. 0.05cp for a zero-seeded
+    entry. Now also scaled to the range, which is dominated by the old term
+    wherever the base is large.
+
+**THE DATASET FINDING, which matters beyond mobility.** `research/texel.py`
+defaults to `--data research/data/texel.jsonl`, which is **744KB, about 10,000
+positions**. Sitting beside it are `texel6.jsonl` (20MB, ~283K) and
+`texel_all.jsonl` (28MB, ~382K). **Every fit run without an explicit `--data`
+has been using the smallest file in the directory** -- roughly a thirty-eighth
+of the data available.
+
+That is very likely why Texel gains have not been transferring. The first
+mobility fit gained **+1.566% loss** -- an order of magnitude more than anything
+else this session, where the previous best was +0.134% -- and then screened
+**WORSE**: d_mean +1.242 +- 0.695, t 1.79, at 1.06x nodes. Sixty-six new
+parameters against ten thousand positions is textbook overfitting, and the
+independent screen caught exactly that.
+
+Refitting on the larger set is in progress. Whatever it returns, the default
+data path should be changed and every historical fit re-examined for the same
+cause: the endgame-taper fit earlier this session (+0.134% loss, screened +0.445
+worse) was run the same way.
+
+
 **Pooled over 1115 games: 2999 [2984, 3013]. The 600-game 3003 was the lucky
 half, and the early-stop rule saved ~24 hours.**
 

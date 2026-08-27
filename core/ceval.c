@@ -378,16 +378,29 @@ double eval_core(U64 bb[2][6], int side){
         }
     }
 
-    /* mobility (safe squares) */
-    double MOBW[6]={0,TAP(W_MOB_KNIGHT_MG, W_MOB_KNIGHT_EG),TAP(W_MOB_BISHOP_MG, W_MOB_BISHOP_EG),TAP(W_MOB_ROOK_MG, W_MOB_ROOK_EG),TAP(W_MOB_QUEEN_MG, W_MOB_QUEEN_EG),0};
-    static const int TYP[6]={0,4,6,7,13,0};
+    /* mobility (safe squares), from a per-count CURVE rather than a linear
+     * weight. A linear term cannot express the real shape -- the 4th safe
+     * square a knight gains is worth more than its 8th -- which is why
+     * Stockfish carries Mobility[piece][count]. Each entry is its own fitted
+     * value and prints as a sentence, so the concept stays interpretable.
+     * Counts clamp to the top entry, matching _curve() in
+     * engine/concepts/mobility.py; the two must agree or eval_check fails. */
+    static const int MOB_MAXN[6]={0,8,13,14,27,0};
     for(int c=0;c<2;c++){
         int sign=c==WHITE?1:-1; U64 own=occ[c];
         U64 unsafe = c==WHITE ? BPAWN_ATK(bb[BLACK][PAWN]) : WPAWN_ATK(bb[WHITE][PAWN]);
         for(int p=KNIGHT;p<=QUEEN;p++)
             for(int i=0;i<pna[c][p];i++){
                 int n=popcnt(pat[c][p][i]&~own&~unsafe);
-                s += sign*MOBW[p]*(n-TYP[p]);
+                if(n>MOB_MAXN[p]) n=MOB_MAXN[p];
+                double mg, eg;
+                switch(p){
+                    case KNIGHT: mg=MOB_KNIGHT_MG[n]; eg=MOB_KNIGHT_EG[n]; break;
+                    case BISHOP: mg=MOB_BISHOP_MG[n]; eg=MOB_BISHOP_EG[n]; break;
+                    case ROOK:   mg=MOB_ROOK_MG[n];   eg=MOB_ROOK_EG[n];   break;
+                    default:     mg=MOB_QUEEN_MG[n];  eg=MOB_QUEEN_EG[n];  break;
+                }
+                s += sign*(mg==eg ? mg : phase*mg+(1.0-phase)*eg);
             }
     }
 

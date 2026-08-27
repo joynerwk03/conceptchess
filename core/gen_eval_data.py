@@ -74,6 +74,16 @@ def main():
     # it was before tapering existed. Introducing the machinery therefore costs
     # nothing at all, in speed or in behaviour.
     parts.append("/* weights from engine/weights.py, as (middlegame, endgame) pairs */")
+    # mobility curves: one array per piece, indexed by safe-square count.
+    # Emitted as arrays rather than relying on the per-key defines, because the
+    # C side indexes them with a runtime count.
+    for _pc, _mx in (("knight", 8), ("bishop", 13), ("rook", 14), ("queen", 27)):
+        parts.append(c_array(f"MOB_{_pc.upper()}_MG",
+                           [W[f"mob.{_pc}.{i}"] for i in range(_mx + 1)]))
+        parts.append(c_array(f"MOB_{_pc.upper()}_EG",
+                           [W_EG.get(f"mob.{_pc}.{i}", W[f"mob.{_pc}.{i}"])
+                            for i in range(_mx + 1)]))
+
     for key, val in W.items():
         macro = "W_" + key.replace(".", "_").upper()
         eg = W_EG.get(key, val)
