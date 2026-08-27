@@ -2,6 +2,52 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**EVAL FITTING IS CLOSED. Relabelling with SF11 lifts the fit 26x and buys no
+move quality.**
+
+The entry below blames non-transferring Texel gains on the TARGET being
+self-play generated. That was testable, so it was tested.
+
+All 382,339 positions relabelled with **SF11 at depth 10, 5m35s at ~920 pos/s**
+(pinned `~/bin/stockfish11`, never `shutil.which`). Two improvements at once:
+the target stops being our own opinion, and it stops being a coin flip -- a
+centipawn score is an informative label where a game result is one confounded
+bit. SF11 is also the right reference BY MODEL CLASS (hand-crafted classical);
+an NNUE target would ask this eval to represent what its model class cannot.
+Against an external target the scale-invariance pathology also disappears, so K
+is FIXED rather than refitted: scaling our eval no longer lowers the loss for
+free, because the target does not move with it.
+
+**The fit improves enormously: +9.007% HELD OUT against SF11 labels, versus
++0.339% for the same model against self-play results.** 26x the signal from the
+same positions and the same 17 weights.
+
+**It still does not transfer.**
+
+    config     d_mean     se      t   nodes
+    sf11       +1.524  0.771   1.98   1.14x    all 17 pairs
+    sf11_nt    +0.101  0.684   0.15   1.03x    tempo held at seed
+
+The full fit is WORSE, and the cause is identifiable: `tempo` fitted to x3.478,
+i.e. **54.9cp**, which is not a credible tempo value. SF11's `analyse` returns a
+SEARCHED score, so a depth-10 label carries a side-to-move advantage that a
+STATIC eval can only express through tempo -- and that bogus constant also grew
+the tree **14%** by corrupting the pruning margins. Hold tempo at its seed and
+the fit is exactly NEUTRAL.
+
+**That pair is the finding.** Self-play labels: +0.339% held out, screens worse.
+SF11 labels: +9.007% held out, screens neutral. A 26-fold improvement in fitted
+loss produced no improvement in move quality. So the diagnosis below is
+INCOMPLETE -- the problem is not only that the target was biased. **Evaluation
+loss, against either target, does not predict move quality for this engine at
+its current accuracy.** That closes eval fitting as a source of strength here,
+not merely this dataset, and it is consistent with `eval_room`: the remaining
+gap to SF11 classical is a uniform −2.96% spread evenly across every bucket, not
+a missing or mis-weighted term. Nothing merged; `eval_check` 0.000000 on all
+builds.
+
+---
+
 **TAPERING IS CLOSED — and the reason indicts the Texel loss itself.**
 
 `CLAUDE.md` names tapering as "the remaining interpretable eval capacity". It got
