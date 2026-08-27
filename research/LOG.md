@@ -2,6 +2,46 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**GATED AND REJECTED: -16.9 and -31.8 on two anchors. Thinning is closed on
+SEVEN mechanisms, including the one that isolated the deep region.**
+
+    anchor              delta     95% CI          block splits
+    stockfish:3000      -16.9   [-43.5, +9.6]   A 29.2/30.5  B 27.2/28.5
+    stockfish:2700      -31.8   [-66.6, +3.1]   A 73.5/72.5  B 68.8/69.7
+
+1200 paired slots each, 0.3s, interleaved arms in one pool. Decision rule fixed
+before the run: merge only if BOTH anchors are positive. Both are negative.
+REJECTED, nothing merged. The block splits are tight and both arms move
+together, so this is not the drift that produced the phantom +70.7 -- the
+reading is sound. Neither interval excludes zero alone, but both point the same
+way and the rule was pre-registered.
+
+**This closes the last open objection to "thinning is closed".** Every prior
+thinning failure could be dismissed as having disturbed the tuned SHALLOW
+schedule. This one did not: below remaining depth 7 it was bit-identical, and it
+targeted precisely the region the EBF curve identifies as unpruned. It cut the
+depth-14 tree 30.6% and bent the EBF down from 1.911/1.824 to 1.776/1.654 -- it
+did exactly what it was designed to do to the tree shape -- and it still lost
+Elo on both anchors.
+
+**So the rising EBF is a SYMPTOM, not a defect.** This tree is fat because the
+evaluation cannot tell which branches do not matter; pruning accuracy is bounded
+by eval accuracy, and that explanation has now survived seven mechanisms
+(singular extensions, depth-scaled LMR, the schedule bundle, RFP margin, history
+pruning, reduction-from-move-2 + quiescence quiet checks, and now deep-region
+LMR scaling). Matching SF11's EBF curve is not a route to SF11's strength; SF11
+affords its thin tree BECAUSE of its eval, and copying the tree shape without
+the eval buys a worse search.
+
+Combined with the eval-fitting result above -- a 26-fold improvement in fitted
+loss producing zero move-quality gain -- both halves of the standard program are
+now closed against measurement on this architecture. What remains is raw SPEED,
+the only axis the +40.5 Elo/doubling curve legitimately prices, needing ~25-35%
+NPS for the +15-20 Elo the goal requires, against recorded memory-layout wins of
+1-7% each.
+
+---
+
 **`red` HAS NO DEPTH TERM. Adding one above remaining-depth 7 only cuts the
 depth-14 tree 30.6% and bends the EBF down. NOT YET GATED.**
 
