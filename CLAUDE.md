@@ -381,7 +381,26 @@ Rules of thumb:
   (1.11× at 128) with no fidelity gain. Under |t|=2 so not gated, but the
   direction — spend the search's own knowledge of which moves matter, rather
   than pruning harder — is the one thing that did not measure negative.
-- **The remaining interpretable eval capacity is TAPERING.** `weights.py` says
+- **EVAL FITTING IS CLOSED, and the reason is that eval LOSS DOES NOT PREDICT
+  MOVE QUALITY here.** Not "this dataset was bad" — measured on two independent
+  targets. Tapering fitted on all 382K positions with a real held-out split
+  gained **+0.339%** (holdout > in-sample, so no overfitting) and screened
+  WORSE. Relabelling every position with SF11 at depth 10 — an external target,
+  same model class, and an informative label instead of a 0/0.5/1 coin flip —
+  lifted the held-out gain to **+9.007%**, a 26-fold improvement, and screened
+  **exactly neutral** (d_mean +0.101, t 0.15). A 26x better fit bought nothing.
+  Do not run another eval fit, against any target, expecting Elo. Note also the
+  SF11 fit put `tempo` at x3.478 (54.9cp) and grew the tree 14%: `analyse`
+  returns a SEARCHED score, so a static eval absorbs the side-to-move advantage
+  into tempo. Machinery is built and fast (`research/taper_feat.py`,
+  `taper_fit2.py`, `relabel.py`; 382K positions extract in 79s) if a genuinely
+  different objective ever appears. Two guards worth reusing: size a linearity
+  check by the RAREST term's activity rate (40 positions passed at 0.000000 and
+  was a FALSE pass; 2500 showed 53cp, from three global endgame scalings firing
+  on <1% of positions), and clear the eval caches between weight perturbations
+  or the pawn terms go stale in a way that stays self-consistent.
+- **Superseded (kept for the reasoning): the remaining capacity is TAPERING.**
+  It was tried properly and closed — see above. `weights.py` says
   it outright: every weight is conceptually a middlegame value, strong classical
   engines carry a (MG, EG) pair for every term, and this engine "has roughly half
   the descriptive capacity it could have". `W_EG` holds 31 tapered terms;
@@ -424,7 +443,29 @@ Rules of thumb:
   before it starts.** Pick the anchor nearest this engine's strength: score
   closest to 50% carries the most information per game (se 10.6 at
   stockfish:3000 versus 14.1 and 17.1 at 2700/2600 for the same slot count).
-- **THINNING IS CLOSED — six mechanisms, all null or negative on two anchors:**
+- **THINNING IS CLOSED — SEVEN mechanisms, and the seventh removes the last
+  objection.** `red` had NO DEPTH TERM at all (keyed on move index alone, 3 max),
+  so past remaining-depth 6 this search barely prunes — the standing explanation
+  for the rising EBF, sitting in the source. Adding a depth term ONLY above
+  remaining-depth 7, leaving every shallower node BIT-IDENTICAL, cut the depth-14
+  tree **30.6%** and bent the EBF down (1.911/1.824 → 1.776/1.654). It did
+  exactly what it was designed to do to the tree and gated **−16.9 and −31.8**
+  on two anchors. Every earlier thinning failure could be dismissed as having
+  disturbed the tuned shallow schedule; this one could not. **So the rising EBF
+  is a SYMPTOM, not a defect** — the tree is fat because the eval cannot tell
+  which branches don't matter, and matching SF11's tree shape without SF11's
+  eval buys a worse search. Related: extending `LMP_DEPTH` 5→9 makes the tree
+  BIGGER (1.076×) and its EBF RISE, because `(3 + depth*depth)` already widens
+  with depth — never extend a depth cap whose companion count already grows.
+- **Thread scaling is at this box's HARDWARE ceiling, not an SMP defect.** The
+  i9-10900K has **10 physical cores, 20 logical**. Properly measured (four
+  interleaved reversed passes, one binary, only `CC_THREADS` varying): depth
+  13.396 / 14.584 / 15.271 / 15.469 at 1 / 4 / 8 / 16 threads — +0.59, +0.69,
+  then **+0.20** ply per doubling. The collapse at 8→16 is hyperthreads, worth a
+  fraction of a core to a memory-bound search. This EXPLAINS the old "no
+  difference between 10 and 16 threads" note: 10 *is* the physical core count.
+  There is no thread-scaling Elo to recover here.
+- **Superseded (six mechanisms, all null or negative on two anchors):**
   singular extensions, depth-scaled LMR, the schedule bundle, RFP margin (halved
   the tree, −33 Elo), history pruning (thinned nothing — the cost is not in the
   tail, LMR already reduces late quiets to nothing), and reduction-from-move-2 +
