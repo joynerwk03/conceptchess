@@ -2,6 +2,85 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**TAPERING IS CLOSED — and the reason indicts the Texel loss itself.**
+
+`CLAUDE.md` names tapering as "the remaining interpretable eval capacity". It got
+the fair test it had never had, and it fails.
+
+Tapering is LINEAR in the weights: `wt()` is `p*mg + (1-p)*eg`, so with
+mg_k = W[k]*m_k and eg_k = W[k]*e_k,
+
+    eval = base - SUM_k c_k + SUM_k ( c_k*p * m_k + c_k*(1-p) * e_k )
+
+and m_k = e_k = 1 reproduces today's eval exactly. So the cached-feature method
+applies: extract (base, phase, c_k) once per position and every candidate is a
+dot product. **382,339 positions extracted in 79 seconds** -- the previous
+tapering fit used 10K because it re-evaluated per step.
+
+Guards, two of which fired:
+
+  * **A 40-position linearity check PASSED at 0.000000 and was a FALSE PASS.**
+    At 2500 positions the joint error is 53cp. The three global endgame
+    SCALINGS (`ocb.draw_scale`, `scale.no_pawns`, `scale.wrong_bishop`) multiply
+    the whole concept sum, so the eval is not linear in them jointly with
+    anything else -- and they fire on under 1% of positions, which is exactly
+    why a small sample missed them. Dropped: 17 keys, 0.000000 cp over 4000
+    positions, zero nonlinear cases. **Size a linearity check by the RAREST
+    term's activity rate, not by convenience.**
+  * `texel.py` calls `clear_caches()` before re-evaluating ("pawn/king caches
+    bake weights in"). The extractor did not. A stale pawn cache would have made
+    c_k wrong for the `pawn.*` terms AND made the all-zero check agree with it --
+    consistent but wrong. Tested explicitly: 0 of 17 keys change. Valid as run.
+  * `CLAUDE.md` says the 28 untapered keys include "the entire `kattack.*`
+    group". Stale -- kattack was tapered by the merged stack earlier this
+    session. The real set is 21, of which one is zero-seeded (undriveable under
+    multiplicative parametrisation) and three are the scalings above.
+
+**The fit is clean and the holdout is genuine: +0.339% HELD OUT against +0.198%
+in sample.** The held-out gain EXCEEDING the in-sample gain is the signature of
+a model with no room to overfit (34 parameters, 306K training positions), and it
+is the first eval fit in this project's history to behave that way. The recovered
+values are chess-sensible and each keeps its name, so interpretability is
+untouched (`eval_check` 0.000000 on all three builds): `tempo` MG x1.206 / EG
+x0.797, `pawn.path_attacked` MG x0.859 / **EG x1.315** -- a passer's attacked
+path is an endgame problem.
+
+**And it does not transfer.** Independent referee screen, fixed depth (valid
+here: an evaluation change does not alter work per nominal depth):
+
+    config      d_mean     se      t
+    taper       +1.225  0.689   1.78     all 17 pairs
+    pawnonly    +1.100  0.675   1.63     pawn.* + imbalance.* only
+    notempo     +0.615  0.665   0.92     all but tempo
+
+All three WORSE, none significant at |t|=2, direction consistent -- and
+consistent with the earlier 10K tapering attempt (+0.445). `tempo` carries about
+half the damage, which fits: it is a whole-position constant on the side to
+move, so a sampling bias lands on it as a fitted artifact while perturbing every
+centipawn margin in the search.
+
+**The general finding is worth more than the negative result. The Texel dataset
+is SELF-PLAY generated** (`texel.py gen --games 400`), so its labels are this
+engine's own game results. `CLAUDE.md` already establishes that self-play is not
+a valid gate, for eval OR search changes, because it "pits a change against an
+opponent sharing its exact blind spots" -- a time fix read +17 on 1600 self-play
+games and -14 externally. **Fitting the evaluation to self-play results inherits
+exactly that defect**, and that, rather than any specific fit, is the reason
+every Texel gain in this project's history has failed to transfer: mobility
+(+1.566% in-sample, screened worse), tapering at 10K (+0.134%, screened worse),
+tapering at 382K with a holdout (+0.339%, screened worse). A holdout fixes
+overfitting; it cannot fix a biased TARGET. The referee screen is external and
+the Texel loss is not, so when they disagree the external one wins -- the
+two-anchor principle applied to eval fitting.
+
+**Consequence: do not run another Texel fit against self-play labels.** The
+direction that is actually open is relabelling -- score the existing 382K
+positions with an EXTERNAL reference (SF11 evaluations, or results from a strong
+external game corpus) and refit. That is the one change that would make the
+cheap, now-fast fitting machinery point at something real.
+
+---
+
 **The TT hits constantly and almost never cuts. That is the mechanism behind
 the rising EBF.**
 
