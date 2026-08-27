@@ -2,6 +2,54 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**`red` HAS NO DEPTH TERM. Adding one above remaining-depth 7 only cuts the
+depth-14 tree 30.6% and bends the EBF down. NOT YET GATED.**
+
+Found by reading the LMR block rather than by another experiment:
+
+    if(depth>=3 && quiet && !checked){ if(i>=12)red=3; else if(i>=3)red=2;
+        if(red>1 && !improving) red++;
+
+`red` is keyed on MOVE INDEX alone. 3 max, 4 when not improving, **no depth term
+whatsoever** -- at remaining depth 20 a late quiet is reduced by 3, exactly as at
+remaining depth 4. Together with LMP stopping at depth 5 and RFP at depth 6, that
+is literally the standing explanation for the rising EBF, sitting in the source.
+
+**This is NOT the experiment that measured -57.2/-33.7.** That one replaced the
+whole schedule (`red = 0.7 + ln(d)*ln(m)/0.80`), changing reductions at EVERY
+depth including the shallow nodes where five gates say this engine is already at
+a local optimum. Here everything below remaining depth 7 is BIT-IDENTICAL and
+only the region the EBF curve says is unpruned changes:
+
+    if(depth>=7 && red>1) red += (depth-7)/5 + 1;
+
+Cold node counts, fresh process per engine per depth, 20 positions:
+
+    variant     d10      d12      d14    EBF 10-12  12-14   d14 vs base
+    base      3.01M   10.99M   36.55M      1.911    1.824      --
+    lmr       2.94M    9.28M   25.37M      1.776    1.654    0.694x
+    lmp       2.76M   10.30M   39.33M      1.932    1.954    1.076x
+    both      2.57M    8.01M   23.19M      1.764    1.702    0.634x
+
+`lmr` cuts the depth-14 tree **30.6%** and bends the EBF DOWN at the depth where
+it used to flatten. `lmp` (LMP_DEPTH 5 -> 9) makes the tree BIGGER and its EBF
+RISE -- the quadratic count `(3 + depth*depth)` widens faster than the rule
+prunes, the same trap as the futility widening already recorded here. Do not
+extend a depth cap whose companion count already grows with depth.
+
+`eval_check` 0.000000 on all three builds.
+
+**Explicitly NOT an Elo claim.** The standing rule is that +40.5 Elo/doubling
+prices SPEED and never a tree reduction -- nodes saved by not looking are not
+nodes saved by looking faster -- and six thinning mechanisms have measured null
+or negative. 30.6% fewer nodes must not be read as +19 Elo; cut-node reduction
+cut 30.4% and gated at +1.8. **The next step is the two-anchor gate, and nothing
+merges without it.** What makes this one worth the games rather than the seventh
+repetition of a closed result is that it is the only thinning change tried here
+that leaves the tuned shallow schedule untouched.
+
+---
+
 **Aspiration re-searches are NOT the rising EBF either: flat 0-5%, no trend.**
 
 Aspiration was the one remaining mechanism that inflates DEEP iterations
