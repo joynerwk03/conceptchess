@@ -82,7 +82,11 @@ def play(wt_plus, wt_minus, offset):
          "--baseline-cwd", str(wt_minus), "--movetime", "0.3", "--threads", "1",
          "--concurrency", "6", "--opening-offset", str(offset)],
         cwd=wt_plus, capture_output=True, text=True)
-    m = re.search(r"PAIRED external delta.*?:\s*(-?[\d.]+) Elo", out.stdout)
+    # [-+]? , not -? : abgate prints "+70.5 Elo" for a positive delta, and a
+    # regex that only accepts a minus sign parses every losing iteration and
+    # crashes on the first winning one. That killed three runs and got blamed on
+    # the tool timeout and on detached processes before the output was read.
+    m = re.search(r"PAIRED external delta.*?:\s*([-+]?[\d.]+) Elo", out.stdout)
     if not m:
         sys.stderr.write(out.stdout[-1500:] + out.stderr[-500:])
         raise RuntimeError("could not parse abgate output")
