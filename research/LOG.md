@@ -2,6 +2,44 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Pooled over 1115 games: 2999 [2984, 3013]. The 600-game 3003 was the lucky
+half, and the early-stop rule saved ~24 hours.**
+
+A second run of 1200 games was launched on fresh openings (offset 300) to pool
+with the completed 600 and halve the interval. It was stopped at 515 games by
+the pre-agreed rule -- continue only if the new run holds >=52% -- because it
+did not.
+
+    completed (openings 0+)    600 games   50.42%   +2.9 Elo   3003 [2983, 3022]
+    second run (openings 300+) 515 games   49.13%   -6.1 Elo   2994 [2972, 3016]
+    ------------------------------------------------------------------------
+    POOLED                    1115 games   49.82%   -1.2 Elo   2999 [2984, 3013]
+
+**The pooled estimate is the honest number and it is slightly BELOW 3000.** The
+first run's 50.42% was on the favourable side of a distribution centred near
+49.8%; two independent 500-600 game samples differing by 1.3 points is entirely
+ordinary at this sample size, which is exactly why one run was never enough.
+
+*The early stop was the point of building `research/pooled.py`.* It reports the
+only question worth asking mid-measurement: how many total games the CURRENT
+pooled score would need in order to clear 3000. At +3.8 that read ~16,600 games
+(~580 hours). Once the pooled estimate went negative it read "no game count
+clears 3000", and the remaining 685 games -- about 24 hours -- were abandoned
+rather than spent confirming a foregone answer. Two earlier 18-hour runs in this
+session were spent doing exactly that.
+
+*Where this leaves the goal.* The condition is an interval entirely above 3000.
+At 2999 [2984, 3013] the gap is now **+15 to +20 Elo**, not the +10 the
+single-run figure implied. More games cannot help: the score has to rise.
+
+*What the number actually says about the engine.* 49.8% against a 3000-rated
+reference at 16 threads and 1.0s means this engine plays that reference to a
+DRAW over 1115 games -- 286 wins, 539 draws, 290 losses. Starting the session at
+a measured 2983 with a stale figure and a crash that destroyed rating runs, that
+is a real position to be in, and it is now measured on an instrument that has
+been repaired rather than trusted.
+
+
 **see() had real undefined behaviour, the CORRECT fix costs 21 Elo, and the
 right answer was to remove the UB without changing the behaviour.**
 
