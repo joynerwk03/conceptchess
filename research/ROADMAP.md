@@ -320,3 +320,49 @@ sizing, SMP diversification, PGO (+2.3%), redundant static-eval probes (provably
 zero). And do NOT "fix" the `see()` king selection -- correcting it to match the
 Python reference gated at **-22.5 Elo**, because the search is tuned around it.
 
+### C is blocked by TUNER THROUGHPUT, not by data availability
+
+The data exists -- `texel_all.jsonl` holds ~382K positions and more can be
+generated. What does not exist is a tuner that can consume it.
+
+`research/texel.py` evaluates every position through the PYTHON evaluation on
+every candidate step. Coordinate descent over N parameters costs roughly
+`2 * N * passes` full sweeps of the dataset, so:
+
+    66 params, 10K positions      ~10 minutes      (and overfits badly)
+    66 params, 80K positions      hours
+    66 params, 382K positions     days
+    500 params, millions          not reachable at all
+
+That is the actual ceiling on direction A. Mobility alone adds 66 parameters;
+doing the same for passed pawns, threats and the piece-square tables is several
+hundred, against the millions of positions needed to fit them without
+overfitting. The first mobility fit demonstrated the failure mode directly:
+**+1.566% loss on 10K positions and a WORSE independent screen** (d_mean +1.242,
+t 1.79).
+
+Three ways out, in increasing order of work:
+
+  1. **Analytic gradients.** The Texel loss is a sigmoid over a LINEAR
+     combination of concept scores, so the gradient with respect to each weight
+     is available in closed form from one sweep. That replaces `2*N*passes`
+     sweeps with `passes` sweeps -- a factor of ~130 at N=66, and it improves
+     with more parameters rather than degrading.
+
+  2. **Cache the per-position concept vector.** Every weight is a coefficient on
+     a quantity that does not depend on the weights (a mobility count, a pawn
+     structure feature). Extract that vector ONCE per position and the fit
+     becomes linear algebra over a fixed matrix instead of repeated evaluation.
+     This is how classical tuners are actually built, and it makes millions of
+     positions routine.
+
+  3. Move the evaluation into C for tuning, which conflicts with the weights
+     being compile-time `#define`s and would need them made runtime parameters.
+
+(2) subsumes (1) and is the right target. It also does not disturb the engine at
+all -- it is a research-harness change, and `eval_check` keeps the compiled eval
+honest independently.
+
+**Until the tuner can consume the data, direction A cannot be tested, only
+badly fitted.** That is the single most valuable piece of infrastructure work
+outstanding, and it gates the largest remaining source of Elo.
