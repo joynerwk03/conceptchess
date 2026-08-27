@@ -2,6 +2,41 @@
 
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
+**Aspiration re-searches are NOT the rising EBF either: flat 0-5%, no trend.**
+
+Aspiration was the one remaining mechanism that inflates DEEP iterations
+specifically -- each fail-high/low re-runs the ENTIRE root search at that depth,
+so a rate growing with depth would multiply exactly what the EBF measures, and
+would look like a fat tree while actually being repeated work. It was also
+attractive because a re-search is repeated work on the SAME tree, so removing it
+discards no information: the class of change that has worked here, and the only
+kind the +40.5 Elo/doubling speed curve legitimately prices.
+
+Instrumented by nominal depth (single thread, fixed depth 14, 40 positions),
+runs/iters where 1.000 means the window held first try:
+
+    depth    5     6     7     8     9    10    11    12    13    14
+    re-src  5.0%  5.0%  2.5%  5.0%  5.0%  0.0%  5.0%  2.5%  0.0%  2.5%
+
+Flat, tiny, no trend. Note this also supersedes the comment on `delta`, which
+records 17.1% of root loops re-searching at depth 9 -- that was measured at
+delta=20, and the merged delta=35 cut it to 5%. Aspiration is already tight.
+
+**The rising EBF is now unexplained after ruling out: TT size, TT replacement,
+TT hit rate, aspiration re-searches, check extensions, futility width, move
+ordering (88.82% first-move cutoffs) and the null-move schedule.** What remains
+consistent with every measurement is the reading already in CLAUDE.md -- the
+pruning simply does not SCALE with depth (LMR capped at 3 plies, RFP <=6,
+LMP <=5, futility <=2), so past remaining-depth 6 this is close to plain
+alpha-beta. That is a description of the same fact rather than a separate cause,
+and the reduction axis is closed on both sides by gates (reducing less: -2.83;
+reducing much harder: -57.2/-33.7). The untested variant is raising the CAPS
+alone -- letting LMR/LMP/RFP keep growing past remaining-depth 6 without
+changing anything shallower, which is not the same experiment as scaling all
+reductions up.
+
+---
+
 **EVAL FITTING IS CLOSED. Relabelling with SF11 lifts the fit 26x and buys no
 move quality.**
 
