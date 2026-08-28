@@ -59,15 +59,13 @@ for i, f in enumerate(fens):
         r = eng.best_move(b, movetime=999.0, max_depth=depth)
         out.append([str(r.move), int(r.nodes), depth])
     else:
-        # deepest search that fits the baseline's node budget for THIS position
-        cap = budget[i]
-        best = None
-        for d in range(1, %d):
-            r = eng.best_move(b, movetime=999.0, max_depth=d)
-            if best is not None and int(r.nodes) > cap:
-                break
-            best = [str(r.move), int(r.nodes), d]
-        out.append(best)
+        # exact node budget: search as deep as it goes and stop at the baseline's
+        # node count for THIS position. Replaces a depth ladder that could only
+        # land on integral plies and so used ~half the budget (EBF ~1.8).
+        core.set_node_limit(budget[i])
+        r = eng.best_move(b, movetime=999.0, max_depth=%d)
+        core.set_node_limit(0)
+        out.append([str(r.move), int(r.nodes), int(r.depth)])
 print(json.dumps(out))
 ''' % MAXD
 
