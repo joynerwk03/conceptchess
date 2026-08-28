@@ -405,8 +405,15 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
      * on 0.3s gates, where the rule essentially never bites -- but in an endgame
      * it decides the result. Checkmate takes precedence: being mated on move 100
      * is a loss, not a draw, so the in-check case is resolved by the move loop. */
-    if(b->hm >= 100 && !in_check(b,b->side)){ ret=0; done=1; }
-    if(!done && (is_rep(h,b->hm)||insufficient(b))){ ret=0; done=1; }
+    /* Contempt: a draw is worth -15cp to the root side, so the search prefers a
+     * playable position to a repetition when it does not believe it is worse.
+     * ply parity gives the root side directly -- even ply is our move, and
+     * negamax scores from the side to move, so the sign flips with ply. This is
+     * a value for the draw NODE, not an eval term: no concept and no weight
+     * changes, so the explanation layer and eval_check are untouched. */
+    int drawv = (ply & 1) ? 15 : -15;
+    if(b->hm >= 100 && !in_check(b,b->side)){ ret=drawv; done=1; }
+    if(!done && (is_rep(h,b->hm)||insufficient(b))){ ret=drawv; done=1; }
     int checked = done?0:in_check(b,b->side);
     if(!done && checked) depth++;
     if(!done && depth<=0){ ret=qsearch(b,alpha,beta,ply,0); done=1; }
