@@ -35,7 +35,11 @@ import sys
 
 CC = "/home/joynerwk03/mission-control/projects/conceptchess"
 PY = CC + "/.venv/bin/python"
-ELO_PER_SCORE = 400.0 / math.log(10.0)      # 173.7 at 50%
+# d(Elo)/d(score) at p=0.5 is 400/(ln10 * p(1-p)) = 695, NOT 400/ln10 = 173.7.
+# The first version used 173.7, a 4x error that corrupts the LLR. Verified
+# against real abgate output: a run going 52.5% -> 55.8% (delta 0.033) reported
+# +23.3 Elo, i.e. 706 Elo per unit score.
+ELO_PER_SCORE = 400.0 / (math.log(10.0) * 0.25)      # 694.9 at 50%
 BATCH = 100                                  # games per arm per batch
 
 

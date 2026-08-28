@@ -390,10 +390,20 @@ Rules of thumb:
   uses hundreds of machines. `research/sprt.py` implements sequential gating
   (H0/H1 with stated error rates, fresh opening offset per batch); it makes
   REJECTION cheap but cannot manufacture precision the game count lacks.
-  **Corollary for the 3000 goal: the [2984, 3013] interval is mostly SYSTEMATIC.**
-  With 286W/539D/290L the binomial error is only ±3.7 Elo; the rest is
-  uncertainty in what `UCI_Elo 3000` means. More games will not narrow it —
-  clearing 3000 requires actually scoring ~52%, not measuring 49.82% better.
+  **Get the Elo/score derivative right: it is `400/(ln10 · p(1−p))` = 695 at
+  p=0.5, NOT `400/ln10` = 173.7.** Using 173.7 is a 4x error; it corrupted
+  `sprt.py`'s LLR and produced a false claim that the rating interval was
+  systematic. Verified against real output: a run going 52.5% → 55.8% (Δ 0.033)
+  reported +23.3 Elo, i.e. ~706 per unit score.
+  **Corollary for the 3000 goal — the [2984, 3013] interval is PURELY BINOMIAL,
+  so more games DO narrow it.** With 286W/539D/290L, se_p = 0.01076 and
+  se_Elo = 7.48, giving ±14.7 against the quoted ±14.5. Games needed at the
+  rating config: **±7 Elo → 4,889 games; ±6 → 6,654; ±5 → 9,582.** So if
+  contempt's ~+8 holds at 16T/1.0s (untested there — it was gated at 0.3s/1T),
+  the engine sits near 3007 and **~6,600 games would put 3000 outside the
+  interval**. That is roughly 5–8 days of continuous measurement, and it is
+  marginal — it depends on the whole +8 surviving at the rating configuration.
+  It is nonetheless a REAL path and must not be written off.
 - **`research/screen_isonode.py` is the instrument this project lacked, and it
   has an Elo scale.** Fixed-DEPTH screens are structurally blind to the depth
   benefit of any tree-size change (which is why `lmr2`+`qs` screened well and
