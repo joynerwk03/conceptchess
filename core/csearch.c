@@ -20,7 +20,12 @@
  * Thread count is set via c_set_threads() (default 1 = exact old behavior). */
 #define MAX_THREADS 16
 static int g_threads = 1;
+/* Optional hard node budget. 0 = unlimited, which is every existing caller, so
+ * this is behaviour-neutral by default. Used by the iso-node referee screen to
+ * compare configurations at EQUAL work instead of equal nominal depth. */
+static long g_node_limit = 0;
 static volatile int g_stop = 0;
+void c_set_node_limit(long n){ g_node_limit = n; }
 void c_set_threads(int n){ g_threads = n<1?1 : (n>MAX_THREADS?MAX_THREADS:n); }
 
 /* MultiPV / true 2nd-best. OFF by default: a normal alpha-beta search scores
@@ -301,6 +306,7 @@ static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
      * material the way a capture chain is. */
     if(ply >= MAXPLY-1) return eval_stm(b);
     if(!(SS.nodes&2047) && (g_stop || now_sec()>SS.stop_time)){ SS.stopped=1; return 0; }
+    if(g_node_limit && SS.nodes >= g_node_limit){ SS.stopped=1; return 0; }
     int checked=in_check(b,b->side);
     if(checked){
         Move mv[256]; int n=gen_legal(b,mv);
@@ -377,6 +383,7 @@ static int qsearch(Board *b, int alpha, int beta, int ply, int qd){
 static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev){
     SS.nodes++;
     if(!(SS.nodes&2047) && (g_stop || now_sec()>SS.stop_time)){ SS.stopped=1; return 0; }
+    if(g_node_limit && SS.nodes >= g_node_limit){ SS.stopped=1; return 0; }
     /* Hard ply cap. `if(ply<MAXPLY)` below guards array ACCESSES but nothing
      * stopped the recursion: check extensions do depth++, so a forcing line
      * never shortens, and each frame is ~2KB (Move pl[256] plus a Board copy).

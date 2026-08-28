@@ -66,6 +66,13 @@ def _load():
 _load()
 
 
+def set_node_limit(n):
+    """Cap the search at n nodes (0 = unlimited). Reads _lib like set_threads."""
+    if _lib is not None and hasattr(_lib, "c_set_node_limit"):
+        _lib.c_set_node_limit.argtypes = [ctypes.c_long]
+        _lib.c_set_node_limit(int(n))
+
+
 def set_threads(n):
     """Set the Lazy-SMP search thread count (1 = deterministic single-thread).
 
