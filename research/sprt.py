@@ -1,105 +1,100 @@
-"""Sequential probability ratio test for match gates.
+"""Sequential gating: spend games adaptively instead of a fixed 600-slot block.
 
-Lets a gate match stop as soon as the result is decisive instead of always
-playing the full N games — the biggest recurring time cost in the loop.
+The instrument problem, stated plainly. A 600-slot paired gate resolves about
++/-26 Elo. The effects still available in this engine are 5 to 15 Elo. So a
+single gate structurally cannot see them, which is why nearly every result this
+session reads "not distinguishable from zero" and why one change swung 28 Elo on
+the SAME anchor between two runs. Pooling fixes it but costs ~4800 slots per
+answer.
 
-Trinomial model: each game is win/draw/loss. Under a hypothesis with expected
-score p, we fix the draw probability from the running sample and split the
-remaining mass into win/loss to hit mean p:
-    pw = p - pd/2,   pl = 1 - pd - pw
-The per-game log-likelihood ratio between H1 (elo=elo1) and H0 (elo=elo0)
-accumulates; we stop when it crosses the Wald bounds.
+SPRT spends games where they buy information. A clearly bad change crosses the
+lower bound in a few hundred slots; a genuinely close one gets thousands. Same
+compute, far more decisions -- and decisions with a stated error rate rather
+than an eyeballed interval.
 
-    accept H1 (new engine better)      when LLR >= log((1-beta)/alpha)
-    accept H0 (not better / worse)     when LLR <= log(beta/(1-alpha))
+Test: H0 elo <= elo0 against H1 elo >= elo1, with alpha = beta = 0.05.
+Log-likelihood ratio under a normal approximation on the PAIRED per-slot
+difference, which is what abgate already reports:
+
+    LLR = n / (2 s^2) * ( 2 xbar (m1 - m0) - (m1^2 - m0^2) )
+
+Bounds are log(b/(1-a)) and log((1-b)/a). Elo is converted to score units with
+the derivative of the logistic at 50%, 400/ln(10) ~ 173.7 Elo per unit score,
+which is the right linearisation for the small effects this is built to detect.
+
+Batches use a FRESH OPENING OFFSET each time, so accumulated slots are distinct
+positions rather than repeats -- otherwise the variance estimate is a lie and
+the test stops early on nothing.
+
+Usage: sprt.py <candidate_cwd> <baseline_cwd> <anchor> [elo0] [elo1] [maxslots]
 """
-
 import math
+import re
+import subprocess
+import sys
+
+CC = "/home/joynerwk03/mission-control/projects/conceptchess"
+PY = CC + "/.venv/bin/python"
+ELO_PER_SCORE = 400.0 / math.log(10.0)      # 173.7 at 50%
+BATCH = 100                                  # games per arm per batch
 
 
-def _p(elo):
-    return 1.0 / (1.0 + 10 ** (-elo / 400.0))
+def batch(cand, base, anchor, offset, games):
+    out = subprocess.run(
+        [PY, "-m", "research.abgate", "--games", str(games), "--opponent", anchor,
+         "--baseline-cwd", base, "--movetime", "0.3", "--threads", "1",
+         "--concurrency", "6", "--opening-offset", str(offset)],
+        cwd=cand, capture_output=True, text=True)
+    txt = out.stdout
+    m = re.search(r"PAIRED external delta over (\d+) shared slots:\s*([-+]?[\d.]+) Elo"
+                  r"\s*95% \[([-+]?[\d.]+),\s*([-+]?[\d.]+)\]", txt)
+    d = re.search(r"mean per-slot difference ([-+]?[\d.]+)", txt)
+    if not m or not d:
+        sys.stderr.write(txt[-1500:] + out.stderr[-500:])
+        raise RuntimeError("could not parse abgate output")
+    n = int(m.group(1))
+    xbar = float(d.group(1))
+    # recover per-slot sd from the reported 95% Elo interval
+    se_elo = (float(m.group(4)) - float(m.group(3))) / (2 * 1.96)
+    sd = (se_elo / ELO_PER_SCORE) * math.sqrt(n)
+    return n, xbar, sd
 
 
-class SPRT:
-    def __init__(self, elo0=0.0, elo1=35.0, alpha=0.05, beta=0.05, min_games=6):
-        self.p0 = _p(elo0)
-        self.p1 = _p(elo1)
-        self.upper = math.log((1 - beta) / alpha)
-        self.lower = math.log(beta / (1 - alpha))
-        self.min_games = min_games
-        self.w = self.d = self.l = 0
+def main():
+    cand, base, anchor = sys.argv[1], sys.argv[2], sys.argv[3]
+    elo0 = float(sys.argv[4]) if len(sys.argv) > 4 else 0.0
+    elo1 = float(sys.argv[5]) if len(sys.argv) > 5 else 5.0
+    maxslots = int(sys.argv[6]) if len(sys.argv) > 6 else 6000
 
-    def record(self, score):
-        """score in {1.0 win, 0.5 draw, 0.0 loss} from our perspective."""
-        if score == 1.0:
-            self.w += 1
-        elif score == 0.0:
-            self.l += 1
-        else:
-            self.d += 1
+    a = b = 0.05
+    lo, hi = math.log(b / (1 - a)), math.log((1 - b) / a)
+    m0, m1 = elo0 / ELO_PER_SCORE, elo1 / ELO_PER_SCORE
+    print(f"SPRT H0 elo<={elo0} vs H1 elo>={elo1}, alpha=beta={a}")
+    print(f"bounds [{lo:.3f}, {hi:.3f}], max {maxslots} slots, batch {2*BATCH}\n")
 
-    def _llr(self):
-        n = self.w + self.d + self.l
-        if n == 0:
-            return 0.0
-        # Clamp every probability away from 0 (and pd away from 1) so no log()
-        # call can go negative or hit zero — an all-draw start (pd -> 1) used
-        # to push 1-pd-eps below eps, breaking the pw/pl clamp and crashing.
-        eps = 1e-4
-        pd = min(max(self.d / n, eps), 1 - 2 * eps)
-        llr = 0.0
-        for p, sign in ((self.p1, 1), (self.p0, -1)):
-            pw = min(max(p - pd / 2, eps), 1 - pd - eps)
-            pl = max(1 - pd - pw, eps)
-            llr += sign * (self.w * math.log(pw) + self.l * math.log(pl)
-                           + self.d * math.log(pd))
-        return llr
-
-    def status(self):
-        """Return 'H1', 'H0', or None (continue)."""
-        n = self.w + self.d + self.l
-        if n < self.min_games:
-            return None
-        llr = self._llr()
-        if llr >= self.upper:
-            return "H1"
-        if llr <= self.lower:
-            return "H0"
-        return None
-
-
-def _self_test():
-    # A clearly-winning engine (80%) should accept H1; a clearly-losing one H0.
-    import random
-    rng = random.Random(0)
-    for true_p, expect in ((0.80, "H1"), (0.20, "H0")):
-        s = SPRT(elo0=0, elo1=35)
-        outcome = None
-        for _ in range(400):
-            r = rng.random()
-            s.record(1.0 if r < true_p else (0.5 if r < true_p + 0.15 else 0.0))
-            outcome = s.status()
-            if outcome:
-                break
-        assert outcome == expect, (true_p, outcome)
-
-    # Regression: an all-draw start (pd -> 1) used to crash _llr() with a
-    # math domain error (1-pd-eps went negative). Must not raise, at any n.
-    s = SPRT(elo0=0, elo1=35)
-    for _ in range(50):
-        s.record(0.5)
-        s.status()  # must not raise
-    # An all-draws-forever run is genuinely uninformative in this trinomial
-    # model (both hypotheses explain a 100%-draw sample equally well, since
-    # only pd is observed) -- it must never crash and must never claim H1.
-    s2 = SPRT(elo0=0, elo1=35, min_games=6)
-    for _ in range(2000):
-        s2.record(0.5)
-        assert s2.status() != "H1"
-
-    print("sprt self-test ok")
+    n_tot, wsum, var_acc, off = 0, 0.0, 0.0, 0
+    while n_tot < maxslots:
+        n, xbar, sd = batch(cand, base, anchor, off, BATCH)
+        off = (off + 991) % 1000                     # fresh openings each batch
+        # pooled mean and pooled per-slot variance
+        wsum += xbar * n
+        var_acc += (sd ** 2) * n
+        n_tot += n
+        mean = wsum / n_tot
+        s2 = var_acc / n_tot
+        llr = (n_tot / (2 * s2)) * (2 * mean * (m1 - m0) - (m1 ** 2 - m0 ** 2))
+        elo = mean * ELO_PER_SCORE
+        se = math.sqrt(s2 / n_tot) * ELO_PER_SCORE
+        print(f"  {n_tot:5d} slots  elo {elo:+7.1f} +/-{1.96*se:5.1f}  LLR {llr:+7.3f}",
+              flush=True)
+        if llr >= hi:
+            print(f"\nACCEPT H1: elo >= {elo1} (LLR {llr:.3f} >= {hi:.3f})")
+            return
+        if llr <= lo:
+            print(f"\nACCEPT H0: elo <= {elo0} (LLR {llr:.3f} <= {lo:.3f})")
+            return
+    print(f"\nINCONCLUSIVE at {n_tot} slots: elo {elo:+.1f} +/-{1.96*se:.1f}, LLR {llr:+.3f}")
 
 
 if __name__ == "__main__":
-    _self_test()
+    main()
