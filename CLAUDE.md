@@ -381,6 +381,46 @@ Rules of thumb:
   (1.11× at 128) with no fidelity gain. Under |t|=2 so not gated, but the
   direction — spend the search's own knowledge of which moves matter, rather
   than pruning harder — is the one thing that did not measure negative.
+- **THE MEASUREMENT WALL: se ~35 Elo at 100 slots, so proving a +5 Elo change
+  needs ~19,400 slots — 1–3 days of compute per candidate.** Precision scales as
+  1/sqrt(n), and a 600-slot gate resolves only ±26 Elo while every effect still
+  available here is worth 5–15. That is why almost everything reads "not
+  distinguishable from zero", and why contempt swung 28 Elo on the SAME anchor
+  between two runs. It is a resource fact, not a methodology failure — Fishtest
+  uses hundreds of machines. `research/sprt.py` implements sequential gating
+  (H0/H1 with stated error rates, fresh opening offset per batch); it makes
+  REJECTION cheap but cannot manufacture precision the game count lacks.
+  **Corollary for the 3000 goal: the [2984, 3013] interval is mostly SYSTEMATIC.**
+  With 286W/539D/290L the binomial error is only ±3.7 Elo; the rest is
+  uncertainty in what `UCI_Elo 3000` means. More games will not narrow it —
+  clearing 3000 requires actually scoring ~52%, not measuring 49.82% better.
+- **`research/screen_isonode.py` is the instrument this project lacked, and it
+  has an Elo scale.** Fixed-DEPTH screens are structurally blind to the depth
+  benefit of any tree-size change (which is why `lmr2`+`qs` screened well and
+  measured −25.0/−3.0); fixed-TIME would be non-deterministic and drown in
+  machine noise. Fixed-NODES is both valid and deterministic — a better-pruning
+  change reaches greater depth inside the same budget. Uses the `c_set_node_limit`
+  hook. Two paired (screen, gate) observations give **`Elo ≈ −7.3 × (d_mean + 1.0)`**:
+  break-even is d_mean ≈ **−1.0**, not zero, and a +10 Elo change must read
+  **−2.4**. Capture LMR screened −0.998 (i.e. break-even) and duly gated at zero
+  over 1600 games. **Require d_mean < −2 before spending games.** Two rules:
+  always include a known-Elo calibration anchor (`rfp25`, −33) and discard the
+  whole run if it fails — that caught a false positive at depth 12 where 181
+  positions gave se ≈ 4.0; and check the candidate rule can FIRE at the screen
+  depth (`lmrdeep` and `cap6` both fire only above it).
+- **RAW SPEED IS CLOSED, which matters because it was the one axis needing no
+  games** (a tree-identical change is self-validating). `eval_core` returns
+  double and all tables are double, so shrinking them looked promising — but all
+  25 tables total **9,632 bytes**, already L1-resident, and 367 of 1204 entries
+  are non-integer so int16 would not be exact anyway. The memory-bound behaviour
+  is the TT and board state, not the eval. With arithmetic micro-optimisations
+  at ~0 and the four memory-layout wins merged, there is no visible NPS headroom.
+- **Contempt (draw score) is merged at 15cp, worth ~+8 Elo pooled over 4800
+  slots, interval touching zero.** Motivated by 48.3% draws in the rating run.
+  It is a value for the DRAW NODE, not an eval term, so interpretability is
+  untouched by construction. 30cp is too much (−30.4 on one anchor). Do not
+  quote it as +10; and note a falsified hypothesis — contempt's sign does NOT
+  track relative strength, the 4/4 pattern suggesting it was noise.
 - **EVAL FITTING IS CLOSED, and the reason is that eval LOSS DOES NOT PREDICT
   MOVE QUALITY here.** Not "this dataset was bad" — measured on two independent
   targets. Tapering fitted on all 382K positions with a real held-out split
