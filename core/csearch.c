@@ -9,6 +9,7 @@
 #include <time.h>
 #include <math.h>
 #include <pthread.h>
+#include "kpk_data.h"
 
 /* Lazy SMP: N threads search the same root sharing one transposition table.
  * Each thread keeps its own search state (killers/history/path/nodes) in
@@ -291,6 +292,29 @@ static int has_non_pawn(const Board *b){
 }
 
 /* side-to-move static eval via the eval hash (see EHEntry above) */
+/* KPvK bitbase probe. Returns 1 and sets *score if this node is exactly king +
+ * one pawn vs king; 0 otherwise. Exact, generated from syzygy. */
+static int kpk_probe(const Board *b, int ply, int *score){
+    U64 wp=b->bb[WHITE][PAWN], bp=b->bb[BLACK][PAWN];
+    if(b->bb[WHITE][KNIGHT]|b->bb[WHITE][BISHOP]|b->bb[WHITE][ROOK]|b->bb[WHITE][QUEEN]
+     | b->bb[BLACK][KNIGHT]|b->bb[BLACK][BISHOP]|b->bb[BLACK][ROOK]|b->bb[BLACK][QUEEN])
+        return 0;
+    int nw=__builtin_popcountll(wp), nb=__builtin_popcountll(bp);
+    if(nw+nb != 1) return 0;
+    int strong = nw ? WHITE : BLACK;                 /* side holding the pawn */
+    int wk=__builtin_ctzll(b->bb[strong][KING]);
+    int bk=__builtin_ctzll(b->bb[!strong][KING]);
+    int psq=__builtin_ctzll(nw ? wp : bp);
+    if(strong==BLACK){ wk^=56; bk^=56; psq^=56; }    /* mirror so the pawn goes up */
+    int stm = (b->side==strong) ? 0 : 1;             /* 0 = pawn side to move */
+    long idx = ((long)(stm*64 + wk)*64 + bk)*48 + (psq - 8);
+    int win = (KPK_BITS[idx>>3] >> (idx&7)) & 1;
+    if(!win){ *score = 0; return 1; }                /* exact draw, ignores contempt */
+    int v = S_MATE/2 - ply;                          /* below a real mate, above any eval */
+    *score = (b->side==strong) ? v : -v;
+    return 1;
+}
+
 static int eval_stm(Board *b){
     EHEntry *e=&EH[b->hash&EH_MASK];
     unsigned int k32 = (unsigned int)(b->hash >> 32);
@@ -421,6 +445,8 @@ static int negamax(Board *b, int depth, int alpha, int beta, int ply, Move prev)
     int drawv = (ply & 1) ? 15 : -15;
     if(b->hm >= 100 && !in_check(b,b->side)){ ret=drawv; done=1; }
     if(!done && (is_rep(h,b->hm)||insufficient(b))){ ret=drawv; done=1; }
+    /* exact KPvK knowledge beats any evaluation of the same position */
+    if(!done){ int kv; if(kpk_probe(b,ply,&kv)){ ret=kv; done=1; } }
     int checked = done?0:in_check(b,b->side);
     if(!done && checked) depth++;
     if(!done && depth<=0){ ret=qsearch(b,alpha,beta,ply,0); done=1; }
