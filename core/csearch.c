@@ -295,6 +295,13 @@ static int has_non_pawn(const Board *b){
 /* KPvK bitbase probe. Returns 1 and sets *score if this node is exactly king +
  * one pawn vs king; 0 otherwise. Exact, generated from syzygy. */
 static int kpk_probe(const Board *b, int ply, int *score){
+    /* Syzygy WDL is DTZ-AGNOSTIC: it reports a win assuming the 50-move rule
+     * never intervenes. At a high halfmove clock that is false -- many KPvK
+     * wins need more plies to convert than remain -- so claiming an exact win
+     * there is wrong in precisely the endgames this is meant to help. Above 40
+     * the probe declines and the ordinary search, which sees the clock,
+     * handles it. */
+    if(b->hm > 40) return 0;
     U64 wp=b->bb[WHITE][PAWN], bp=b->bb[BLACK][PAWN];
     if(b->bb[WHITE][KNIGHT]|b->bb[WHITE][BISHOP]|b->bb[WHITE][ROOK]|b->bb[WHITE][QUEEN]
      | b->bb[BLACK][KNIGHT]|b->bb[BLACK][BISHOP]|b->bb[BLACK][ROOK]|b->bb[BLACK][QUEEN])
