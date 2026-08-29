@@ -381,6 +381,28 @@ Rules of thumb:
   (1.11× at 128) with no fidelity gain. Under |t|=2 so not gated, but the
   direction — spend the search's own knowledge of which moves matter, rather
   than pruning harder — is the one thing that did not measure negative.
+- **TEST A PHASE-SPECIFIC CHANGE ON A PHASE-SPECIFIC BOOK: up to 25x fewer
+  games.** Resolution is `se ~ 350/sqrt(N)` Elo, so resolving effect E needs
+  `N > (686/E)^2`. A change worth +8 Elo overall needs ~7,350 slots. But if it
+  only acts in the ~20% of games reaching its phase, then WITHIN those games it
+  is worth ~+40 and needs **~294 slots**. Contempt, the KPvK bitbase and 50-move
+  discounting are all endgame mechanisms and all three measured at the edge of
+  noise with intervals containing zero — that is not three coincidences, it is
+  the signal diluted by the 80% of games where the mechanism never fires. Use
+  `research/books/endgame_uho.epd` (1000 positions, 6-12 pieces, |SF11| 50-300cp,
+  built by `research/make_endgame_book.py`). **CAVEAT: Elo measured there is
+  INFLATED by ~1/f, so it is a high-power SCREEN and DIRECTION test, never a
+  merge magnitude.** Quote real-game Elo only from ordinary gates or the rating
+  run. The same logic applies to any localised change — build the matching book.
+- **Use `research/gate.py`, not raw fixed-N `abgate`.** Staged batches with fresh
+  opening offsets, abandons an anchor once its pooled interval is entirely below
+  zero, and skips the second anchor after a rejection (the rule is "both anchors
+  positive", so one clear rejection settles it). ~18% saving on the observed mix.
+  **Not SPRT, and the reason matters:** of 17 candidates here ~11 were genuinely
+  NEUTRAL, and SPRT with tight bounds converges slowly on neutral changes because
+  a truly-zero effect sits on the H0 boundary — it would often cost MORE than
+  fixed-N. Check what your candidates actually look like before picking a
+  sequential test.
 - **THE MEASUREMENT WALL: se ~35 Elo at 100 slots, so proving a +5 Elo change
   needs ~19,400 slots — 1–3 days of compute per candidate.** Precision scales as
   1/sqrt(n), and a 600-slot gate resolves only ±26 Elo while every effect still
