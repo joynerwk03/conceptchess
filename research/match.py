@@ -398,7 +398,7 @@ def main():
                         "value with the A-vs-identical-A check (must score ~50%).")
     p.add_argument("--opening-offset", type=int, default=0,
                    help="start at this index in the opening list (for batched matches)")
-    p.add_argument("--book", default=None,
+    p.add_argument("--book", default=str(ROOT / "research" / "books" / "uho_1000.epd"),
                    help="EPD file of unbalanced opening positions (e.g. UHO): each "
                         "line's FEN is played twice, both colors, replacing the "
                         "built-in balanced opening list. Cuts the draw rate so "
