@@ -403,3 +403,50 @@ The fitting machinery built for these tests (`research/fastfit.py`,
 `research/fitcurve.py`) stands regardless: any term linear in its weights can now
 be extracted once and fitted in seconds against a holdout. That is what makes
 the next capacity question cheap to ask, whatever it turns out to be.
+
+## In-search tablebase probing — scoped, not started
+
+The last unexecuted idea with plausible size (+3-8 Elo), and the games-needed
+scaling makes it worth real hours: at 3007 a decisive rating run is ~4,890 games
+and 5 days; at 3013 it is ~1,418 games and 1.5 days, because games needed scale
+as 1/margin^2 against the 3000 threshold. Six Elo buys back three and a half days
+of measurement.
+
+It is also the only remaining mechanism that thins the tree by ADDING exact
+information rather than discarding it on a margin — the class that has not failed
+here, unlike the seven thinners that have.
+
+**Measured opportunity** (research/tbcount.py): from book openings at depth 12,
+**0.0000%** of 8.94M nodes have <=5 pieces — reaching five pieces needs ~20
+captures, which no depth-12 tree performs. From real 7-10 piece endgames at
+depth 16, **29.5%** of nodes are <=5 pieces (58.4% at <=7). So the value is
+confined to genuine endgames, and narrower still because the ROOT already probes:
+in-search probing only adds value for 6-10 piece roots whose search descends
+below five. Hence +3-8, not the +10-20 that published figures suggest for engines
+without root probing.
+
+**Port scope.** Tables are 3-4-5 man at ~/syzygy345 (confirmed present). Source
+to adapt: ~/sf11/src/syzygy/tbprobe.cpp, 60KB / ~1600 lines, with 51 references
+to Stockfish internals (Position, Bitboard, MoveList). A WDL-only port narrows
+that considerably — in-search probing needs probe_wdl only, not the DTZ path or
+root_probe, which is where most of the MoveList dependency lives. Required from
+our Board: piece bitboards bb[2][6], side to move, ep square, halfmove clock.
+
+**The risk that decides how to do this.** A subtly wrong prober returns
+CONFIDENTLY WRONG scores and corrupts the search worse than having no tablebases
+at all. Validate before wiring:
+
+  1. probe every position in a 5-man suite and compare against python-chess
+     chess.syzygy (pure Python, slow, but correct). Require exact WDL agreement
+     on tens of thousands of positions, not a spot check.
+  2. only then wire into negamax, gated on popcount(occ) <= 5 and no castling
+     rights.
+  3. confirm the tactics suite is unchanged and eval_check is still 0.000000 —
+     it must be, since this touches search rather than evaluation, so
+     interpretability is structurally unaffected.
+  4. two-anchor gate as usual; screen first on research/screen_isonode.py at a
+     depth where the rule can fire, which for tablebases means endgame positions,
+     NOT the book-opening calibration set where 0.0000% of nodes qualify.
+
+Do this in a fresh session with full context, not at the tail of one. Half a
+prober is worse than none.
