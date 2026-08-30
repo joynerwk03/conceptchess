@@ -97,12 +97,18 @@ def main():
         a, b = threads
         da = sum(x["gt20"] for x in results[a]) / len(results[a])
         db = sum(x["gt20"] for x in results[b]) / len(results[b])
+        # spread must cover BOTH arms: the multi-thread config is
+        # non-deterministic and far noisier, and computing this on arm  only
+        # produced a confident verdict that its own noise did not support
         spread = max(abs(x["gt20"] - y["gt20"])
-                     for x in results[a] for y in results[a])
+                     for t in (a, b) for x in results[t] for y in results[t])
         print(f"\nT={b} vs T={a}: blunder rate {db-da:+.2f} points "
               f"(within-config spread {spread:.2f})")
-        print("  more threads = better moves" if db < da
-              else "  *** more threads did NOT improve move quality ***")
+        if abs(db - da) <= spread:
+            print("  INCONCLUSIVE: difference is inside the within-config spread")
+        else:
+            print("  more threads = better moves" if db < da
+                  else "  *** more threads did NOT improve move quality ***")
 
 
 if __name__ == "__main__":
