@@ -302,6 +302,12 @@ static int kpk_probe(const Board *b, int ply, int *score){
      * the probe declines and the ordinary search, which sees the clock,
      * handles it. */
     if(b->hm > 40) return 0;
+    /* One popcount rejects ~every node. KPvK is three pieces, so anything above
+     * four cannot match, and this subsumes the eight bitboard tests below --
+     * which were being paid at every node in the search to find a position type
+     * that is a vanishing fraction of them. Tree-identical: same positions
+     * detected, cheaper rejection. */
+    if(__builtin_popcountll(b->all) > 4) return 0;
     U64 wp=b->bb[WHITE][PAWN], bp=b->bb[BLACK][PAWN];
     if(b->bb[WHITE][KNIGHT]|b->bb[WHITE][BISHOP]|b->bb[WHITE][ROOK]|b->bb[WHITE][QUEEN]
      | b->bb[BLACK][KNIGHT]|b->bb[BLACK][BISHOP]|b->bb[BLACK][ROOK]|b->bb[BLACK][QUEEN])
