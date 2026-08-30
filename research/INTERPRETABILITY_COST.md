@@ -113,3 +113,33 @@ unusually well instrumented.
 If the 3000 number is the point, the middle option above is the cheapest
 credible route, and it should be priced before the full relaxation is
 considered.
+
+## Update: the middle option was tested, and it loses
+
+The middle option above -- correction history applied only to pruning decisions,
+with the returned score, TT, PV and GUI all keeping the pure concept sum -- was
+implemented and screened.  stayed 0.000000, so the interpretability
+boundary held exactly as designed.
+
+It reads **d_mean +3.835, t 2.22** on the iso-node screen, against a calibration
+anchor at +3.122 that corresponds to a known -33 Elo. It is worse than that
+anchor, and it is the only |t| above 2 result in the session, so this is a
+decisive rejection rather than a null.
+
+That weakens the central argument of this document. Correction history was named
+here as the strongest case for relaxing the constraint, worth a reported +10 to
++20 Elo elsewhere. The nearest interpretability-preserving form of it is clearly
+negative in this engine. That is not proof the full version would also fail --
+the full version corrects the value returned and propagated, not merely the
+pruning threshold -- but it removes the easy assumption that the mechanism
+transfers here, and it was produced by testing my own recommendation rather than
+by argument.
+
+Possible reasons it fails, none tested: the correction is learned from search
+results at the same nodes, which is a feedback loop; pawn-structure bucketing may
+be too coarse, with 16384 buckets shared across very different positions; or the
+exponential moving average may be too aggressive.
+
+**Revised recommendation.** The case for relaxing interpretability is weaker than
+this document originally stated. Stopping at ~3000 and recording it as a measured
+architectural ceiling is now the better-supported option.
