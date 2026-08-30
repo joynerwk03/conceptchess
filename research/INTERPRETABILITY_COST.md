@@ -118,7 +118,7 @@ considered.
 
 The middle option above -- correction history applied only to pruning decisions,
 with the returned score, TT, PV and GUI all keeping the pure concept sum -- was
-implemented and screened.  stayed 0.000000, so the interpretability
+implemented and screened. `eval_check` stayed 0.000000, so the interpretability
 boundary held exactly as designed.
 
 It reads **d_mean +3.835, t 2.22** on the iso-node screen, against a calibration
