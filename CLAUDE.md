@@ -47,7 +47,8 @@ doubling, and 0.3s/move is ~70x faster than CCRL 40/15.
 |---|---|
 | 1 thread, 0.3s | **2805** [2783, 2827] |
 | 16 threads, 0.3s | ~2930 |
-| **16 threads, 1.0s** | **2999** [2984, 3013] — 49.82% (286W 539D 290L) pooled over **1115** games vs `stockfish:3000`, two independent opening sets, at `3cb9cb6`. (A 600-game run alone read 3003; the second 515 games read 2994. One run was never enough.) |
+| **16 threads, 1.0s** | **3004** [2994, 3014] — 50.60% (630W 1169D 601L) over **2400** games vs , UHO book, at . Paired over 1200 opening pairs the harness independently reports +4 [-5, +13], agreeing. Supersedes the 2999 below. |
+| *(superseded)* 16 threads, 1.0s | **2999** [2984, 3013] — 49.82% (286W 539D 290L) pooled over **1115** games vs `stockfish:3000`, two independent opening sets, at `3cb9cb6`. (A 600-game run alone read 3003; the second 515 games read 2994. One run was never enough.) |
 
 The 16T/1.0s figure was briefly recorded as 3000 from a 200-game run that scored 50.0%. A 500-game run at the identical configuration scores 47.5%. The runs are not independent (the larger subsumes the smaller's openings) so they are not pooled — the larger supersedes, and the engine sits just BELOW 3000.
 
