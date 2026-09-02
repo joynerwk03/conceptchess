@@ -47,10 +47,23 @@ doubling, and 0.3s/move is ~70x faster than CCRL 40/15.
 |---|---|
 | 1 thread, 0.3s | **2805** [2783, 2827] |
 | 16 threads, 0.3s | ~2930 |
-| **16 threads, 1.0s** | **3004** [2994, 3014] — 50.60% (630W 1169D 601L) over **2400** games vs , UHO book, at . Paired over 1200 opening pairs the harness independently reports +4 [-5, +13], agreeing. Supersedes the 2999 below. |
+| **16 threads, 1.0s** | **3004** [2994, 3014] — 50.60% (630W 1169D 601L) over **2400** games vs `stockfish:3000`, UHO book, at `cdf8777`. Paired over 1200 opening pairs the harness independently reports +4 [−5, +13], agreeing. Supersedes the 2999 below. |
 | *(superseded)* 16 threads, 1.0s | **2999** [2984, 3013] — 49.82% (286W 539D 290L) pooled over **1115** games vs `stockfish:3000`, two independent opening sets, at `3cb9cb6`. (A 600-game run alone read 3003; the second 515 games read 2994. One run was never enough.) |
 
-The 16T/1.0s figure was briefly recorded as 3000 from a 200-game run that scored 50.0%. A 500-game run at the identical configuration scores 47.5%. The runs are not independent (the larger subsumes the smaller's openings) so they are not pooled — the larger supersedes, and the engine sits just BELOW 3000.
+**Small samples at this configuration have repeatedly misled — the 2400-game run
+is authoritative and shorter ones are not.** It was once recorded as 3000 from a
+200-game run scoring 50.0%; a 500-game run at the identical configuration scored
+47.5%. In the 2400-game run itself the score read 52.31% at 411 games (3016 Elo)
+and regressed monotonically to 50.30% by 2182 — at 1416 games the lower bound
+briefly dipped to 2989.8. **Never stop a rating run at the first checkpoint that
+satisfies your criterion**; that is how you manufacture a number that does not
+replicate. Let it converge and watch the trajectory flatten.
+
+**`--threads` is a match.py FLAG, not just an environment variable.** It defaults
+to `"1"` and OVERWRITES an exported `CC_THREADS` at argument-parse time, so a run
+launched with `CC_THREADS=16` in the environment still measures a single-threaded
+engine. That cost 11.5 hours here. Check `Threads:` in `/proc/<engine pid>/status`
+and the load average (should be ~8, not ~1) before trusting any long run.
 
 The 3000 figure is measured against a 1-thread anchor while we use 16, and
 `UCI_Elo` is Stockfish's own approximate scale. The single-thread 0.3s number is
