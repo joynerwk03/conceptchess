@@ -1,5 +1,90 @@
 ---
 
+## Session close: 3004 [2994, 3014] measured, 23 candidates closed
+
+**Final rating: 3004.2, 95% [2994.2, 3014.2]**, 2400 games at 16 threads / 1.0s
+vs `stockfish:3000`, UHO book, at `cdf8777`. 630W 1169D 601L, 50.60%. The
+harness's own paired estimate over 1200 opening pairs independently reports
++4 Elo [-5, +13] against the anchor, agreeing. Up from 2999 [2984, 3013].
+
+The revised goal (expected Elo > 3000, interval clearing 2990) is MET. The
+original goal (3000 outside the interval) is NOT, and is a measurement cost
+rather than a strength problem: at 50.60% the point estimate is 3004.2, so a
+lower bound above 3000 needs se < 2.1 Elo, on the order of **50,000 games**.
+
+### What was merged (5)
+
+contempt 15cp; the KPvK bitbase (+ its DTZ guard); the search node limit;
+the cheap occupancy gate on the KPvK probe. All preserve `eval_check` 0.000000 —
+each is a SEARCH-side value or a tree-identical change, never an eval term.
+
+Honest valuation: contempt and KPvK gated at +8 and +7.0/+13.1 on general
+openings, then measured about **one fifth** of that when re-tested on the endgame
+book, whose resolution is 10.5x better. The +5 Elo the rating moved is consistent
+with the small values, not the large ones.
+
+### What was closed (23), by category
+
+| category | tried | worked |
+|---|---|---|
+| margin tuning | 10 | 0 |
+| missing standard mechanisms | 6 | 0 |
+| uncertainty-aware search | 2 | 0 |
+| bundling survivors | 1 | 0 |
+| exact structural knowledge | 4 | 2, both deflated |
+
+**Important caveat on the word "closed".** Only one candidate (correction
+history, t 2.22 on the screen) was rejected on evidence that excluded zero.
+Every game-gated candidate returned an interval of +/-26 to 40 Elo around effects
+plausibly worth 5 to 15. The accurate word for most of them is **unresolvable**,
+not closed. If several were genuinely worth +5, the instrument could not have
+seen them. Say "unresolvable at +/-N" in future.
+
+### The substantive conclusion
+
+The tree is 3.8-7.4x fatter than SF11's with an EBF that RISES where SF11's
+falls. Seven gated thinning mechanisms say that is a **symptom of the eval
+ceiling, not a lever** — the decisive one isolated the deep region, left the
+shallow schedule bit-identical, cut the depth-14 tree 30.6%, bent the EBF down
+exactly as designed, and gated -16.9/-31.8. The eval half is closed
+independently: a 26-fold better fit bought zero move quality. Pruning accuracy is
+bounded by eval accuracy, and both halves are now measured shut.
+
+### Instruments built (the durable output)
+
+- `research/screen_isonode.py` — iso-node referee screen, deterministic AND valid
+  for tree-size changes, with a calibrated scale `Elo ~ -7.3 * (d_mean + 1.0)`.
+  Break-even is d_mean -1.0, not zero; require < -2 before spending games.
+- `research/books/endgame_uho.epd` + `make_endgame_book.py` — measured at
+  **10.5x** resolution for endgame mechanisms. Earned its keep by DELETING a
+  false result rather than manufacturing one.
+- `research/gate.py` — staged two-anchor gate with early abandonment.
+- `research/rating_watch.py` — running Elo/interval for adaptive stopping.
+- `research/sprt.py`, `research/adjudicate.py` — sequential gating; empirical
+  resign-threshold measurement (built, not yet run).
+- `c_set_node_limit` in the engine — exact node budgets, tree-identical.
+
+### The one unexploited finding
+
+Our eval is **1.71x less accurate** in positions dominated by non-material
+judgement (`|eval - material|`, five popcounts to compute). This is the only
+place the interpretability constraint is an ASSET — an NNUE has no named terms to
+disagree. It fails through both RFP and LMR because it measures error MAGNITUDE,
+not DIRECTION. Correction history supplies the direction and screened at t 2.22
+(worse than a known -33 Elo config), so that route is closed too. A usable
+version needs to predict the SIGN of eval error, which is a harder object.
+
+### Errors worth remembering
+
+`--threads` is a match.py flag that OVERWRITES exported `CC_THREADS`; a run with
+the env var set still measured a single-threaded engine, costing 11.5 hours.
+`--book` defaulted to None and silently used the balanced list. A rating run
+stopped at the first satisfied checkpoint would have reported 3016 and not
+replicated. Three `bash -c` heredocs silently emptied variables despite a
+standing fix (write scripts with the file tool). Read the failing output before
+theorising about the environment.
+
+
 ## 2026-08-16 — Session 32: the training data was the bottleneck
 
 **GATED AND REJECTED: -16.9 and -31.8 on two anchors. Thinning is closed on

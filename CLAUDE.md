@@ -69,17 +69,20 @@ The 3000 figure is measured against a 1-thread anchor while we use 16, and
 `UCI_Elo` is Stockfish's own approximate scale. The single-thread 0.3s number is
 the one to improve.
 
-**Ratings by configuration — always quote the thread count:**
+*(A second ratings table lived here with 16 threads at ~2930 and the claim that
+the engine "does not reach 3000 in any available configuration". Both are
+superseded by the 2400-game measurement above — use the table there. The old
+0.3s figures for 8 threads are kept below because they are still the best
+numbers at THAT time control.)*
 
-| threads | rating | how measured |
-|---|---|---|
-| 1 | **2805** [2783, 2827] | 3-anchor ladder, 900 games |
-| 8 | **~2900** | vs stockfish:2900 49.2%, vs stockfish:3000 37.0% |
-| 16 | **~2930** | vs stockfish:3000 40.0%, −70 Elo [−106, −37] |
-
-8→16 threads is worth only **+22 Elo** (sub-linear Lazy SMP). The engine does not
-reach 3000 in any available configuration; the shortfall is 70 Elo at full width,
-measured against a reference at the target strength.
+**8→16 threads is a HARDWARE ceiling, not sub-linear Lazy SMP.** This box is an
+i9-10900K: **10 physical cores, 20 logical**. Measured with four interleaved
+reversed passes, one binary, only `CC_THREADS` varying, depth goes
+13.396 / 14.584 / 15.271 / 15.469 at 1 / 4 / 8 / 16 threads — +0.59, +0.69, then
+**+0.20** ply per doubling. Everything past 10 threads is hyperthreads, worth a
+fraction of a core to a memory-bound search. This also explains the old
+unexplained note that 10 and 16 threads perform identically: 10 *is* the physical
+core count. There is no thread-scaling Elo to recover on this machine.
 
 **Anchored directly at 8 threads: vs stockfish:2900 49.2% (~2895), vs
 stockfish:3000 37.0% (~2908).** Two anchors agreeing to 13 points, so ~2900 is a

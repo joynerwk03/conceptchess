@@ -1,3 +1,61 @@
+---
+
+# Current state (session close)
+
+**Engine: 3004 [2994, 3014]** at 16 threads / 1.0s vs `stockfish:3000`, 2400
+games. Interpretability invariant intact (`eval_check` 0.000000), 93 tests green
+including tactics, perft passing.
+
+## Read this before proposing anything
+
+Both halves of the standard program are **measured shut**, not merely untried:
+
+- **Thinning: 7 gated mechanisms, all null or negative.** The decisive one
+  isolated the deep region, left the shallow schedule bit-identical, cut the
+  depth-14 tree 30.6%, bent the EBF down exactly as designed, and gated
+  -16.9/-31.8. The tree being 3.8-7.4x fatter than SF11's is a SYMPTOM of the
+  eval ceiling, not a lever.
+- **Eval fitting: closed on two independent targets.** A 26-fold better fit
+  (SF11 relabelling, +9.007% held out) bought exactly zero move quality.
+- **Speed, TT, SMP, ordering, aspiration: closed.** SMP with a hardware
+  explanation (10 physical cores).
+
+**And note the honest caveat:** only ONE of 23 candidates was rejected on
+evidence excluding zero. Most were **unresolvable** at +/-26 to 40 Elo, not
+proven dead. A properly-powered rerun could plausibly find a small gain among
+them — capture LMR (screened -0.998) and capture history (-0.657) are the two
+that read on the good side and were never given a fair test.
+
+## What would actually move this
+
+1. **More compute.** `se ~ 350/sqrt(N)`, so ~19,400 slots to confirm +5 Elo. This
+   is the binding constraint, and it is a resource problem with no constraint
+   cost. Fishtest-scale hardware would make the closed-as-unresolvable candidates
+   worth revisiting.
+2. **The syzygy `tbprobe` port** — the one unexecuted idea, scoped below. Price it
+   BELOW the original +3-8: the KPvKP experiment showed per-node probe overhead
+   can exceed the value of the knowledge (it gated -16.0 and was abandoned at 200
+   slots).
+3. **Relaxing interpretability** — see `research/INTERPRETABILITY_COST.md`, which
+   argues AGAINST it after correction history (the strongest case) was tested in
+   its constraint-preserving form and screened at t 2.22, worse than a known
+   -33 Elo config.
+
+## Method rules earned this session
+
+- Test phase-specific changes on a phase-specific book. `endgame_uho.epd` gives
+  **10.5x** the resolution for endgame mechanisms. Elo there is inflated by
+  ~1/f: it is a DIRECTION test, never a merge magnitude.
+- Screen before gating, on `screen_isonode.py`, and require d_mean < -2. Its
+  break-even is -1.0, not zero.
+- Always include a known-Elo calibration anchor (`rfp25`, -33) and discard the
+  whole run if it fails. That caught a false positive at depth 12.
+- Check the candidate rule can FIRE under the test conditions before trusting a
+  null (`lmrdeep`, `cap6`, and 50-move discounting were all invisible to the
+  screen that was about to judge them).
+- Verify thread count, book, and that the change actually fires BEFORE a long
+  run, not after.
+
 # Research roadmap
 
 Hypothesis backlog, roughly ordered by expected value. Check off with a LOG
