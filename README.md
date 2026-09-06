@@ -1,9 +1,12 @@
 # ConceptChess
 
-A chess **coach** that shows its work. Single-threaded it plays around
-**2750 Elo** (compiled C core, Stockfish-ladder-anchored plus ~100 Elo of recent
-search/eval gains), and it plays **full-width Lazy-SMP by default** for another
-~+140–190 — but its evaluation is deliberately a sum of named, human-meaningful
+A chess **coach** that shows its work. At 16 threads and 1s/move it measures
+**3004 Elo, 95% CI [2994, 3014]** — 2,400 games against a `UCI_Elo 3000`
+Stockfish anchor from unbalanced openings. Single-threaded at 0.3s it is
+**2805 [2783, 2827]** on a three-anchor ladder. *(Always quote the thread count
+and time control: this engine gains ~+40.5 Elo per doubling of time, so a bare
+Elo figure is underspecified.)* Its evaluation is deliberately a sum of named,
+human-meaningful
 concepts — material, piece placement, pawn structure (incl. passed-pawn king
 races and connected passers), king safety, king attack, king pressure, mobility,
 piece activity, threats (pieces pressured by a lower-value attacker, weighted by
@@ -14,12 +17,22 @@ that the displayed breakdown is *exactly* the evaluation the search maximized
 6,204 positions), so nothing shown is a post-hoc summary.
 
 The engine is built by an **automated research loop**: each idea is implemented
-as a single-hypothesis change, screened against invariants, and gated by a
-60-game match before it's kept — negative results are logged, not hidden. Over
-~160 gated experiments the engine rose from ~1570 to its current strength
-(measured +223 Elo at 1 s/move against its own four-days-earlier self). See
-`research/LOG.md` for the full experiment record and `research/elo_report.html`
-for the Elo timeline.
+as a single-hypothesis change, screened against invariants, then gated against
+**two independent external anchors** — one anchor is not an external gate, and a
+change must be positive on both under a rule fixed *before* the run. Negative
+results are logged, not hidden; the log is mostly negative results, and several
+entries record measurements overturning the conclusions of earlier ones. See
+`research/LOG.md` for the full record and `research/elo_report.html` for the
+timeline.
+
+Two honest caveats a reader should have. First, at this strength the measurement
+is the bottleneck: resolution is `se ≈ 350/√N` Elo, so *confirming* a +5 Elo
+change takes ~19,400 games. Most late-stage candidates are better described as
+**unresolvable** than disproven. Second, the evaluation appears to be at a
+model-class ceiling — it sits −2.96% against Stockfish 11's classical eval but
++16.94% against an NNUE, with that gap spread evenly across every bucket, which
+is the signature of a class limit rather than a missing term. See
+`research/INTERPRETABILITY_COST.md` for what the constraint costs, measured.
 
 ## Play & learn
 
@@ -59,8 +72,12 @@ The engine also speaks UCI (`python -m engine.uci`) for your own GUI.
 
 **Playing strength: full-width by default.** When it plays — UCI, the web
 play-vs-engine opponent, and the analysis board — the engine runs a Lazy-SMP
-parallel search across all cores (up to 8), worth **~+140–190 Elo** over a single
-thread. The one place it stays single-threaded is the **coach's move verdicts**
+parallel search across all cores, worth roughly **+190 Elo** over a single thread
+at the same time control. Note the scaling is bounded by *physical* cores, not
+logical ones: on a 10-core / 20-thread machine, measured depth per doubling runs
++0.59, +0.69, then only **+0.20** plies from 8→16 threads, because everything
+past 10 is hyperthreads and this search is memory-bound. The one place it stays
+single-threaded is the **coach's move verdicts**
 (best/good/mistake calls, candidate ranking, review), so those stay reproducible.
 Override the thread count with `CC_THREADS` (e.g. `CC_THREADS=1` for a
 deterministic engine); the research match harness sets `CC_THREADS=1` itself so
