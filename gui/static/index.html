@@ -138,6 +138,17 @@
   .crow.total .val { font-weight:600; font-size:13.5px; }
   .crow.total .eq { color:var(--muted); font-size:11px; display:block;
     margin-top:1px; font-weight:400; letter-spacing:.01em; }
+  /* The residual row is not a concept and must not read as one: no top border,
+     so it groups visually with the static total it adjusts rather than looking
+     like another evaluation term. */
+  .crow.total.gap { border-top:none; margin-top:0; padding-top:2px; }
+  .crow.total.gap .val.pos { color:var(--good,#7ec87e); }
+  .crow.total.gap .val.neg { color:var(--bad,#e06c6c); }
+  /* The engine's actual number, the one above the board. Heavier rule so the
+     column visibly terminates here. */
+  .crow.total.final { border-top:2px solid var(--line); margin-top:4px;
+    padding-top:6px; }
+  .crow.total.final .val { font-size:15px; }
   .cand { display:flex; align-items:flex-start; gap:10px; padding:9px 8px; border-radius:8px;
     cursor:pointer; border:1px solid transparent; }
   .cand:hover { background:var(--panel2); } .cand.sel { border-color:var(--accent); background:var(--panel2); }
@@ -578,7 +589,8 @@ function renderScoped(ex){
   if(!bd) return;
   renderConcepts(bd, useLeaf?ex.concept_deltas:null,
                  useLeaf?`end of the expected line (${ex.pv_plies||0} plies)`
-                       :"position on the board");
+                       :"position on the board",
+                 ex.score_white);
   // Name both numbers. The static picture and the search verdict are different
   // quantities -- one is this position, the other is what search sees plies
   // later -- and the difference IS the tactical content the static eval cannot
@@ -613,7 +625,7 @@ function showEngine(ex){
   renderScoped(state.lastEx);
 }
 
-function renderConcepts(bd,deltas,scope){
+function renderConcepts(bd,deltas,scope,searchCp){
   if(scope)$("cScope").textContent=scope;
   const wrap=$("concepts"); wrap.innerHTML="";
   const maxAbs=Math.max(80,...bd.concepts.map(c=>Math.abs(c.score)));
@@ -637,9 +649,35 @@ function renderConcepts(bd,deltas,scope){
   // this row a visitor sees a column of numbers with no way to check that claim.
   if(bd.total!==undefined&&bd.total!==null){
     const tot=document.createElement("div"); tot.className="crow total";
-    tot.innerHTML=`<span class="name">Total<span class="eq">sum of the rows above</span></span>`
+    tot.innerHTML=`<span class="name">Static total<span class="eq">sum of the rows above</span></span>`
       +`<span></span><span class="val">${(bd.total/100).toFixed(2)}</span>`;
     wrap.appendChild(tot);
+    // The number in the header is the SEARCH score, not the static total, and
+    // the two differ by whatever the search found that no static evaluation of
+    // this position could contain -- a forced promotion, a mating net. Leaving
+    // that difference unnamed is what made the panel look broken: a column
+    // summing to -7.23 sitting under a headline of -499.84.
+    //
+    // So name it as a row. The column then adds up to the number at the top,
+    // which is the property the project actually promises. The residual is
+    // labelled as search, not smuggled into a concept, because it is not a
+    // concept -- attributing it to one would be the dishonest fix.
+    if(searchCp!==undefined&&searchCp!==null&&isFinite(searchCp)){
+      const gap=searchCp-bd.total;
+      if(Math.abs(gap)>=1){
+        const g=document.createElement("div"); g.className="crow total gap";
+        g.innerHTML=`<span class="name">Seen by search<span class="eq">`
+          +`beyond the static picture — tactics not yet on the board</span></span>`
+          +`<span></span><span class="val ${gap>=0?"pos":"neg"}">`
+          +`${gap>0?"+":""}${(gap/100).toFixed(2)}</span>`;
+        wrap.appendChild(g);
+      }
+      const ev=document.createElement("div"); ev.className="crow total final";
+      ev.innerHTML=`<span class="name">Engine evaluation<span class="eq">`
+        +`what the engine plays on — matches the number above the board</span></span>`
+        +`<span></span><span class="val">${(searchCp/100).toFixed(2)}</span>`;
+      wrap.appendChild(ev);
+    }
   }
 }
 
