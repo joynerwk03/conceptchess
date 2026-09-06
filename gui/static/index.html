@@ -7,7 +7,11 @@
 <style>
   :root {
     --bg:#14161b; --panel:#1e222b; --panel2:#272c37; --line:#333a46;
-    --text:#e8eaf0; --muted:#96a0b0; --faint:#6b7482;
+    /* --faint was #6b7482, which failed contrast in four places at once:
+       candidate lines, move numbers, and board coordinates, where it measured
+       1.35:1 on dark squares — below the threshold at which text is legible at
+       all. Lightened to clear 4.5:1 on the panel. */
+    --text:#e8eaf0; --muted:#96a0b0; --faint:#8a93a2;
     --light-sq:#e9d8b6; --dark-sq:#a8825f; --accent:#5b9dd9;
     --v-best:#4bbf87; --v-good:#59b0a6; --v-inacc:#d8b24a; --v-mist:#e08b45; --v-blun:#dd5b5b;
     --hang-you:#e0574f; --hang-them:#54c98a; --passed:#5b9dd9; --king:#e6a13c;
@@ -77,8 +81,14 @@
   header .hlink:hover { border-bottom-color:var(--accent); }
   header .elo { color:var(--text); font-weight:650; }
   .ov { position:absolute; inset:3px; border-radius:8px; z-index:1; pointer-events:none; }
+  /* These two carry OPPOSITE meanings and were distinguished by red versus
+     green alone, which is exactly the axis the common colour-blindness types
+     collapse. A viewer with deuteranopia saw "a piece is undefended" and could
+     not tell whose. Shape now carries the distinction too: yours is a solid
+     ring, theirs is a dashed outline. */
   .ov.hang_you { box-shadow:inset 0 0 0 4px var(--hang-you); }
-  .ov.hang_them { box-shadow:inset 0 0 0 4px var(--hang-them); }
+  .ov.hang_them { box-shadow:none; border:3px dashed var(--hang-them);
+    border-radius:8px; inset:3px; }
   .ov.king_danger { background:radial-gradient(circle,rgba(230,161,60,.55) 20%,transparent 72%); }
   .ov.passed::after { content:""; position:absolute; right:5px; top:5px; width:11px; height:11px;
     border-radius:50%; background:var(--passed); box-shadow:0 0 0 2px rgba(20,22,27,.35); }
@@ -89,6 +99,15 @@
   button, select { background:var(--panel2); color:var(--text); border:1px solid var(--line);
     border-radius:7px; padding:7px 12px; font-size:13px; cursor:pointer; }
   button:hover { background:#323947; } button:disabled { opacity:.5; cursor:default; }
+  /* There was no focus styling anywhere in the file, so a keyboard user had no
+     location cue at all on this dark palette. */
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
+  .sq:focus-visible { outline:3px solid var(--accent); outline-offset:-3px; z-index:6; }
+  /* Controls that look like text but behave like buttons: reset the UA chrome
+     so the existing class-driven styling carries over unchanged, while the
+     element stays focusable and announces itself. */
+  button.toggle, button.scopebtn { font:inherit; border:0; background:none; }
+  button.scopebtn { border:1px solid #3a4150; background:#232833; }
   .toggle { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:12.5px;
     padding:6px 10px; border:1px solid var(--line); border-radius:7px; cursor:pointer; }
   .toggle.on { color:var(--text); border-color:var(--accent); background:rgba(91,157,217,.12); }
@@ -223,7 +242,7 @@
     </div>
     <div>
       <div class="board-wrap">
-        <div class="board" id="board"></div>
+        <div class="board" id="board" role="grid" aria-label="Chess board"></div>
         <svg class="arrows" id="arrows" viewBox="0 0 512 512"></svg>
       </div>
       <div class="controls" id="analysisControls">
@@ -231,9 +250,9 @@
         <button id="flipBtnA">Flip</button>
         <button id="undoBtnA">Undo</button>
         <button id="resetBtnA">Reset</button>
-        <span class="toggle on" id="arrowToggle">➤ Arrows</span>
-        <span class="toggle on" id="insightToggleA">💡 Insights</span>
-        <span class="toggle" id="bookToggle">📖 Book</span>
+        <button type="button" class="toggle on" id="arrowToggle" role="switch" aria-checked="true">➤ Arrows</button>
+        <button type="button" class="toggle on" id="insightToggleA" role="switch" aria-checked="true">💡 Insights</button>
+        <button type="button" class="toggle" id="bookToggle" role="switch" aria-checked="false">📖 Book</button>
         <input id="fenInput" placeholder="Paste FEN…">
         <button id="fenLoad">Load</button>
       </div>
@@ -242,8 +261,8 @@
         <button id="newBlack">Black</button>
         <button id="undoBtn">Undo</button>
         <button id="flipBtn">Flip</button>
-        <span class="toggle on" id="insightToggle">💡 Insights</span>
-        <span class="toggle on" id="coachToggle">🎓 Coach my moves</span>
+        <button type="button" class="toggle on" id="insightToggle" role="switch" aria-checked="true">💡 Insights</button>
+        <button type="button" class="toggle on" id="coachToggle" role="switch" aria-checked="true">🎓 Coach my moves</button>
         <label style="color:var(--muted)">Engine
           <select id="movetime">
             <option value="0.3">0.3s</option><option value="0.7" selected>0.7s</option>
@@ -251,10 +270,15 @@
           </select>
         </label>
       </div>
-      <div class="status" id="status"></div>
+      <div class="status" id="status" role="status" aria-live="polite"></div>
       <div class="legend" id="legend">
-        <span><span class="swatch" style="box-shadow:inset 0 0 0 3px var(--hang-them)"></span>you can win it</span>
-        <span><span class="swatch" style="box-shadow:inset 0 0 0 3px var(--hang-you)"></span>your piece hanging</span>
+        <!-- Wording was "you can win it" / "your piece hanging", but coach.py
+             defines "yours" as the side to move. In Analysis mode the user plays
+             both sides, so the colours swapped meaning every ply while the
+             legend kept saying "you". Now stated from the side to move, and the
+             swatches match the board: dashed for theirs, solid for the mover's. -->
+        <span><span class="swatch" style="border:2px dashed var(--hang-them)"></span>side to move can win it</span>
+        <span><span class="swatch" style="box-shadow:inset 0 0 0 3px var(--hang-you)"></span>side to move has a piece hanging</span>
         <span><span class="swatch" style="background:var(--king)"></span>king under attack</span>
         <span><span class="swatch" style="background:var(--passed)"></span>passed pawn</span>
       </div>
@@ -298,7 +322,7 @@
         </div>
         <h3 class="sec">Evaluation breakdown — <span id="cScope" style="text-transform:none">position on the board</span></h3>
         <div class="phasewrap"><span class="meta" id="threadTxt">threads</span><input type="range" id="threadRange" min="1" max="16" value="10" style="width:88px;accent-color:var(--accent)"><span class="meta" id="threadVal" style="min-width:18px">10</span></div>
-        <div class="phasewrap"><span class="meta" id="phaseTxt">phase —</span><span class="phasebar"><span class="phasefill" id="phaseFill" style="width:100%"></span></span><span class="scopebtn on" id="scopeNow">board</span><span class="scopebtn" id="scopeLeaf">end of line</span></div>
+        <div class="phasewrap"><span class="meta" id="phaseTxt">phase —</span><span class="phasebar"><span class="phasefill" id="phaseFill" style="width:100%"></span></span><button type="button" class="scopebtn on" id="scopeNow" aria-pressed="true">board</button><button type="button" class="scopebtn" id="scopeLeaf" aria-pressed="false">end of line</button></div>
         <div class="gap" id="scopeGap"></div>
         <!-- States the invariant where the user can act on it. The total row
              rendered under these concepts is the number the search maximised,
@@ -337,6 +361,10 @@
 
 <script>
 const GLYPHS={p:"♟",n:"♞",b:"♝",r:"♜",q:"♛",k:"♚"};
+// Pieces render as bare Unicode glyphs, which a screen reader announces as
+// glyph names in DOM order with no square attached. These give each square a
+// label a person can actually navigate by.
+const PIECE_NAMES={p:"pawn",n:"knight",b:"bishop",r:"rook",q:"queen",k:"king"};
 const state={ startFen:null, moves:[], legal:[], fen:null, turn:"white", playerColor:"white",
   flipped:false, selected:null, lastMove:null, thinking:false, status:"ongoing", inCheck:false,
   sanHistory:[], evalPoints:[], viewPly:null, viewFen:null,
@@ -391,6 +419,16 @@ function renderBoard(){
     if(lastMove&&(lastMove.slice(0,2)===sqn||lastMove.slice(2,4)===sqn)) div.classList.add("lastmove");
     if(f===7){const c=document.createElement("span");c.className="coords rank";c.textContent=rank;div.appendChild(c);}
     if(r===7){const c=document.createElement("span");c.className="coords file";c.textContent=String.fromCharCode(97+file);div.appendChild(c);}
+    // Was a plain div with onclick and no tabindex, so a keyboard-only user
+    // could not make a single move in either mode. Enter and Space now do what
+    // a click does, and the label names the square and its occupant.
+    div.tabIndex=0;
+    div.setAttribute("role","gridcell");
+    div.setAttribute("aria-label", sqn + (pc
+      ? ", " + (pc===pc.toUpperCase()?"white ":"black ") + PIECE_NAMES[pc.toLowerCase()]
+      : ", empty") + (ov[sqn]&&ov[sqn].label ? ", " + ov[sqn].label : ""));
+    div.onkeydown=(ev)=>{ if(ev.key==="Enter"||ev.key===" "){
+      ev.preventDefault(); onSquareClick(sqn,pc); } };
     div.onclick=()=>onSquareClick(sqn,pc);
     div.dataset.sq=sqn;
     if(pc && !viewing) attachDrag(div, sqn, pc);
@@ -611,8 +649,8 @@ function setEvalBar(cp){ const p=1/(1+Math.pow(10,-cp/400));
 // different questions, and the gap between them is shown rather than hidden.
 state.scope = state.scope || "now";
 function setScope(v){ state.scope=v;
-  $("scopeNow").classList.toggle("on",v==="now");
-  $("scopeLeaf").classList.toggle("on",v==="leaf");
+  setToggle("scopeNow",v==="now");
+  setToggle("scopeLeaf",v==="leaf");
   if(state.lastEx) renderScoped(state.lastEx); }
 function renderPhase(ph){
   if(ph===undefined||ph===null) return;
@@ -704,7 +742,15 @@ function renderConcepts(bd,deltas,scope,searchCp){
     row.innerHTML=`<span class="name">${c.display_name}</span><span class="bar"><span class="mid"></span>`
       +`<span class="fill ${c.score>=0?"pos":"neg"}" style="width:${pct}%"></span></span>`
       +`<span class="val">${(c.score/100).toFixed(2)}${dtxt}</span>`;
-    row.onclick=()=>row.classList.toggle("open"); wrap.appendChild(row);
+    // Expanding a row to its itemized detail is the "nothing hidden" proof, and
+    // it was reachable by mouse only, with no announced state.
+    row.tabIndex=0; row.setAttribute("role","button");
+    row.setAttribute("aria-expanded","false");
+    const toggleRow=()=>row.setAttribute("aria-expanded",
+      String(row.classList.toggle("open")));
+    row.onclick=toggleRow;
+    row.onkeydown=(ev)=>{ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); toggleRow(); } };
+    wrap.appendChild(row);
     const items=document.createElement("div"); items.className="items";
     const sorted=[...c.items].sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]));
     // Explain the term where it is read, not in a tab the reader has to go find.
@@ -998,10 +1044,28 @@ async function loadGlossary(){
 function showTab(name){ document.querySelectorAll(".tabbtn").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("show",t.id==="tab-"+name)); }
 document.querySelectorAll(".tabbtn").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
-$("insightToggle").onclick=()=>{ state.insights=!state.insights; $("insightToggle").classList.toggle("on",state.insights);
-  $("legend").style.display=state.insights?"flex":"none";
-  if(state.insights) api("/api/overlays",payload()).then(r=>{state.overlays=r.overlays||{};renderBoard();}); else renderBoard(); };
-$("coachToggle").onclick=()=>{ state.coach=!state.coach; $("coachToggle").classList.toggle("on",state.coach); };
+// One setter for every toggle. Two things were wrong before: the class and the
+// ARIA state could disagree, and the two Insights toggles each updated only
+// their own element while sharing state.insights — so turning insights off in
+// Analysis left the Play toggle rendering "on" beside a legend that was
+// correctly hidden.
+function setToggle(ids,on){
+  (Array.isArray(ids)?ids:[ids]).forEach(id=>{
+    const el=$(id); if(!el) return;
+    el.classList.toggle("on",on);
+    if(el.hasAttribute("aria-checked")) el.setAttribute("aria-checked",String(on));
+    if(el.hasAttribute("aria-pressed")) el.setAttribute("aria-pressed",String(on));
+  });
+}
+function setInsights(on){
+  state.insights=on;
+  setToggle(["insightToggle","insightToggleA"],on);
+  $("legend").style.display=on?"flex":"none";
+  if(on) api("/api/overlays",payload()).then(r=>{state.overlays=r.overlays||{};renderBoard();}).catch(()=>{});
+  else renderBoard();
+}
+$("insightToggle").onclick=()=>setInsights(!state.insights);
+$("coachToggle").onclick=()=>{ state.coach=!state.coach; setToggle("coachToggle",state.coach); };
 
 async function newGame(color){
   Object.assign(state,{startFen:null,moves:[],playerColor:color,selected:null,lastMove:null,
@@ -1038,14 +1102,11 @@ $("undoBtnA").onclick=()=>{ if(!state.moves.length)return; stopAnalysis();
   state.selected=null; state.bestArrow=state.secondArrow=null;
   refreshState().then(()=>startAnalysis()); };
 $("arrowToggle").onclick=()=>{ state.arrows=!state.arrows;
-  $("arrowToggle").classList.toggle("on",state.arrows); drawArrows(); };
+  setToggle("arrowToggle",state.arrows); drawArrows(); };
 $("bookToggle").onclick=()=>{ state.useBook=!state.useBook;
-  $("bookToggle").classList.toggle("on",state.useBook);
+  setToggle("bookToggle",state.useBook);
   if(state.mode==="analysis") startAnalysis(); };
-$("insightToggleA").onclick=()=>{ state.insights=!state.insights;
-  $("insightToggleA").classList.toggle("on",state.insights);
-  $("legend").style.display=state.insights?"flex":"none";
-  if(state.insights) api("/api/overlays",payload()).then(r=>{state.overlays=r.overlays||{};renderBoard();}); else renderBoard(); };
+$("insightToggleA").onclick=()=>setInsights(!state.insights);
 $("fenLoad").onclick=()=>{ const v=$("fenInput").value.trim(); if(!v)return;
   state.flipped=false; initAnalysis(v); };
 $("fenInput").onkeydown=e=>{ if(e.key==="Enter") $("fenLoad").click(); };
