@@ -203,17 +203,39 @@ class PiecePlacement:
         for color, sign, cname in ((chess.WHITE, 1, "White"), (chess.BLACK, -1, "Black")):
             flip = 0 if color == chess.WHITE else 56
             for pt in chess.PIECE_TYPES:
+                # A piece-square value only means something RELATIVE to the other
+                # squares that piece could stand on -- "+40.7" says nothing on its
+                # own, but "the best tenth of king squares" is the actual content
+                # of the table. Built once per piece type, and only here: this is
+                # details(), the display path, never the hot eval path (score()).
+                if pt == chess.PAWN:
+                    tbl = [phase * PAWN_MG[j] + (1 - phase) * PAWN_EG[j]
+                           for j in range(64)]
+                    # a pawn cannot stand on rank 1 or 8, and including those
+                    # zeros would drag every real square's rank toward the top
+                    domain = tbl[8:56]
+                elif pt == chess.KING:
+                    tbl = [phase * KING_MG[j] + (1 - phase) * KING_EG[j]
+                           for j in range(64)]
+                    domain = tbl
+                else:
+                    mg, eg = _TAPERED[pt]
+                    tbl = [phase * mg[j] + (1 - phase) * eg[j] for j in range(64)]
+                    domain = tbl
                 for sq in ctx.pieces[color][pt]:
                     i = sq ^ flip
-                    if pt == chess.PAWN:
-                        v = phase * PAWN_MG[i] + (1 - phase) * PAWN_EG[i]
-                    elif pt == chess.KING:
-                        v = phase * KING_MG[i] + (1 - phase) * KING_EG[i]
-                    else:
-                        mg, eg = _TAPERED[pt]
-                        v = phase * mg[i] + (1 - phase) * eg[i]
-                    v *= wt(_SCALE_KEY[pt], ctx.phase)
+                    raw = tbl[i]
+                    v = raw * wt(_SCALE_KEY[pt], ctx.phase)
                     if v:
-                        label = f"{cname} {chess.piece_name(pt)} on {chess.square_name(sq)}"
+                        better = sum(1 for x in domain if x > raw)
+                        pct = better / max(len(domain), 1)
+                        where = ("one of the best squares" if pct <= 0.10 else
+                                 "a strong square" if pct <= 0.30 else
+                                 "an ordinary square" if pct <= 0.70 else
+                                 "a weak square" if pct <= 0.90 else
+                                 "one of the worst squares")
+                        label = (f"{cname} {chess.piece_name(pt)} on "
+                                 f"{chess.square_name(sq)} — {where} for a "
+                                 f"{chess.piece_name(pt)} here")
                         items.append((label, sign * v))
         return items
