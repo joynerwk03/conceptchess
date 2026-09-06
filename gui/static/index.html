@@ -126,6 +126,12 @@
   .fill.pos { left:50%; background:var(--v-best); } .fill.neg { right:50%; background:var(--v-blun); }
   /* Folded silent terms: present and checkable, but visually receded so they do
      not compete with the rows that actually explain the score. */
+  /* The one-sentence read, above the evidence. Deliberately not a .crow: it is
+     a claim about the position, not a term with a value. */
+  .csummary { font-size:12.5px; line-height:1.5; color:var(--fg);
+    background:rgba(255,255,255,.035); border-left:2px solid var(--accent,#5b9);
+    padding:6px 9px; margin:2px 0 8px; border-radius:3px; }
+  .csummary b { font-weight:600; }
   .crow.quiet { opacity:.62; }
   .crow.quiet .name { font-weight:400; }
   .crow.quiet .eq { color:var(--muted); font-size:11px; display:block;
@@ -651,6 +657,25 @@ function renderConcepts(bd,deltas,scope,searchCp){
   const live=bd.concepts.filter(c=>Math.abs(c.score)>=LIVE)
                         .sort((a,b)=>Math.abs(b.score)-Math.abs(a.score));
   const quiet=bd.concepts.filter(c=>Math.abs(c.score)<LIVE);
+  // A ranked column still asks the reader to do the synthesis. Say what the
+  // position is ABOUT first, in a sentence, the way a coach would -- then the
+  // numbers below are evidence for a claim rather than a puzzle to solve.
+  // Built only from the rows shown, so it can never assert more than the panel.
+  const side=v=>v>0?"White":"Black";
+  if(live.length){
+    const t=live[0], parts=[];
+    parts.push(`<b>${side(t.score)}</b> is ahead on <b>${t.display_name.toLowerCase()}</b>`);
+    // Name the largest term pulling the other way, if there is one -- a position
+    // is usually a trade-off, and showing only the winner misrepresents it.
+    const opp=live.find(c=>Math.sign(c.score)!==Math.sign(t.score));
+    let txt=parts[0]+` (${(t.score/100).toFixed(2)})`;
+    if(opp) txt+=`, offset by <b>${side(opp.score)}</b>'s `
+      +`<b>${opp.display_name.toLowerCase()}</b> (${(opp.score/100).toFixed(2)})`;
+    txt+=live.length>2?`, plus ${live.length-(opp?2:1)} smaller factor`
+      +`${live.length-(opp?2:1)===1?"":"s"}.`:".";
+    const s=document.createElement("div"); s.className="csummary";
+    s.innerHTML=txt; wrap.appendChild(s);
+  }
   for(const c of live){
     const row=document.createElement("div"); row.className="crow";
     const pct=Math.min(50,Math.abs(c.score)/maxAbs*50); const d=dby[c.name];
