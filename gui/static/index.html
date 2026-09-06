@@ -120,6 +120,16 @@
   .items div { display:flex; justify-content:space-between; padding:1px 6px; }
   .crow.open + .items { display:block; }
   .delta-pos{color:var(--v-best);} .delta-neg{color:var(--v-blun);}
+  /* The rows above sum to exactly this, and that identity is the whole point of
+     the project — evaluation.py appends the multiplicative modifiers as marginal
+     deltas specifically so the column adds up. Showing the sum is what lets a
+     visitor verify it instead of taking it on faith. */
+  .crow.total { cursor:default; border-top:1px solid var(--line); margin-top:5px;
+    padding-top:6px; }
+  .crow.total .name { font-weight:600; }
+  .crow.total .val { font-weight:600; font-size:13.5px; }
+  .crow.total .eq { color:var(--muted); font-size:11px; display:block;
+    margin-top:1px; font-weight:400; letter-spacing:.01em; }
   .cand { display:flex; align-items:flex-start; gap:10px; padding:9px 8px; border-radius:8px;
     cursor:pointer; border:1px solid transparent; }
   .cand:hover { background:var(--panel2); } .cand.sel { border-color:var(--accent); background:var(--panel2); }
@@ -593,6 +603,15 @@ function renderConcepts(bd,deltas,scope){
     items.innerHTML=sorted.length?sorted.map(([l,v])=>`<div><span>${l}</span><span>${(v/100).toFixed(2)}</span></div>`).join("")
       :"<div><span>No contributions</span><span></span></div>";
     wrap.appendChild(items);
+  }
+  // The invariant, made visible. bd.total is the number the search maximized,
+  // and the rows above sum to it by construction (engine/evaluation.py). Without
+  // this row a visitor sees a column of numbers with no way to check that claim.
+  if(bd.total!==undefined&&bd.total!==null){
+    const tot=document.createElement("div"); tot.className="crow total";
+    tot.innerHTML=`<span class="name">Total<span class="eq">sum of the rows above</span></span>`
+      +`<span></span><span class="val">${(bd.total/100).toFixed(2)}</span>`;
+    wrap.appendChild(tot);
   }
 }
 
