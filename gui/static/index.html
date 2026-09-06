@@ -133,6 +133,11 @@
   .crow.quiet .val { color:var(--muted); }
   .items { display:none; margin:2px 0 6px 8px; font-size:12px; color:var(--muted); }
   .items div { display:flex; justify-content:space-between; padding:1px 6px; }
+  /* The concept's own definition, shown where it is read. Block rather than
+     flex, so it reads as prose instead of lining up like a value row. */
+  .items .gwhat { display:block; padding:2px 6px 5px; color:var(--muted);
+    font-style:italic; line-height:1.45; border-bottom:1px solid var(--line);
+    margin-bottom:3px; }
   .crow.open + .items { display:block; }
   .delta-pos{color:var(--v-best);} .delta-neg{color:var(--v-blun);}
   /* The rows above sum to exactly this, and that identity is the whole point of
@@ -656,8 +661,11 @@ function renderConcepts(bd,deltas,scope,searchCp){
     row.onclick=()=>row.classList.toggle("open"); wrap.appendChild(row);
     const items=document.createElement("div"); items.className="items";
     const sorted=[...c.items].sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]));
-    items.innerHTML=sorted.length?sorted.map(([l,v])=>`<div><span>${l}</span><span>${(v/100).toFixed(2)}</span></div>`).join("")
-      :"<div><span>No contributions</span><span></span></div>";
+    // Explain the term where it is read, not in a tab the reader has to go find.
+    const gl=GLOSS[c.name];
+    const head=gl?`<div class="gwhat">${gl.what}</div>`:"";
+    items.innerHTML=head+(sorted.length?sorted.map(([l,v])=>`<div><span>${l}</span><span>${(v/100).toFixed(2)}</span></div>`).join("")
+      :"<div><span>Nothing in this position triggers it</span><span></span></div>");
     wrap.appendChild(items);
   }
   // The silent terms, folded but not hidden -- a reader must still be able to
@@ -900,8 +908,14 @@ function setMode(m){
   else { newGame("white"); }
 }
 
+// Cached so the breakdown can explain a concept in place. Making a reader leave
+// the panel and hunt through another tab to find out what "Imbalance & space"
+// means is the difference between a number they trust and a number they skip.
+const GLOSS={};
 async function loadGlossary(){
-  const r=await api("/api/glossary",{}); $("glossary").innerHTML=r.glossary.map(g=>
+  const r=await api("/api/glossary",{});
+  r.glossary.forEach(g=>GLOSS[g.name]=g);
+  $("glossary").innerHTML=r.glossary.map(g=>
     `<div class="gloss"><h4>${g.display_name}</h4><p class="what">${g.what}</p>
      <p class="why"><b>Why it matters:</b> ${g.why}</p></div>`).join("");
 }
@@ -967,7 +981,11 @@ $("undoBtn").onclick=async()=>{ if(state.thinking)return;
   await refreshState(); renderGraph();
   if(state.status==="ongoing"&&state.turn!==state.playerColor) engineMove(); };
 
-loadGlossary(); initAnalysis(null);   // analysis board is the default view
+// Glossary first, then the board. The breakdown now explains each concept
+// inline, and the fetch is a local call of a few milliseconds, so waiting for it
+// costs nothing and guarantees the FIRST panel a visitor sees is the explained
+// one rather than the bare one.
+loadGlossary().then(()=>initAnalysis(null));   // analysis board is the default view
 </script>
 </body>
 </html>
