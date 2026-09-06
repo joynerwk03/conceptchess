@@ -309,4 +309,27 @@ GLOSSARY = [
     {"name": "tempo", "display_name": "Tempo",
      "what": "A small bonus for the side to move.",
      "why": "Having the move is a slight advantage — the initiative matters."},
+    # The six below were missing while the Concepts tab promised "nothing
+    # hidden" and the breakdown told the user to open it to learn each row.
+    # Six of sixteen rows had no entry, and the two modifiers — the hardest
+    # rows to read, because their value depends on every other row — were
+    # among them.
+    {"name": "imbalance", "display_name": "Imbalance & space",
+     "what": "What a plain piece count cannot say: unusual trades like rook-and-pawn against two minors, and how much safe space each side controls.",
+     "why": "Three pawns and a bishop are not the same as a rook, even though the totals match. Space decides who has room to improve their pieces."},
+    {"name": "minor_pieces", "display_name": "Minor pieces",
+     "what": "Judgements about knights and bishops that depend on the pawns: outposts, minors sheltered behind pawns, bad bishops hemmed in by their own pawns, and bishops on long open diagonals.",
+     "why": "A knight on a protected outpost can outweigh a bishop; a bishop stuck behind its own pawns is close to a spectator. The pawn structure decides which minor is better."},
+    {"name": "backward", "display_name": "Backward pawns",
+     "what": "A pawn left behind its neighbours, which can no longer be defended by them and cannot safely advance because the square ahead is covered.",
+     "why": "It is a permanent target, and the hole in front of it is a permanent home for an enemy piece. Avoid creating them; attack them when your opponent does."},
+    {"name": "connected", "display_name": "Connected pawns",
+     "what": "Pawns that support each other, either side by side or one defending the other from an adjacent file. Worth more the further they advance.",
+     "why": "Connected pawns defend themselves, so your pieces stay free. Advanced connected passers are one of the hardest things in chess to stop."},
+    {"name": "ocb", "display_name": "Opposite bishops",
+     "what": "A multiplier, not an addition: with one bishop each on opposite colours and little else on the board, the whole evaluation is scaled down toward a draw.",
+     "why": "The bishops can never challenge each other, so the defender blockades on the colour the attacker cannot touch. An extra pawn, sometimes two, often draws anyway."},
+    {"name": "endgame_scale", "display_name": "Endgame scale",
+     "what": "Another multiplier: some endings are drawn however the pieces add up, and stay drawn far beyond any search horizon, so the evaluation is scaled toward zero.",
+     "why": "A lone knight ahead cannot mate; a rook pawn with a bishop that does not cover the promotion square is a draw. Knowing which endings are dead stops you trading into one."},
 ]

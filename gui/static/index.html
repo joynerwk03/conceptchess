@@ -67,7 +67,15 @@
   .scopebtn { font-size:11px; padding:2px 7px; border-radius:5px; cursor:pointer;
     border:1px solid #3a4150; background:#232833; color:var(--muted); }
   .scopebtn.on { color:#fff; border-color:var(--accent); }
-  .gap { color:var(--muted); font-size:11.5px; margin:-2px 0 8px; }
+  /* Promoted from 11.5px muted fine print. This line names both numbers and
+     quantifies what search adds over the static picture, which is the most
+     differentiating sentence the product produces; it should not be the
+     smallest text on screen while a bare score gets 26px. */
+  .gap { color:var(--text); font-size:13px; margin:4px 0 9px; line-height:1.45; }
+  header .hlink { color:var(--accent); font-size:12.5px; text-decoration:none;
+    border-bottom:1px solid transparent; }
+  header .hlink:hover { border-bottom-color:var(--accent); }
+  header .elo { color:var(--text); font-weight:650; }
   .ov { position:absolute; inset:3px; border-radius:8px; z-index:1; pointer-events:none; }
   .ov.hang_you { box-shadow:inset 0 0 0 4px var(--hang-you); }
   .ov.hang_them { box-shadow:inset 0 0 0 4px var(--hang-them); }
@@ -165,7 +173,14 @@
 <body>
 <header>
   <h1>ConceptChess</h1>
-  <span>a chess coach that shows you <em>why</em> — every number is a real evaluation</span>
+  <!-- The old line ("a chess coach that shows you why") positioned this as a
+       teaching app and buried the rating, which is the credential that makes
+       interpretability impressive rather than a consolation prize. It also gave
+       a visitor no way out to the evidence. -->
+  <span>a <span class="elo">3004-Elo</span> engine whose explanation <em>is</em> its
+    evaluation: every number below is exactly what the search maximised</span>
+  <a class="hlink" href="https://github.com/joynerwk03/conceptchess"
+     target="_blank" rel="noreferrer">source &amp; research log</a>
   <div class="modeswitch">
     <button id="modeAnalysis" class="modebtn active">Analysis</button>
     <button id="modePlay" class="modebtn">Play vs engine</button>
@@ -229,13 +244,20 @@
       <div id="tab-analysis" class="tab show">
         <div id="analysisInfo">
           <div class="bigscore" id="aScore">+0.00</div>
-          <div class="meta" id="aMeta">Set up a position and press Analyze — the engine thinks as long as you let it.</div>
+          <div class="meta" style="margin:-5px 0 7px">pawns · positive favours White</div>
+          <!-- Analysis auto-starts on load, so this string is replaced within
+               milliseconds. It says something true about that rather than
+               instructing the user to press a button already pressed. -->
+          <div class="meta" id="aMeta">Thinking. The engine keeps going until you stop it.</div>
           <h3 class="sec">Best line <span id="aDepth" class="adepth depthchip" style="text-transform:none"></span></h3>
           <div class="pv" id="aPv">—</div>
         </div>
         <div id="playInfo" style="display:none">
           <div id="yourmove" class="yourmove"></div>
           <div class="bigscore" id="score">+0.00</div>
+          <!-- Play mode never stated the sign convention, so a user playing
+               Black saw +1.20 in 26px type while losing. -->
+          <div class="meta" style="margin:-5px 0 7px">pawns · positive favours White</div>
           <div class="meta" id="meta">Make a move — I'll coach it, then explain my reply.</div>
           <div class="why" id="why" style="display:none"></div>
           <h3 class="sec">Expected line</h3>
@@ -249,7 +271,13 @@
         <div class="phasewrap"><span class="meta" id="threadTxt">threads</span><input type="range" id="threadRange" min="1" max="16" value="10" style="width:88px;accent-color:var(--accent)"><span class="meta" id="threadVal" style="min-width:18px">10</span></div>
         <div class="phasewrap"><span class="meta" id="phaseTxt">phase —</span><span class="phasebar"><span class="phasefill" id="phaseFill" style="width:100%"></span></span><span class="scopebtn on" id="scopeNow">board</span><span class="scopebtn" id="scopeLeaf">end of line</span></div>
         <div class="gap" id="scopeGap"></div>
-        <div class="meta" style="margin:0 0 6px">Positive favors White. Click a row for detail; open Concepts to learn each one.</div>
+        <!-- States the invariant where the user can act on it. The total row
+             rendered under these concepts is the number the search maximised,
+             and saying so is the difference between a column of numbers and a
+             verifiable claim. -->
+        <div class="meta" style="margin:0 0 6px">Scores are in pawns; positive favours White.
+          <b>These rows sum to the total beneath them, and that total is exactly the number the
+          search maximised.</b> Click a row for its detail, or open Concepts for what each means.</div>
         <div id="concepts"></div>
       </div>
 
