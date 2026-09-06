@@ -12,6 +12,11 @@
        1.35:1 on dark squares — below the threshold at which text is legible at
        all. Lightened to clear 4.5:1 on the panel. */
     --text:#e8eaf0; --muted:#96a0b0; --faint:#8a93a2;
+    /* One number drives the whole board. The layout previously had a hard
+       minimum width of 588px (20 padding + 24 eval bar + 12 gap + 512 board +
+       20), so a 375px phone scrolled sideways with a third of the board off
+       screen. Squares shrink to fit and stop at their original 64px. */
+    --sq: min(64px, calc((100vw - 104px) / 8));
     --light-sq:#e9d8b6; --dark-sq:#a8825f; --accent:#5b9dd9;
     --v-best:#4bbf87; --v-good:#59b0a6; --v-inacc:#d8b24a; --v-mist:#e08b45; --v-blun:#dd5b5b;
     --hang-you:#e0574f; --hang-them:#54c98a; --passed:#5b9dd9; --king:#e6a13c;
@@ -19,28 +24,35 @@
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text);
     font-family:-apple-system,"Segoe UI",Roboto,sans-serif; font-size:14px; }
+  /* Without wrap, the h1, the tagline and the mode switch crushed into each
+     other on a phone and the tagline — the entire product pitch — was the thing
+     that gave way. */
   header { padding:13px 22px; border-bottom:1px solid var(--line); display:flex;
-    align-items:baseline; gap:12px; }
+    align-items:baseline; gap:12px; flex-wrap:wrap; }
   header h1 { margin:0; font-size:18px; font-weight:650; letter-spacing:.2px; }
   header span { color:var(--muted); font-size:13px; }
   .layout { display:flex; gap:20px; padding:20px; flex-wrap:wrap; align-items:flex-start; }
-  .evalbar { width:24px; height:512px; background:#2b2b2b; border-radius:5px;
+  .evalbar { width:24px; height:calc(var(--sq) * 8); background:#2b2b2b; border-radius:5px;
     overflow:hidden; position:relative; display:flex; flex-direction:column; }
   .evalbar .white-part { background:#eef0f2; width:100%; transition:height .45s; margin-top:auto; }
   .evalbar .label { position:absolute; left:0; right:0; text-align:center; font-size:10px;
     font-weight:700; z-index:2; }
   .board-col { display:flex; gap:12px; }
-  .board { display:grid; grid-template-columns:repeat(8,64px); grid-template-rows:repeat(8,64px);
+  .board { display:grid; grid-template-columns:repeat(8,var(--sq)); grid-template-rows:repeat(8,var(--sq));
     border-radius:5px; overflow:hidden; user-select:none; box-shadow:0 6px 22px rgba(0,0,0,.45); }
-  .sq { width:64px; height:64px; display:flex; align-items:center; justify-content:center;
-    font-size:52px; line-height:1; cursor:pointer; position:relative; }
+  /* touch-action was set on .piece only, so a drag starting on an empty part of
+     a square could still scroll the page out from under the gesture. */
+  .sq { width:var(--sq); height:var(--sq); display:flex; align-items:center; justify-content:center;
+    font-size:calc(var(--sq) * 0.8125); line-height:1; cursor:pointer; position:relative;
+    touch-action:none; }
   .sq.light { background:var(--light-sq); } .sq.dark { background:var(--dark-sq); }
   .sq.selected { outline:3px solid var(--accent); outline-offset:-3px; }
   .sq.lastmove::after { content:""; position:absolute; inset:0; background:rgba(91,157,217,.30); }
-  .sq.target::before { content:""; position:absolute; width:20px; height:20px; border-radius:50%;
+  .sq.target::before { content:""; position:absolute;
+    width:calc(var(--sq) * 0.3125); height:calc(var(--sq) * 0.3125); border-radius:50%;
     background:rgba(20,22,27,.32); z-index:3; }
-  .sq.target.capture::before { width:58px; height:58px; background:none;
-    border:4px solid rgba(20,22,27,.32); }
+  .sq.target.capture::before { width:calc(var(--sq) * 0.906); height:calc(var(--sq) * 0.906);
+    background:none; border:4px solid rgba(20,22,27,.32); }
   .sq.check { background:radial-gradient(circle,#e05a4e 32%,transparent 75%); }
   .piece { position:relative; z-index:2; paint-order:stroke fill;
     user-select:none; -webkit-user-select:none; touch-action:none; }
@@ -59,8 +71,11 @@
     paint-order:stroke fill; text-shadow:0 2px 6px rgba(0,0,0,.5); }
   .floater.w, .slider.w { -webkit-text-stroke:1.4px #000; }
   .floater.b, .slider.b { text-shadow:0 0 3px rgba(255,255,255,.45); }
-  .slider { position:absolute; z-index:60; pointer-events:none; line-height:64px;
-    text-align:center; width:64px; height:64px; paint-order:stroke fill;
+  /* The castling rook animation: tracks --sq so it lands on the right square
+     once the board is fluid. */
+  .slider { position:absolute; z-index:60; pointer-events:none; line-height:var(--sq);
+    text-align:center; width:var(--sq); height:var(--sq); paint-order:stroke fill;
+    font-size:calc(var(--sq) * 0.8125);
     transition:transform .22s cubic-bezier(.4,.1,.25,1); }
   .sq.dragover { box-shadow:inset 0 0 0 3px var(--accent); }
   /* phase + scope strip */
@@ -210,12 +225,37 @@
     font-size:12.5px; font-weight:600; }
   .modebtn.active { background:var(--accent); color:#fff; }
   .board-wrap { position:relative; }
-  .arrows { position:absolute; inset:0; width:512px; height:512px; pointer-events:none; z-index:4; }
+  /* The SVG carries viewBox="0 0 512 512", so a percentage size makes the
+     arrows scale with the board for free and sqCenter can keep working in
+     512-space. That is why the board could be made fluid cheaply. */
+  .arrows { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:4; }
   #fenInput { background:var(--panel2); color:var(--text); border:1px solid var(--line);
     border-radius:7px; padding:7px 10px; font-size:12px; width:150px;
     font-family:ui-monospace,Menlo,monospace; }
   .depthchip { font-variant-numeric:tabular-nums; }
   .adepth { color:var(--accent); font-weight:600; }
+
+  /* ---- small screens ----
+     The file previously contained no @media rule at all. The board is fluid via
+     --sq, so this only has to fix the surrounding chrome. */
+  @media (max-width: 700px) {
+    .layout { padding:12px; gap:14px; }
+    header { padding:11px 14px; }
+    .panel { max-width:100%; }
+    /* An inner scroll region taller than the viewport, inside a page that also
+       scrolls, is unpleasant to escape on touch. Let the page own scrolling. */
+    .tabwrap { max-height:none; padding:14px; }
+    .controls { gap:8px 10px; }
+    /* Anything under 16px makes iOS Safari zoom the viewport on focus and never
+       zoom back. The old 12px did exactly that, on the field holding a ~60
+       character FEN in a 150px box. */
+    #fenInput { font-size:16px; width:100%; }
+    .board-col { gap:8px; }
+    .evalbar { width:18px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration:.001ms !important; transition-duration:.001ms !important; }
+  }
 </style>
 </head>
 <body>
@@ -497,10 +537,16 @@ function animateCastleRook(uci, whiteRook){
   const probe=board.querySelector(".piece");
   el.style.color=whiteRook?"#fdfdfd":"#141414";
   if(probe) el.style.fontSize=getComputedStyle(probe).fontSize;
-  el.style.left=(a.x-32)+"px"; el.style.top=(a.y-32)+"px";
+  // sqCenter works in the SVG's 512-space, which the arrow layer maps for free
+  // via its viewBox. This element is positioned in REAL pixels, so once the
+  // board became fluid the two stopped agreeing and the rook would have slid to
+  // the wrong square on any narrow screen. Scale by the measured square.
+  const sqEl=board.querySelector(".sq");
+  const k=(sqEl?sqEl.getBoundingClientRect().width:64)/64;
+  el.style.left=((a.x-32)*k)+"px"; el.style.top=((a.y-32)*k)+"px";
   board.appendChild(el);
   requestAnimationFrame(()=>{
-    el.style.transform=`translate(${(b.x-a.x).toFixed(1)}px,${(b.y-a.y).toFixed(1)}px)`;
+    el.style.transform=`translate(${((b.x-a.x)*k).toFixed(1)}px,${((b.y-a.y)*k).toFixed(1)}px)`;
   });
   setTimeout(()=>el.remove(), 260);
 }
