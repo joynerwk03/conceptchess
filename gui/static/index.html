@@ -124,6 +124,13 @@
   .bar .mid { position:absolute; left:50%; top:0; bottom:0; width:1px; background:#4a5262; }
   .bar .fill { position:absolute; top:0; bottom:0; border-radius:6px; }
   .fill.pos { left:50%; background:var(--v-best); } .fill.neg { right:50%; background:var(--v-blun); }
+  /* Folded silent terms: present and checkable, but visually receded so they do
+     not compete with the rows that actually explain the score. */
+  .crow.quiet { opacity:.62; }
+  .crow.quiet .name { font-weight:400; }
+  .crow.quiet .eq { color:var(--muted); font-size:11px; display:block;
+    margin-top:1px; letter-spacing:.01em; }
+  .crow.quiet .val { color:var(--muted); }
   .items { display:none; margin:2px 0 6px 8px; font-size:12px; color:var(--muted); }
   .items div { display:flex; justify-content:space-between; padding:1px 6px; }
   .crow.open + .items { display:block; }
@@ -630,7 +637,16 @@ function renderConcepts(bd,deltas,scope,searchCp){
   const wrap=$("concepts"); wrap.innerHTML="";
   const maxAbs=Math.max(80,...bd.concepts.map(c=>Math.abs(c.score)));
   const dby={}; (deltas||[]).forEach(d=>dby[d.name]=d.delta);
-  for(const c of bd.concepts){
+  // Rank by what is actually driving the number, and get the silent terms out of
+  // the way. On a normal opening position 15 of 16 concepts are exactly zero, so
+  // an unsorted full list buries the one row that explains anything under a wall
+  // of 0.00. Sorting by magnitude answers "why this score" in the first glance
+  // instead of the fifteenth.
+  const LIVE=0.5;   // below half a centipawn is not a reason for anything
+  const live=bd.concepts.filter(c=>Math.abs(c.score)>=LIVE)
+                        .sort((a,b)=>Math.abs(b.score)-Math.abs(a.score));
+  const quiet=bd.concepts.filter(c=>Math.abs(c.score)<LIVE);
+  for(const c of live){
     const row=document.createElement("div"); row.className="crow";
     const pct=Math.min(50,Math.abs(c.score)/maxAbs*50); const d=dby[c.name];
     const dtxt=(d!==undefined&&Math.abs(d)>=1)?` <span class="${d>0?"delta-pos":"delta-neg"}">(${d>0?"+":""}${(d/100).toFixed(2)})</span>`:"";
@@ -643,6 +659,34 @@ function renderConcepts(bd,deltas,scope,searchCp){
     items.innerHTML=sorted.length?sorted.map(([l,v])=>`<div><span>${l}</span><span>${(v/100).toFixed(2)}</span></div>`).join("")
       :"<div><span>No contributions</span><span></span></div>";
     wrap.appendChild(items);
+  }
+  // The silent terms, folded but not hidden -- a reader must still be able to
+  // confirm that nothing was left out, or the column stops being checkable.
+  //
+  // Two ways a concept can read zero, and they are different facts about the
+  // position: it CANCELS (both sides have it equally, like placement with 32
+  // contributions summing to nothing) or it does not APPLY (no passed pawns, so
+  // no passed-pawn score). The old panel rendered both as a bare 0.00 and lost
+  // the distinction; naming it is free interpretability.
+  if(quiet.length){
+    const cancel=quiet.filter(c=>c.items&&c.items.length);
+    const absent=quiet.length-cancel.length;
+    const bits=[];
+    if(cancel.length) bits.push(`${cancel.length} cancel out`);
+    if(absent) bits.push(`${absent} don't apply here`);
+    const q=document.createElement("div"); q.className="crow quiet";
+    q.innerHTML=`<span class="name">Silent concepts<span class="eq">`
+      +`${bits.join(" · ")} — click to show</span></span>`
+      +`<span></span><span class="val">0.00</span>`;
+    const qi=document.createElement("div"); qi.className="items";
+    qi.innerHTML=quiet.map(c=>{
+      const why=(c.items&&c.items.length)
+        ? `${c.items.length} contributions, cancelling`
+        : "nothing in this position triggers it";
+      return `<div><span>${c.display_name}</span><span>${why}</span></div>`;
+    }).join("");
+    q.onclick=()=>q.classList.toggle("open");
+    wrap.appendChild(q); wrap.appendChild(qi);
   }
   // The invariant, made visible. bd.total is the number the search maximized,
   // and the rows above sum to it by construction (engine/evaluation.py). Without
