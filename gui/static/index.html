@@ -349,6 +349,18 @@ async function api(path,body,signal){ const r=await fetch(path,{method:"POST",
   return r.json(); }
 const payload=()=>({start_fen:state.startFen,moves:state.moves,threads:state.threads});
 
+// gui/server.py wraps every route so any failure returns {error} with a 500.
+// Several call sites destructured the result blind, so a server hiccup threw a
+// TypeError and left a spinner running forever with nothing on screen. One
+// guard, used at each of them: returns true when the call failed, after
+// writing the reason into whichever element was showing the pending state.
+function apiFailed(r,el,what){
+  if(r&&!r.error) return false;
+  const msg=(r&&r.error)?r.error:"the server did not respond";
+  if(el) el.innerHTML='<div class="meta">Could not '+what+': '+msg+'</div>';
+  return true;
+}
+
 function fenBoard(fen){ const rows=fen.split(" ")[0].split("/"),g={};
   rows.forEach((row,i)=>{let f=0;for(const c of row){ if(/\d/.test(c))f+=+c;
     else{g[String.fromCharCode(97+f)+(8-i)]=c;f++;} }}); return g; }
@@ -509,7 +521,16 @@ async function refreshState(){
     inCheck:s.in_check,winner:s.winner,sanHistory:s.san_history||[]});
   if(state.insights) api("/api/overlays",payload()).then(r=>{state.overlays=r.overlays||{};renderBoard();});
   renderBoard(); updateStatus(); renderMoves();
-  api("/api/eval",payload()).then(e=>renderConcepts(e.breakdown,null,"current position"));
+  api("/api/eval",payload()).then(e=>{
+    if(!e||e.error) return;                 // was an unhandled rejection that
+    renderConcepts(e.breakdown,null,"position on the board");  // left stale numbers
+  }).catch(()=>{});
+  // A candidate ranking belongs to the position it was computed for. This runs
+  // on every path that changes the move list, so it is the one place that
+  // catches them all; leaving it stale showed moves that may now be illegal.
+  const cl=$("candlist");
+  if(cl&&cl.innerHTML.trim())
+    cl.innerHTML='<div class="meta">Position changed. Run <b>Find best moves</b> again.</div>';
   if(state.status!=="ongoing") $("reviewBtn").disabled=false;
 }
 
@@ -762,6 +783,7 @@ $("findBtn").onclick=async()=>{
   if(state.status!=="ongoing"||(state.mode==="play"&&state.turn!==state.playerColor)){ $("candlist").innerHTML='<div class="meta">Candidates are shown on your turn.</div>'; return; }
   $("findBtn").disabled=true; $("candlist").innerHTML='<div class="meta thinking">Searching every legal move…</div>';
   const r=await api("/api/candidates",payload()); $("findBtn").disabled=false;
+  if(apiFailed(r,$("candlist"),"search the moves")) return;
   $("candlist").innerHTML=r.candidates.map(c=>{
     const cls=c.loss<15?"v-best":c.loss<50?"v-good":c.loss<100?"v-inacc":c.loss<250?"v-mist":"v-blun";
     const rz=c.reasons.map(x=>`${x.display_name.toLowerCase()} ${x.delta>0?"+":""}${(x.delta/100).toFixed(2)}`).join(", ");
@@ -792,14 +814,34 @@ function renderMoves(){
 }
 async function viewMove(i){
   if(state.viewPly===i||i===state.moves.length-1){ state.viewPly=null;state.viewFen=null;
-    renderBoard();updateStatus();renderMoves(); return; }
+    renderBoard();updateStatus();renderMoves();
+    // Back to live: put the current position's breakdown back.
+    api("/api/eval",payload()).then(e=>{
+      if(e&&!e.error) renderConcepts(e.breakdown,null,"position on the board"); }).catch(()=>{});
+    $("scopeGap").textContent="";
+    return; }
   const s=await api("/api/state",{start_fen:state.startFen,moves:state.moves.slice(0,i+1)});
+  if(apiFailed(s,null,"")){ $("status").textContent="Could not load that move: "
+    +((s&&s.error)||"the server did not respond"); return; }
   state.viewPly=i; state.viewFen=s.fen; state.selected=null; renderBoard(); updateStatus(); renderMoves();
+  // The board moved, so the numbers beside it have to move too. Without this
+  // the screen shows ply i's position next to the LIVE position's evaluation,
+  // and nothing looks broken, which made it the most misleading state in the
+  // app and hit exactly the user this feature exists for.
+  const upto=state.moves.slice(0,i+1);
+  api("/api/eval",{start_fen:state.startFen,moves:upto,threads:state.threads}).then(e=>{
+    if(e&&!e.error)
+      renderConcepts(e.breakdown,null,"position after move "+(Math.floor(i/2)+1)); }).catch(()=>{});
+  $("aPv").textContent="—"; $("aDepth").textContent="";
+  $("scopeGap").textContent="Viewing an earlier move. The score above belongs to the live position.";
 }
 $("reviewBtn").onclick=async()=>{
   $("reviewBtn").disabled=true; $("reviewBtn").textContent="Reviewing…";
   const r=await api("/api/review",{start_fen:state.startFen,moves:state.moves});
-  state.review=r.review; $("reviewBtn").textContent="Review game"; $("reviewBtn").disabled=false;
+  $("reviewBtn").textContent="Review game"; $("reviewBtn").disabled=false;
+  if(apiFailed(r,null,"")){ $("status").textContent="Review failed: "
+    +((r&&r.error)||"the server did not respond"); return; }
+  state.review=r.review;
   renderMoves(); renderGraph();
   const bad=r.review.filter(v=>v.verdict==="mistake"||v.verdict==="blunder");
   $("status").innerHTML=`Review: ${bad.length} mistake${bad.length!==1?"s":""}/blunder`
@@ -876,6 +918,11 @@ async function startAnalysis(){
   let depth=1; const HARD_CAP=45;
   while(state.analyzing&&token===state.analyzeToken&&depth<=HARD_CAP){
     let r;
+    // Heartbeat. renderAnalysis only fires when a whole iteration returns, and
+    // the per-call ceiling is 20s, so the flagship "thinks as long as you let
+    // it" feature could sit visually frozen for twenty seconds. Naming the
+    // depth being searched makes the wait legible instead of ambiguous.
+    $("aMeta").innerHTML='<span class="thinking">Searching depth '+depth+'…</span>';
     // Tie the request's lifetime to the token that already governs this loop:
     // the server cancels the stale SEARCH, and this drops the stale REQUEST so
     // the browser is not holding a promise for a position we have left.
@@ -939,6 +986,9 @@ function setMode(m){
 const GLOSS={};
 async function loadGlossary(){
   const r=await api("/api/glossary",{});
+  // Failed silently before: the tab rendered its "nothing hidden" intro over an
+  // empty list, which reads as the promise being false rather than as an error.
+  if(apiFailed(r,$("glossary"),"load the concept glossary")) return;
   r.glossary.forEach(g=>GLOSS[g.name]=g);
   $("glossary").innerHTML=r.glossary.map(g=>
     `<div class="gloss"><h4>${g.display_name}</h4><p class="what">${g.what}</p>
@@ -1010,6 +1060,19 @@ $("undoBtn").onclick=async()=>{ if(state.thinking)return;
 // inline, and the fetch is a local call of a few milliseconds, so waiting for it
 // costs nothing and guarantees the FIRST panel a visitor sees is the explained
 // one rather than the bare one.
+// A backgrounded tab used to keep analysing forever, pinning every core the
+// thread slider allows. For a link shared publicly that is the failure mode: a
+// visitor reads for a minute, switches tabs, and the box stays saturated with
+// nobody watching. Pause on hide, resume only if we were the ones who paused.
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden){
+    if(state.analyzing){ state.resumeOnShow=true; stopAnalysis(); }
+  }else if(state.resumeOnShow){
+    state.resumeOnShow=false;
+    if(state.mode==="analysis"&&state.status==="ongoing") startAnalysis();
+  }
+});
+
 loadGlossary().then(()=>initAnalysis(null));   // analysis board is the default view
 </script>
 </body>
